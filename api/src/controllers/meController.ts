@@ -6,6 +6,7 @@ import { getProjectById } from '../db/projects.js'
 import { getMemberByUid } from '../db/members.js'
 import { getTeams as dbGetTeams } from '../db/teams.js'
 import { getUserId } from '../middleware/auth.js'
+import { logApiError } from '../utils/log.js'
 
 const DEFAULT_USER_ID = 'current-user'
 
@@ -38,6 +39,7 @@ export async function getMember(req: Request, res: Response) {
       teams: teamNames.length ? teamNames.join(', ') : '—',
     })
   } catch (e) {
+    logApiError(e, 'me.getMember')
     res.status(500).json({ error: (e as Error).message })
   }
 }
@@ -47,6 +49,7 @@ export async function getTeams(_req: Request, res: Response) {
     const teams = await meModel.getNavTeams()
     res.json(teams.map((t) => ({ id: t.id, name: t.name })))
   } catch (e) {
+    logApiError(e, 'me.getTeams')
     res.status(500).json({ error: (e as Error).message })
   }
 }
@@ -79,6 +82,7 @@ export async function getMyIssues(req: Request, res: Response) {
     )
     res.json(list)
   } catch (e) {
+    logApiError(e, 'me.getMyIssues')
     res.status(500).json({ error: (e as Error).message })
   }
 }
@@ -103,6 +107,7 @@ export async function getNotifications(req: Request, res: Response) {
     }))
     res.json(list)
   } catch (e) {
+    logApiError(e, 'me.getNotifications')
     res.status(500).json({ error: (e as Error).message })
   }
 }

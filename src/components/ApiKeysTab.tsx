@@ -11,6 +11,7 @@ import {
 } from '@design-system'
 import { useApiKeys, type CreateKeyResponse } from '../hooks/useApiKeys'
 import { formatDateTime } from '../utils/format'
+import { logError } from '../utils/errorHandling'
 
 type KeyRow = {
   revoking?: boolean
@@ -35,6 +36,7 @@ export function ApiKeysTab() {
       const created = await createKey()
       setCreatedKey(created)
     } catch (e) {
+      logError(e, 'ApiKeysTab.createKey')
       setMutationError((e as Error).message)
     } finally {
       setCreating(false)
@@ -53,6 +55,7 @@ export function ApiKeysTab() {
       try {
         await deleteKey(id)
       } catch (e) {
+        logError(e, 'ApiKeysTab.revokeKey')
         setMutationError((e as Error).message)
       } finally {
         setRevokingId(null)

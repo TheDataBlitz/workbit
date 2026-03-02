@@ -122,6 +122,7 @@ export function TeamIssuesScreen({ teamName }: Props) {
       setShowModal(false)
       setIssueTitle('')
     } catch (err) {
+      logError(err, 'TeamIssues')
       alert(`Failed to create issue: ${err}`)
     } finally {
       setCreating(false)

@@ -13,6 +13,7 @@ import {
 import { createProject, fetchWorkspaceTeams } from '../api/client'
 import { useFetch } from '../hooks/useFetch'
 import { useWorkspace } from '../contexts/WorkspaceContext'
+import { logError } from '../utils/errorHandling'
 
 export function CreateProjectScreen() {
   const { workspaceId, teamId: teamIdFromUrl } = useParams<{
@@ -56,6 +57,7 @@ export function CreateProjectScreen() {
         navigate(`/workspace/${workspaceId}/workspace/projects`)
       }
     } catch (err) {
+      logError(err, 'CreateProject')
       setError(err instanceof Error ? err.message : 'Failed to create project')
     } finally {
       setSubmitting(false)

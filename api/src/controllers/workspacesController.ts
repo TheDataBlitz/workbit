@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import * as workspacesModel from '../models/workspaces.js'
+import { logApiError } from '../utils/log.js'
 
 function toErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message
@@ -38,6 +39,7 @@ export async function getWorkspaces(req: Request, res: Response) {
       }))
     )
   } catch (e) {
+    logApiError(e, 'workspaces.getWorkspaces')
     sendError(res, e)
   }
 }
@@ -89,6 +91,7 @@ export async function createWorkspace(req: Request, res: Response) {
       throw e
     }
   } catch (e) {
+    logApiError(e, 'workspaces.createWorkspace')
     sendError(res, e)
   }
 }

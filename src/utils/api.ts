@@ -3,6 +3,7 @@
  */
 
 import type { ApiIssueDetail } from '../api/client'
+import { logError } from './errorHandling'
 
 /**
  * Build optimistic update handler
@@ -27,6 +28,7 @@ export function createOptimisticUpdate<T extends Record<string, unknown>>(
         const { [id]: _, ...rest } = prev
         return rest
       })
+      logError(error, 'OptimisticUpdate')
       if (onError) onError(error)
     })
   }

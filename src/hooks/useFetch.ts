@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { logError } from '../utils/errorHandling'
 
 interface FetchState<T> {
   data: T | null
@@ -19,13 +20,13 @@ export function useFetch<T>(fn: () => Promise<T>, deps: any[] = []) {
     error: null,
   })
 
-   
   const load = useCallback(async () => {
     setState((s) => ({ ...s, loading: true, error: null }))
     try {
       const data = await fn()
       setState({ data, loading: false, error: null })
     } catch (e) {
+      logError(e, 'useFetch')
       setState({ data: null, loading: false, error: (e as Error).message })
     }
   }, deps)

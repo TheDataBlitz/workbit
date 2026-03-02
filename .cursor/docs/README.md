@@ -8,6 +8,10 @@ Documentation for the Workbit project.
 - **REST (writes):** Mutations (create/update/delete) use REST as per [API_AND_SERVICES_SPEC.md](./API_AND_SERVICES_SPEC.md).
 - **Env:** Set `VITE_GRAPHQL_URL` (see `.env.example`) when a GraphQL server is available.
 
+## Logging (Logbit SDK)
+
+- **[LOGBIT_SDK.md](./LOGBIT_SDK.md)** – Setup, init, and usage for `@thedatablitz/logbit-sdk` (logging, spans, metrics, Workbit). Initialized in `src/main.tsx` and `api/src/index.ts`.
+
 ## Design System
 
 - **[DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md)** – Reference for `src/design-system` components (imports, props, usage).

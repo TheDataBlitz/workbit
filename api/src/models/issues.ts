@@ -6,7 +6,18 @@ export async function getTeamIssues(
   teamId: string,
   filter?: 'all' | 'active' | 'backlog'
 ): Promise<Issue[]> {
+  const team = await getTeamById(teamId)
+  if (team?.projectId) {
+    return db.getIssuesByProjectId(team.projectId, filter)
+  }
   return db.getIssuesByTeamId(teamId, filter)
+}
+
+export async function getProjectIssues(
+  projectId: string,
+  filter?: 'all' | 'active' | 'backlog'
+): Promise<Issue[]> {
+  return db.getIssuesByProjectId(projectId, filter)
 }
 
 export async function getMyIssues(assigneeId: string): Promise<Issue[]> {
@@ -31,15 +42,17 @@ export async function getIssueById(issueId: string): Promise<Issue | null> {
 
 export async function createIssue(input: {
   title: string
-  teamId: string
+  teamId?: string
   projectId?: string
   assigneeId?: string
   status?: string
   description?: string
 }): Promise<Issue> {
-  const team = await getTeamById(input.teamId)
-  if (!team) {
-    throw new Error('Team not found')
+  if (input.teamId) {
+    const team = await getTeamById(input.teamId)
+    if (!team) {
+      throw new Error('Team not found')
+    }
   }
 
   const issue: Issue = {

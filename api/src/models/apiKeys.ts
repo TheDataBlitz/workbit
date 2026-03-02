@@ -1,4 +1,5 @@
 import { supabaseAdmin, isSupabaseConfigured } from '../utils/supabaseServer.js'
+import { logApiError } from '../utils/log.js'
 
 export type ApiKeyRow = {
   id: string
@@ -22,7 +23,7 @@ export async function listKeysForUser(userId: string): Promise<ApiKeyRow[]> {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('[apiKeys] listKeysForUser error:', error.message, { userId })
+    logApiError(new Error(error.message), 'apiKeys.listKeysForUser', { userId })
     throw new Error(error.message)
   }
 

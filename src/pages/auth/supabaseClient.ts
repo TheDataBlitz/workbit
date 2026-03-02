@@ -1,4 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { logbit } from '@thedatablitz/logbit-sdk'
+import { LOGBIT_PROJECT_ID } from '../../utils/errorHandling'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
@@ -6,11 +8,16 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
 export const isAuthConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 
 if (isAuthConfigured) {
-  console.log('✓ Supabase auth configured')
+  logbit.info('Supabase auth configured', {
+    projectId: LOGBIT_PROJECT_ID,
+    title: 'Supabase auth configured',
+  })
 } else {
-  console.warn(
-    '✗ Supabase auth NOT configured. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY'
-  )
+  logbit.warn('Supabase auth NOT configured', {
+    projectId: LOGBIT_PROJECT_ID,
+    title: 'Supabase auth NOT configured',
+    hint: 'Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY',
+  })
 }
 
 let client: SupabaseClient | null = null

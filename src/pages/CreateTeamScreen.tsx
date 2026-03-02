@@ -11,6 +11,7 @@ import {
 } from '@design-system'
 import { createTeam } from '../api/client'
 import { useWorkspace } from '../contexts/WorkspaceContext'
+import { logError } from '../utils/errorHandling'
 
 export function CreateTeamScreen() {
   const { workspaceId, teamId: teamIdFromUrl } = useParams<{
@@ -41,6 +42,7 @@ export function CreateTeamScreen() {
         navigate(`/workspace/${workspaceId}/workspace/teams`)
       }
     } catch (err) {
+      logError(err, 'CreateTeam')
       setError(err instanceof Error ? err.message : 'Failed to create team')
     } finally {
       setSubmitting(false)

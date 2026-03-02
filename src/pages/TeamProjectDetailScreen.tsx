@@ -17,6 +17,7 @@ import type {
 } from '../components'
 import { noop } from '../utils/noop'
 import { formatDateTime } from '../utils/format'
+import { logError } from '../utils/errorHandling'
 import {
   fetchTeamProject,
   postStatusUpdate,
@@ -200,7 +201,7 @@ export function TeamProjectDetailScreen({ projectName, teamId }: Props) {
         )
         setProperties(data.project.properties)
       })
-      .catch(console.error)
+      .catch((e) => logError(e, 'TeamProjectDetail'))
       .finally(() => setLoading(false))
   }, [teamId])
 
@@ -208,7 +209,7 @@ export function TeamProjectDetailScreen({ projectName, teamId }: Props) {
     if (!teamId) return
     void postStatusUpdate(teamId, content, status)
       .then((u) => setUpdates((prev) => [apiUpdateToCard(u), ...prev]))
-      .catch(console.error)
+      .catch((e) => logError(e, 'TeamProjectDetail'))
   }
 
   const handleSendComment = (updateId: string) => (text: string) => {
@@ -233,7 +234,7 @@ export function TeamProjectDetailScreen({ projectName, teamId }: Props) {
           )
         )
       })
-      .catch(console.error)
+      .catch((e) => logError(e, 'TeamProjectDetail'))
   }
 
   const handleAddMilestone = () => {
@@ -261,19 +262,23 @@ export function TeamProjectDetailScreen({ projectName, teamId }: Props) {
         setMilestoneName('')
         setMilestoneDate('')
       })
-      .catch(console.error)
+      .catch((e) => logError(e, 'TeamProjectDetail'))
   }
 
   const handleStatusChange = (status: string) => {
     if (!teamId) return
     setProperties((p) => (p ? { ...p, status } : null))
-    void patchProject(teamId, { status }).catch(console.error)
+    void patchProject(teamId, { status }).catch((e) =>
+      logError(e, 'TeamProjectDetail')
+    )
   }
 
   const handlePriorityChange = (priority: string) => {
     if (!teamId) return
     setProperties((p) => (p ? { ...p, priority } : null))
-    void patchProject(teamId, { priority }).catch(console.error)
+    void patchProject(teamId, { priority }).catch((e) =>
+      logError(e, 'TeamProjectDetail')
+    )
   }
 
   if (loading) {

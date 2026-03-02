@@ -1,3 +1,8 @@
+import { logbit } from '@thedatablitz/logbit-sdk'
+
+/** Logbit project ID to attach to all log events from this app */
+export const LOGBIT_PROJECT_ID = 'be4bc17d-3776-4b6c-b1cd-b9a473f10f77'
+
 /**
  * Error handling utilities for API calls and general error management
  */
@@ -19,12 +24,22 @@ export function getErrorMessage(error: unknown): string {
 }
 
 /**
- * Log error to console in development, could be extended to send to error tracking service
+ * Log error via Logbit (batched and sent to ingest API)
  */
 export function logError(error: unknown, context?: string): void {
   const message = getErrorMessage(error)
-  const prefix = context ? `[${context}]` : ''
-  console.error(`${prefix} Error:`, message, error)
+  const payload: Record<string, unknown> = {
+    projectId: LOGBIT_PROJECT_ID,
+    title: context ? `[${context}] ${message}` : message,
+    context: context ?? 'app',
+    errorMessage: message,
+  }
+  if (error instanceof Error && error.stack) {
+    payload.stack = error.stack
+  } else if (error && typeof error === 'object') {
+    payload.raw = error
+  }
+  logbit.error(context ? `[${context}] ${message}` : message, payload)
 }
 
 /**
@@ -60,6 +75,13 @@ export async function retryWithBackoff<T>(
       return await fn()
     } catch (error) {
       lastError = error
+      logbit.warn('Retry attempt failed', {
+        projectId: LOGBIT_PROJECT_ID,
+        title: 'Retry attempt failed',
+        attempt: i + 1,
+        maxRetries,
+        error: getErrorMessage(error),
+      })
       if (i < maxRetries - 1) {
         const delay = baseDelay * Math.pow(2, i)
         await new Promise((resolve) => setTimeout(resolve, delay))

@@ -13,6 +13,7 @@ import {
 import { createMember, fetchWorkspaceTeams } from '../api/client'
 import { useFetch } from '../hooks/useFetch'
 import { useWorkspace } from '../contexts/WorkspaceContext'
+import { logError } from '../utils/errorHandling'
 
 const STATUS_OPTIONS = [
   { value: 'Member', label: 'Member' },
@@ -69,6 +70,7 @@ export function CreateMemberScreen() {
         navigate(`/workspace/${workspaceId}/workspace/member`)
       }
     } catch (err) {
+      logError(err, 'CreateMember')
       setError(err instanceof Error ? err.message : 'Failed to create member')
     } finally {
       setSubmitting(false)

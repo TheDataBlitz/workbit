@@ -14,6 +14,7 @@ import {
 import { createIssue, fetchWorkspaceTeams } from '../api/client'
 import { useFetch } from '../hooks/useFetch'
 import { useWorkspace } from '../contexts/WorkspaceContext'
+import { logError } from '../utils/errorHandling'
 
 export function CreateIssueScreen() {
   const { workspaceId, teamId: teamIdFromUrl } = useParams<{
@@ -42,27 +43,32 @@ export function CreateIssueScreen() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!effectiveTeamId || !title.trim()) return
+    if (!title.trim()) return
     setError(null)
     setSubmitting(true)
     try {
-      const issue = await createIssue(effectiveTeamId, {
+      const teamIdOptional =
+        effectiveTeamId && effectiveTeamId.trim() ? effectiveTeamId : undefined
+      const issue = await createIssue(teamIdOptional, {
         title: title.trim(),
         description: description.trim() || undefined,
         status: 'todo',
       })
       if (workspaceId) {
-        if (isTeamScoped) {
+        if (teamIdOptional && isTeamScoped) {
           navigate(
-            `/workspace/${workspaceId}/team/${effectiveTeamId}/issue/${issue.id}`
+            `/workspace/${workspaceId}/team/${teamIdOptional}/issue/${issue.id}`
+          )
+        } else if (teamIdOptional) {
+          navigate(
+            `/workspace/${workspaceId}/team/${teamIdOptional}/issue/${issue.id}`
           )
         } else {
-          navigate(
-            `/workspace/${workspaceId}/team/${effectiveTeamId}/issue/${issue.id}`
-          )
+          navigate(`/workspace/${workspaceId}/my-issues`)
         }
       }
     } catch (err) {
+      logError(err, 'CreateIssue')
       setError(err instanceof Error ? err.message : 'Failed to create issue')
     } finally {
       setSubmitting(false)
@@ -155,7 +161,7 @@ export function CreateIssueScreen() {
               <Button
                 type="submit"
                 variant="primary"
-                disabled={!effectiveTeamId || !title.trim() || submitting}
+                disabled={!title.trim() || submitting}
               >
                 {submitting ? 'Creating…' : 'Create issue'}
               </Button>

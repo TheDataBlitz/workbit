@@ -20,6 +20,7 @@ import {
 } from '../api/client'
 import { useAuthRequired } from './auth/AuthContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
+import { logError } from '../utils/errorHandling'
 
 const Page = styled.div`
   min-height: 100vh;
@@ -175,6 +176,7 @@ export function WorkspacesScreen() {
         }
       } catch (e) {
         if (!cancelled) {
+          logError(e, 'WorkspacesScreen.resolveMember')
           setMemberError(
             e instanceof Error
               ? e.message
@@ -205,6 +207,7 @@ export function WorkspacesScreen() {
         }
       } catch (e) {
         if (!cancelled) {
+          logError(e, 'WorkspacesScreen.loadWorkspaces')
           setWorkspacesError(
             e instanceof Error ? e.message : 'Failed to load workspaces.'
           )
@@ -255,6 +258,7 @@ export function WorkspacesScreen() {
       setName('')
       setSlug('')
     } catch (e) {
+      logError(e, 'WorkspacesScreen.createWorkspace')
       const msg = e instanceof Error ? e.message : 'Failed to create workspace.'
       setError(msg)
     } finally {

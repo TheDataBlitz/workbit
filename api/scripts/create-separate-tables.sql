@@ -95,7 +95,7 @@ create table if not exists public.issues (
   assignee_name text,
   date text not null,
   status text not null,
-  team_id text not null,
+  team_id text,
   project_id text
 );
 create table if not exists public.notifications (

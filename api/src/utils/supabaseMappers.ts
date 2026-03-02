@@ -164,7 +164,7 @@ export function rowToIssue(r: DbRow): Issue {
     assigneeName: r.assignee_name as string | undefined,
     date: r.date as string,
     status: r.status as string,
-    teamId: r.team_id as string,
+    teamId: (r.team_id as string) || undefined,
     projectId: r.project_id as string | undefined,
     description: r.description as string | undefined,
   }
@@ -178,7 +178,7 @@ export function issueToRow(i: Issue): Record<string, unknown> {
     assignee_name: i.assigneeName ?? null,
     date: i.date,
     status: i.status,
-    team_id: i.teamId,
+    team_id: i.teamId ?? null,
     project_id: i.projectId ?? null,
     description: i.description ?? null,
   }

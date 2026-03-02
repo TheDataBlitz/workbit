@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import * as workspaceModel from '../models/workspace.js'
+import { logApiError } from '../utils/log.js'
 import { getProjects as dbGetProjects } from '../db/projects.js'
 import {
   getTeams as dbGetTeams,
@@ -48,6 +49,7 @@ export async function getProjects(_req: Request, res: Response) {
     })
     res.json(list)
   } catch (e) {
+    logApiError(e, 'workspace.getProjects')
     sendError(res, e)
   }
 }
@@ -76,6 +78,7 @@ export async function getTeams(req: Request, res: Response) {
     })
     res.json(list)
   } catch (e) {
+    logApiError(e, 'workspace.getTeams', { workspaceId: req.query.workspaceId })
     sendError(res, e)
   }
 }
@@ -102,6 +105,7 @@ export async function createTeam(req: Request, res: Response) {
       project: null,
     })
   } catch (e) {
+    logApiError(e, 'workspace.createTeam')
     sendError(res, e)
   }
 }
@@ -134,6 +138,7 @@ export async function getMembers(_req: Request, res: Response) {
     )
     res.json(list)
   } catch (e) {
+    logApiError(e, 'workspace.getMembers')
     sendError(res, e)
   }
 }
@@ -148,6 +153,7 @@ export async function inviteMember(req: Request, res: Response) {
     const invitation = await workspaceModel.inviteMember(email, roleId)
     res.status(201).json(invitation)
   } catch (e) {
+    logApiError(e, 'workspace.inviteMember')
     sendError(res, e)
   }
 }
@@ -202,6 +208,7 @@ export async function createMember(req: Request, res: Response) {
 
     res.status(201).json(member)
   } catch (e) {
+    logApiError(e, 'workspace.createMember')
     sendError(res, e)
   }
 }
@@ -233,6 +240,7 @@ export async function provisionMember(req: Request, res: Response) {
 
     res.status(200).json(member)
   } catch (e) {
+    logApiError(e, 'workspace.provisionMember')
     sendError(res, e)
   }
 }
@@ -255,6 +263,7 @@ export async function getViews(_req: Request, res: Response) {
     )
     res.json(list)
   } catch (e) {
+    logApiError(e, 'workspace.getViews')
     sendError(res, e)
   }
 }
@@ -264,6 +273,7 @@ export async function getRoles(_req: Request, res: Response) {
     const roles = await workspaceModel.getRoles()
     res.json(roles.map((r) => ({ ...r, memberCount: r.memberCount })))
   } catch (e) {
+    logApiError(e, 'workspace.getRoles')
     sendError(res, e)
   }
 }
@@ -301,6 +311,7 @@ export async function createProject(req: Request, res: Response) {
       status: project.status,
     })
   } catch (e) {
+    logApiError(e, 'workspace.createProject')
     sendError(res, e)
   }
 }

@@ -131,7 +131,7 @@ export interface Issue {
   assigneeName?: string
   date: string
   status: string
-  teamId: string
+  teamId?: string
   projectId?: string
   description?: string
 }

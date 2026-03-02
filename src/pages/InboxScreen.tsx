@@ -1,7 +1,9 @@
 import { PageHeader, Stack, Button } from '@design-system'
 import { useNavigate, useParams } from 'react-router-dom'
 import styled from 'styled-components'
-import { Mail, Plus, FolderKanban } from 'lucide-react'
+import { Mail, Plus, FolderKanban, AlertCircle } from 'lucide-react'
+import { logbit } from '@thedatablitz/logbit-sdk'
+import { LOGBIT_PROJECT_ID } from '../utils/errorHandling'
 
 const EmptyStateContainer = styled.div`
   display: flex;
@@ -62,6 +64,15 @@ export function InboxScreen() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
   const base = workspaceId ? `/workspace/${workspaceId}` : ''
 
+  const handleThrowTestError = () => {
+    logbit.error('Test error from Inbox', {
+      projectId: LOGBIT_PROJECT_ID,
+      title: 'Test error from Inbox',
+      source: 'InboxScreen',
+      workspaceId: workspaceId ?? null,
+    })
+  }
+
   return (
     <Stack gap={4}>
       <PageHeader
@@ -94,6 +105,14 @@ export function InboxScreen() {
           >
             <FolderKanban size={16} />
             View Projects
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleThrowTestError}
+            title="Logs an error to Logbit with projectId and throws"
+          >
+            <AlertCircle size={16} />
+            Throw test error
           </Button>
         </ActionButtons>
       </EmptyStateContainer>

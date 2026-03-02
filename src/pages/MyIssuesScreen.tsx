@@ -22,6 +22,7 @@ import {
 import { useFetch } from '../hooks/useFetch'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { formatDateTime } from '../utils/format'
+import { logError } from '../utils/errorHandling'
 
 export function MyIssuesScreen() {
   const { currentWorkspace } = useWorkspace()
@@ -53,7 +54,9 @@ export function MyIssuesScreen() {
       ...prev,
       [issueId]: { ...prev[issueId], status },
     }))
-    void apiUpdateIssue(issueId, { status }).catch(console.error)
+    void apiUpdateIssue(issueId, { status }).catch((e) =>
+      logError(e, 'MyIssues')
+    )
   }
 
   const updatePriority = (issueId: string, priority: string) => {
@@ -64,16 +67,19 @@ export function MyIssuesScreen() {
   }
 
   const handleCreateIssue = async () => {
-    if (!issueTitle.trim() || !selectedTeam) return
+    if (!issueTitle.trim()) return
 
     setCreating(true)
     try {
-      await createIssue(selectedTeam, { title: issueTitle, status: 'todo' })
+      const teamIdOptional =
+        selectedTeam && selectedTeam.trim() ? selectedTeam : undefined
+      await createIssue(teamIdOptional, { title: issueTitle, status: 'todo' })
       await reload()
       setShowModal(false)
       setIssueTitle('')
       setSelectedTeam('')
     } catch (err) {
+      logError(err, 'MyIssues')
       alert(`Failed to create issue: ${err}`)
     } finally {
       setCreating(false)
@@ -180,13 +186,13 @@ export function MyIssuesScreen() {
               weight="medium"
               style={{ display: 'block', marginBottom: '8px' }}
             >
-              Team
+              Team (optional)
             </Text>
             <Select
               value={selectedTeam}
               onChange={setSelectedTeam}
               options={[
-                { value: '', label: 'Select a team' },
+                { value: '', label: 'No team' },
                 ...(teams ?? []).map((team) => ({
                   value: team.id,
                   label: team.name,

@@ -1,3 +1,5 @@
+import { logbit } from '@thedatablitz/logbit-sdk'
+import { LOGBIT_PROJECT_ID } from '../utils/errorHandling'
 import { getAccessToken } from '../pages/auth/supabaseClient'
 
 function getApiBase(): string {
@@ -31,7 +33,15 @@ export async function authFetch(
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error((err as { error?: string }).error || res.statusText)
+    const message = (err as { error?: string }).error || res.statusText
+    logbit.error('API request failed', {
+      projectId: LOGBIT_PROJECT_ID,
+      title: 'API request failed',
+      path,
+      status: res.status,
+      error: message,
+    })
+    throw new Error(message)
   }
   if (res.status === 204) return null
   return res.json()
@@ -134,7 +144,12 @@ export async function createMember(body: {
 export async function fetchMeMember(): Promise<ApiMember | null> {
   try {
     return (await authFetch('/me/member')) as ApiMember
-  } catch {
+  } catch (e) {
+    logbit.warn('fetchMeMember failed (may be unauthenticated)', {
+      projectId: LOGBIT_PROJECT_ID,
+      title: 'fetchMeMember failed',
+      error: e instanceof Error ? e.message : String(e),
+    })
     return null
   }
 }
@@ -443,7 +458,7 @@ export async function fetchTeamIssues(
 }
 
 export async function createIssue(
-  teamId: string,
+  teamId: string | undefined,
   body: {
     title: string
     status?: string
@@ -451,14 +466,25 @@ export async function createIssue(
     projectId?: string
   }
 ): Promise<ApiIssueDetail> {
-  const payload: { title: string; description?: string; projectId?: string } = {
+  const payload: {
+    title: string
+    description?: string
+    projectId?: string
+    teamId?: string
+    status?: string
+  } = {
     title: body.title,
     description: body.description,
+    status: body.status,
   }
   if (body.projectId != null && body.projectId !== '') {
     payload.projectId = body.projectId
   }
-  return authFetch(`/teams/${teamId}/issues`, {
+  if (teamId) {
+    payload.teamId = teamId
+  }
+  const url = teamId ? `/teams/${teamId}/issues` : '/issues'
+  return authFetch(url, {
     method: 'POST',
     body: JSON.stringify(payload),
   }) as Promise<ApiIssueDetail>

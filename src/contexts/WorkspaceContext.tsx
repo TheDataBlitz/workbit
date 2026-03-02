@@ -16,6 +16,7 @@ import {
 import type { ApiWorkspace } from '../api/client'
 import type { Team } from '../constants'
 import { useAuth } from '../pages/auth/AuthContext'
+import { logError } from '../utils/errorHandling'
 
 const STORAGE_KEY = 'workbit.currentWorkspaceId'
 
@@ -97,6 +98,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         if (found) setCurrentWorkspaceState(found)
       }
     } catch (e) {
+      logError(e, 'WorkspaceContext.loadWorkspaces')
       setWorkspacesError(
         e instanceof Error ? e.message : 'Failed to load workspaces'
       )
@@ -133,6 +135,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           if (found) setCurrentWorkspaceState(found)
         }
       } catch (e) {
+        if (!cancelled) logError(e, 'WorkspaceContext.loadWorkspaces')
         if (!cancelled)
           setWorkspacesError(
             e instanceof Error ? e.message : 'Failed to load workspaces'

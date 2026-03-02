@@ -48,7 +48,7 @@ export const workbit = {
         'x-api-key': config.apiKey,
       },
       body: JSON.stringify({
-        projectId: params.projectId,
+        project_id: params.projectId,
         title: params.title,
         description: params.body,
       }),

@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express'
 import * as teamsModel from '../models/teams.js'
 import { getUserId } from '../middleware/auth.js'
+import { logApiError } from '../utils/log.js'
 
 const DEFAULT_USER_ID = 'current-user'
 const DEFAULT_AUTHOR_NAME = 'You'
@@ -15,6 +16,7 @@ export async function getTeam(req: Request, res: Response) {
     }
     res.json({ id: team.id, name: team.name })
   } catch (e) {
+    logApiError(e, 'teams.getTeam', { teamId: req.params.teamId })
     res.status(500).json({ error: (e as Error).message })
   }
 }
@@ -54,6 +56,7 @@ export async function getTeamProject(req: Request, res: Response) {
       },
     })
   } catch (e) {
+    logApiError(e, 'teams.getTeamProject', { teamId: req.params.teamId })
     res.status(500).json({ error: (e as Error).message })
   }
 }
@@ -72,6 +75,9 @@ export async function getStatusUpdateComments(req: Request, res: Response) {
       }))
     )
   } catch (e) {
+    logApiError(e, 'teams.getStatusUpdateComments', {
+      updateId: req.params.updateId,
+    })
     res.status(500).json({ error: (e as Error).message })
   }
 }
@@ -103,6 +109,7 @@ export async function postStatusUpdate(req: Request, res: Response) {
     )
     res.status(201).json(update)
   } catch (e) {
+    logApiError(e, 'teams.postStatusUpdate', { teamId: req.params.teamId })
     res.status(500).json({ error: (e as Error).message })
   }
 }
@@ -125,6 +132,10 @@ export async function postStatusUpdateComment(req: Request, res: Response) {
     )
     res.status(201).json(comment)
   } catch (e) {
+    logApiError(e, 'teams.postStatusUpdateComment', {
+      teamId: req.params.teamId,
+      updateId: req.params.updateId,
+    })
     const err = e as Error
     if (err.message === 'Update not found')
       res.status(404).json({ error: err.message })
@@ -139,6 +150,7 @@ export async function patchProject(req: Request, res: Response) {
     const properties = await teamsModel.updateProjectProperties(teamId, body)
     res.json(properties)
   } catch (e) {
+    logApiError(e, 'teams.patchProject', { teamId: req.params.teamId })
     res.status(500).json({ error: (e as Error).message })
   }
 }
@@ -162,6 +174,7 @@ export async function postMilestone(req: Request, res: Response) {
     })
     res.status(201).json(milestone)
   } catch (e) {
+    logApiError(e, 'teams.postMilestone', { teamId: req.params.teamId })
     res.status(500).json({ error: (e as Error).message })
   }
 }
@@ -181,6 +194,10 @@ export async function patchMilestone(req: Request, res: Response) {
     }
     res.json(milestone)
   } catch (e) {
+    logApiError(e, 'teams.patchMilestone', {
+      teamId: req.params.teamId,
+      milestoneId: req.params.milestoneId,
+    })
     res.status(500).json({ error: (e as Error).message })
   }
 }
@@ -205,6 +222,7 @@ export async function getTeamViews(req: Request, res: Response) {
     )
     res.json(list)
   } catch (e) {
+    logApiError(e, 'teams.getTeamViews', { teamId: req.params.teamId })
     res.status(500).json({ error: (e as Error).message })
   }
 }
@@ -216,6 +234,7 @@ export async function getTeamLogs(req: Request, res: Response) {
     const data = await teamsModel.getTeamLogs(teamId, first)
     res.json(data)
   } catch (e) {
+    logApiError(e, 'teams.getTeamLogs', { teamId: req.params.teamId })
     res.status(500).json({ error: (e as Error).message })
   }
 }

@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { logbit } from '@thedatablitz/logbit-sdk'
+import { LOGBIT_PROJECT_ID } from '../../utils/errorHandling'
 import { getSupabase, isAuthConfigured } from './supabaseClient'
 
 type AuthState =
@@ -31,7 +33,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isAuthConfigured) {
-      console.log('Auth not configured, skipping initialization')
+      logbit.warn('Auth not configured, skipping initialization', {
+        projectId: LOGBIT_PROJECT_ID,
+        title: 'Auth not configured',
+      })
       throw new Error(
         'Supabase auth is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.'
       )
@@ -39,7 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const supabase = getSupabase()
     if (!supabase) {
-      console.error('Supabase client is null despite isAuthConfigured=true')
+      logbit.error('Supabase client is null despite isAuthConfigured=true', {
+        projectId: LOGBIT_PROJECT_ID,
+        title: 'Supabase client is null',
+        context: 'AuthProvider',
+      })
       setState({ status: 'unauthenticated' })
       return
     }
@@ -56,25 +65,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    console.log('AuthProvider: Initializing session...')
-
     // Initialize session from storage
     supabase.auth
       .getSession()
       .then(({ data: { session }, error }) => {
         if (error) {
-          console.error('Failed to restore session:', error)
+          logbit.error('Failed to restore session', {
+            projectId: LOGBIT_PROJECT_ID,
+            title: 'Failed to restore session',
+            context: 'AuthProvider',
+            error: error?.message,
+          })
           if (isMounted) setState({ status: 'unauthenticated' })
         } else {
-          console.log(
-            'Session restored:',
-            session ? `user ${session.user.id}` : 'null'
-          )
+          logbit.info('Session restored', {
+            projectId: LOGBIT_PROJECT_ID,
+            title: 'Session restored',
+            userId: session?.user?.id ?? null,
+          })
           setSession(session)
         }
       })
       .catch((err) => {
-        console.error('Unexpected error restoring session:', err)
+        logbit.error('Unexpected error restoring session', {
+          projectId: LOGBIT_PROJECT_ID,
+          title: 'Unexpected error restoring session',
+          context: 'AuthProvider',
+          error: err instanceof Error ? err.message : String(err),
+        })
         if (isMounted) setState({ status: 'unauthenticated' })
       })
 
@@ -82,11 +100,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log(
-        'Auth state changed:',
+      logbit.info('Auth state changed', {
+        projectId: LOGBIT_PROJECT_ID,
+        title: 'Auth state changed',
         event,
-        session ? `user ${session.user.id}` : 'null'
-      )
+        userId: session?.user?.id ?? null,
+      })
       setSession(session)
     })
 
@@ -100,10 +119,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = getSupabase()
     if (supabase) {
       try {
-        console.log('Signing out...')
         await supabase.auth.signOut()
       } catch (error) {
-        console.error('Sign out failed:', error)
+        logbit.error('Sign out failed', {
+          projectId: LOGBIT_PROJECT_ID,
+          title: 'Sign out failed',
+          context: 'AuthProvider',
+          error: error instanceof Error ? error.message : String(error),
+        })
       }
     }
     setState({ status: 'unauthenticated' })

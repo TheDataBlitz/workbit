@@ -3,6 +3,7 @@ import * as issuesModel from '../models/issues.js'
 import { getMemberById } from '../db/members.js'
 import { getTeamById } from '../db/teams.js'
 import { getProjectById } from '../db/projects.js'
+import { logApiError } from '../utils/log.js'
 
 export async function getTeamIssues(req: Request, res: Response) {
   try {
@@ -27,6 +28,7 @@ export async function getTeamIssues(req: Request, res: Response) {
     )
     res.json(list)
   } catch (e) {
+    logApiError(e, 'issues.getTeamIssues', { teamId: req.params.teamId })
     res.status(500).json({ error: (e as Error).message })
   }
 }
@@ -41,7 +43,7 @@ export async function getIssue(req: Request, res: Response) {
     }
     const [assignee, team, project] = await Promise.all([
       issue.assigneeId ? getMemberById(issue.assigneeId) : null,
-      getTeamById(issue.teamId),
+      issue.teamId ? getTeamById(issue.teamId) : null,
       issue.projectId ? getProjectById(issue.projectId) : null,
     ])
 
@@ -56,37 +58,45 @@ export async function getIssue(req: Request, res: Response) {
           : null,
       date: issue.date,
       status: issue.status,
-      teamId: issue.teamId,
+      teamId: issue.teamId ?? null,
       team: team ? { id: team.id, name: team.name } : null,
       project: project ? { id: project.id, name: project.name } : null,
     })
   } catch (e) {
+    logApiError(e, 'issues.getIssue', { issueId: req.params.issueId })
     res.status(500).json({ error: (e as Error).message })
   }
 }
 
 export async function createIssue(req: Request, res: Response) {
   try {
-    const { teamId } = req.params as { teamId: string }
+    const teamIdFromParams = (req.params as { teamId?: string }).teamId
     const body = req.body as {
+      teamId?: string
       projectId?: string
       title?: string
       description?: string
       body?: string
     }
+    const teamId =
+      teamIdFromParams ??
+      (body.teamId && body.teamId !== '' ? body.teamId : undefined)
     const title = body.title
     const description = body.description ?? body.body
-    if (!teamId || !title) {
-      res.status(400).json({ error: 'teamId and title are required' })
+    if (!title || !title.trim()) {
+      res.status(400).json({ error: 'title is required' })
       return
     }
-    const team = await getTeamById(teamId)
-    if (!team) {
-      res.status(404).json({ error: `Team not found: ${teamId}` })
-      return
+    let team: { id: string; name: string } | null = null
+    if (teamId) {
+      team = await getTeamById(teamId)
+      if (!team) {
+        res.status(404).json({ error: `Team not found: ${teamId}` })
+        return
+      }
     }
     let projectId: string | undefined = body.projectId
-    if (projectId != null && projectId !== '') {
+    if (projectId != null && projectId !== '' && teamId) {
       const project = await getProjectById(projectId)
       if (!project) {
         res.status(404).json({ error: `Project not found: ${projectId}` })
@@ -96,13 +106,13 @@ export async function createIssue(req: Request, res: Response) {
         res.status(400).json({ error: 'Project does not belong to this team' })
         return
       }
-    } else {
+    } else if (!teamId) {
       projectId = undefined
     }
     const issue = await issuesModel.createIssue({
       teamId,
       projectId,
-      title,
+      title: title.trim(),
       description,
     })
     const [assignee, project] = await Promise.all([
@@ -120,12 +130,17 @@ export async function createIssue(req: Request, res: Response) {
           : null,
       date: issue.date,
       status: issue.status,
-      teamId: issue.teamId,
-      team: { id: team.id, name: team.name },
+      teamId: issue.teamId ?? null,
+      team: team ? { id: team.id, name: team.name } : null,
       project: project ? { id: project.id, name: project.name } : null,
     })
   } catch (e) {
     const msg = (e as Error).message
+    logApiError(e, 'issues.createIssue', {
+      teamId:
+        (req.params as { teamId?: string }).teamId ??
+        (req.body as { teamId?: string }).teamId,
+    })
     if (
       msg.startsWith('Team not found:') ||
       msg.startsWith('Project not found:')
@@ -186,7 +201,7 @@ export async function updateIssue(req: Request, res: Response) {
     }
     const [assignee, team, project] = await Promise.all([
       issue.assigneeId ? getMemberById(issue.assigneeId) : null,
-      getTeamById(issue.teamId),
+      issue.teamId ? getTeamById(issue.teamId) : null,
       issue.projectId ? getProjectById(issue.projectId) : null,
     ])
     res.json({
@@ -200,11 +215,12 @@ export async function updateIssue(req: Request, res: Response) {
           : null,
       date: issue.date,
       status: issue.status,
-      teamId: issue.teamId,
+      teamId: issue.teamId ?? null,
       team: team ? { id: team.id, name: team.name } : null,
       project: project ? { id: project.id, name: project.name } : null,
     })
   } catch (e) {
+    logApiError(e, 'issues.updateIssue', { issueId: req.params.issueId })
     res.status(500).json({ error: (e as Error).message })
   }
 }
