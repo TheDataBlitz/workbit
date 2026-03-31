@@ -87,7 +87,7 @@ export interface ProjectStatusUpdate {
   commentCount: number
 }
 
-export type TeamProjectActivityIcon = 'milestone' | 'project'
+export type TeamProjectActivityIcon = 'project'
 
 export interface TeamProjectProperties {
   status?: string
@@ -106,13 +106,6 @@ export type TeamProjectResponse =
         description: string
         statusUpdates: { nodes: ProjectStatusUpdate[] }
         properties: TeamProjectProperties
-        milestones: {
-          id: string
-          name: string
-          progress: number
-          total: number
-          targetDate: string
-        }[]
         activity: {
           id: string
           message: string

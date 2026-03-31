@@ -142,12 +142,8 @@ export function registerGetDecisionTool(server) {
                 .array(z.string())
                 .optional()
                 .describe('Optional related issue IDs.'),
-            linkedMilestoneIds: z
-                .array(z.string())
-                .optional()
-                .describe('Optional related milestone IDs.'),
         },
-    }, async ({ projectId, title, type, status, rationale, impact, decisionDate, tags, linkedIssueIds, linkedMilestoneIds, }) => {
+    }, async ({ projectId, title, type, status, rationale, impact, decisionDate, tags, linkedIssueIds, }) => {
         try {
             const payload = {
                 title,
@@ -164,9 +160,6 @@ export function registerGetDecisionTool(server) {
                 payload.tags = tags;
             if (linkedIssueIds !== undefined)
                 payload.linkedIssueIds = linkedIssueIds;
-            if (linkedMilestoneIds !== undefined) {
-                payload.linkedMilestoneIds = linkedMilestoneIds;
-            }
             const decision = await makeWorkbitPostRequest(`/projects/${encodeURIComponent(projectId)}/decisions`, payload);
             return {
                 content: [

@@ -9,12 +9,10 @@ export type DecisionForm = {
   decisionDate: string
   tagsCsv: string
   linkedIssueIdsCsv: string
-  linkedMilestoneIdsCsv: string
 }
 
 export type DecisionTabProps = {
   projectId?: string
   issues: Array<{ id: string; title: string }>
-  milestones: Array<{ id: string; name: string }>
   isActive: boolean
 }

@@ -14,7 +14,6 @@ export const PROJECT_AGENT_TOOL_ALLOWLIST = [
   'updateIssue',
   'createSubIssue',
   'createIssue',
-  'createMilestone',
   'getProjectStatusUpdates',
   'getProjectStatusComment',
   'getProjectStatusUpdateComments',
@@ -24,11 +23,11 @@ export const PROJECT_AGENT_TOOL_ALLOWLIST = [
 
 const DEFAULT_AGENT_MAX_ROUNDS = 36
 
-const PLANNER_SYSTEM_PROMPT = `You are a planning assistant for Workbit. You do NOT call tools. You only output a clear numbered plan (markdown or plain text) that a separate worker will execute using Workbit tools (getProject, getIssuesByProject, getIssue, getProjectDecisions, updateProjectDecision, updateIssue, createSubIssue, createIssue, createMilestone, getProjectStatusUpdates, getProjectStatusComment, getProjectStatusUpdateComments, createProjectStatusUpdateComment, createProjectDecision, createProjectStatusUpdate).
+const PLANNER_SYSTEM_PROMPT = `You are a planning assistant for Workbit. You do NOT call tools. You only output a clear numbered plan (markdown or plain text) that a separate worker will execute using Workbit tools (getProject, getIssuesByProject, getIssue, getProjectDecisions, updateProjectDecision, updateIssue, createSubIssue, createIssue, getProjectStatusUpdates, getProjectStatusComment, getProjectStatusUpdateComments, createProjectStatusUpdateComment, createProjectDecision, createProjectStatusUpdate).
 
 The plan must:
 - Reference the project by ID.
-- Be ordered: observe state first (including milestones, decisions, updates/comments), then propose specific edits or new issues/sub-issues/milestones.
+- Be ordered: observe state first (including decisions, updates/comments), then propose specific edits or new issues/sub-issues.
 - Include steps to observe project status updates and their comments where relevant.
 - Include a step to inspect relevant issues with getIssue and use both title + description as planning inputs.
 - Include a step to record user-facing decision callouts using createProjectDecision when needed.
@@ -49,7 +48,7 @@ Hard rules:
 - Every createIssue/createSubIssue call must include a non-empty description.
 - For bulk trees, follow the strict two-phase workflow: create all parents first, then create sub-issues per parent; do not interleave.
 
-Use createProjectDecision for key decisions the user must make, createMilestone for meaningful timeline checkpoints, and createProjectStatusUpdate for user-facing progress summaries. Read and use relevant project updates/comments using getProjectStatusUpdates, getProjectStatusUpdateComments, getProjectStatusComment, and createProjectStatusUpdateComment when needed. When the plan is done or blocked, reply with a concise summary.`
+Use createProjectDecision for key decisions the user must make and createProjectStatusUpdate for user-facing progress summaries. Read and use relevant project updates/comments using getProjectStatusUpdates, getProjectStatusUpdateComments, getProjectStatusComment, and createProjectStatusUpdateComment when needed. When the plan is done or blocked, reply with a concise summary.`
 
 export type AgentRunMode = 'auto' | 'single' | 'planner_worker'
 
@@ -100,11 +99,11 @@ ${extra}Your workflow:
 1) Call getProject with projectId "${projectId}".
 2) Call getIssuesByProject with projectId "${projectId}".
 3) Call getProjectDecisions with projectId "${projectId}" and consider all listed decisions as constraints.
-4) From getProject, include milestone context in your reasoning. Identify teamId and call getProjectStatusUpdates; inspect related comments with getProjectStatusUpdateComments and getProjectStatusComment when useful for context.
+4) From getProject, identify teamId and call getProjectStatusUpdates; inspect related comments with getProjectStatusUpdateComments and getProjectStatusComment when useful for context.
 5) Before planning changes for a specific issue or parent issue, call getIssue and read both title and description (including sub-issue context if present).
 6) Carry out changes that match the project goal and any additional instructions, using one tool per turn.
 7) Use createProjectDecision or updateProjectDecision to record/refine key decisions the user must make during execution when needed.
-8) For creation-focused work, consider creating the right artifacts: issues/sub-issues, milestones, and decision records where appropriate.
+8) For creation-focused work, consider creating the right artifacts: issues/sub-issues and decision records where appropriate.
 9) If context gaps remain in existing updates, add clarifying notes with createProjectStatusUpdateComment.
 10) Create one project status update using createProjectStatusUpdate. Include:
    - Completed actions

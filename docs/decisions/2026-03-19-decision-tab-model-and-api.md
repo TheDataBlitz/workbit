@@ -20,7 +20,6 @@ Introduce a `Decision` entity at project scope and expose REST endpoints under `
 - `createdBy`: `{ id: string; name: string }`
 - `decisionDate`: string (optional, ISO date)
 - `status`: `'proposed' | 'approved' | 'rejected' | 'superseded'`
-- `linkedMilestoneIds`: string[]
 - `linkedIssueIds`: string[]
 - `createdAt`: string (ISO timestamp)
 - `updatedAt`: string (ISO timestamp)
@@ -65,7 +64,6 @@ Introduce a `Decision` entity at project scope and expose REST endpoints under `
       "createdBy": { "id": "u-1", "name": "You" },
       "decisionDate": "2026-03-18",
       "status": "approved",
-      "linkedMilestoneIds": ["m-1"],
       "linkedIssueIds": ["12-AU"],
       "createdAt": "2026-03-18T10:00:00.000Z",
       "updatedAt": "2026-03-18T10:00:00.000Z"
@@ -90,7 +88,6 @@ Introduce a `Decision` entity at project scope and expose REST endpoints under `
   "tags": ["mobile", "release"],
   "decisionDate": "2026-03-19",
   "status": "approved",
-  "linkedMilestoneIds": ["m-2"],
   "linkedIssueIds": ["03-WT"]
 }
 ```

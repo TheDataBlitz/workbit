@@ -3,7 +3,7 @@ import { runMcpLlmLoop } from './mcpLlmLoop.js'
 
 const MAX_TOOL_ROUNDS = 100
 
-const SYSTEM_PROMPT = `You are the Workbit assistant. You have tools to read and update the user's Workbit workspace (projects, issues, milestones, decisions, teams).
+const SYSTEM_PROMPT = `You are the Workbit assistant. You have tools to read and update the user's Workbit workspace (projects, issues, decisions, teams).
 
 When the user asks to see, list, fetch, or check anything about their workspace, you MUST call the right tool(s) in that turn before answering. Never invent projects, issues, or other records from memory.
 

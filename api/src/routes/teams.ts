@@ -19,11 +19,6 @@ teamsRoutes.post(
   commentsCtrl.postStatusUpdateComment
 )
 teamsRoutes.patch('/:teamId/project', teamsCtrl.patchProject)
-teamsRoutes.post('/:teamId/project/milestones', teamsCtrl.postMilestone)
-teamsRoutes.patch(
-  '/:teamId/project/milestones/:milestoneId',
-  teamsCtrl.patchMilestone
-)
 teamsRoutes.post('/:teamId/project/summary', teamsCtrl.postProjectSummary)
 teamsRoutes.get('/:teamId/issues', issuesCtrl.getTeamIssues)
 teamsRoutes.post('/:teamId/issues', issuesCtrl.createIssue)

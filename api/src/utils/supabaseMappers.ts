@@ -14,7 +14,6 @@ import type {
   ProjectProperties,
   ProjectDocument,
   ProjectDocumentSummary,
-  Milestone,
   ActivityItem,
   Issue,
   Decision,
@@ -104,7 +103,6 @@ export function rowToStatusUpdate(r: DbRow): StatusUpdate {
     commentCount: (r.comment_count as number) ?? 0,
     projectId: (r.project_id as string | undefined) ?? null,
     issueId: (r.issue_id as string | undefined) ?? null,
-    milestoneId: (r.milestone_id as string | undefined) ?? null,
   }
 }
 
@@ -140,18 +138,6 @@ export function rowToProjectDocumentSummary(r: DbRow): ProjectDocumentSummary {
     title: (r.title as string) ?? '',
     updatedAt: r.updated_at as string,
     updatedBy: (r.updated_by as string | null | undefined) ?? undefined,
-  }
-}
-
-export function rowToMilestone(r: DbRow): Milestone {
-  return {
-    id: r.id as string,
-    teamId: r.team_id as string,
-    name: r.name as string,
-    progress: (r.progress as number) ?? 0,
-    total: (r.total as number) ?? 0,
-    targetDate: (r.target_date as string) ?? '',
-    description: r.description as string | undefined,
   }
 }
 
@@ -199,7 +185,6 @@ export function rowToDecision(r: DbRow): Decision {
         ? undefined
         : ((r.decision_date as string | undefined) ?? undefined),
     status: r.status as DecisionStatus,
-    linkedMilestoneIds: (r.linked_milestone_ids as string[]) ?? [],
     linkedIssueIds: (r.linked_issue_ids as string[]) ?? [],
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
@@ -234,7 +219,6 @@ export function decisionToRow(d: Decision): Record<string, unknown> {
     created_by_name: d.createdBy.name,
     decision_date: d.decisionDate ?? null,
     status: d.status,
-    linked_milestone_ids: d.linkedMilestoneIds ?? [],
     linked_issue_ids: d.linkedIssueIds ?? [],
     created_at: d.createdAt,
     updated_at: d.updatedAt,
@@ -310,7 +294,6 @@ function statusUpdateToRow(u: StatusUpdate): Record<string, unknown> {
     comment_count: u.commentCount ?? 0,
     project_id: u.projectId ?? null,
     issue_id: u.issueId ?? null,
-    milestone_id: u.milestoneId ?? null,
   }
 }
 
@@ -328,18 +311,6 @@ function projectPropertiesToRow(
     member_ids: p.memberIds ?? [],
     team_ids: p.teamIds ?? [],
     label_ids: p.labelIds ?? [],
-  }
-}
-
-function milestoneToRow(m: Milestone): Record<string, unknown> {
-  return {
-    id: m.id,
-    team_id: m.teamId,
-    name: m.name,
-    progress: m.progress ?? 0,
-    total: m.total ?? 0,
-    target_date: m.targetDate ?? '',
-    description: m.description ?? null,
   }
 }
 
@@ -393,7 +364,6 @@ export function storeToRows(store: Store) {
     project_properties: Object.entries(store.projectPropertiesByTeam ?? {}).map(
       ([teamId, p]) => projectPropertiesToRow(teamId, p)
     ),
-    milestones: store.milestones.map((m) => milestoneToRow(m)),
     activity: store.activity.map((a) => activityToRow(a)),
     issues: store.issues.map((i) => issueToRow(i)),
     decisions: store.decisions.map((d) => decisionToRow(d)),

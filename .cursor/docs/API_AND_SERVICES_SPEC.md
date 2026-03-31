@@ -229,7 +229,7 @@ No mandatory API until screen has concrete features.
 | Comments for an update | GET | **GraphQL** `statusUpdate(id) { comments }` |
 | Post status update | POST | **REST** `POST /api/v1/teams/:teamId/project/updates` |
 | Post comment on update | POST | **REST** `POST /api/v1/teams/:teamId/project/updates/:updateId/comments` |
-| Project status panel: properties, milestones, activity | GET | **GraphQL** `teamProject(teamId) { properties, milestones, activity }` |
+| Project status panel: properties, activity | GET | **GraphQL** `teamProject(teamId) { properties, activity }` |
 
 **GraphQL (example):**
 
@@ -251,7 +251,6 @@ query TeamProjectPage($teamId: ID!) {
         }
       }
       properties { status priority lead members dates teams labels }
-      milestones { id name progress total targetDate }
       activity { id icon message date }
     }
   }
@@ -277,13 +276,6 @@ query StatusUpdateComments($updateId: ID!) {
 - `POST /api/v1/teams/:teamId/project/updates/:updateId/comments`  
   Body: `{ "content": string }`
 
-**Milestones (Team Projects):**
-
-| Need | Type | API |
-|------|------|-----|
-| List/create/update milestones | GET | **GraphQL** `team(teamId).project.milestones` |
-| Create milestone | POST | **REST** `POST /api/v1/teams/:teamId/project/milestones` |
-| Update milestone (name, targetDate, description) | PATCH | **REST** `PATCH /api/v1/teams/:teamId/project/milestones/:milestoneId` |
 | Update project properties (status, priority, dates, etc.) | PATCH | **REST** `PATCH /api/v1/teams/:teamId/project` |
 
 ---
@@ -414,11 +406,9 @@ Components that need data from APIs (or that trigger writes) are listed below. T
 | **ViewsTable** | List views | `WorkspaceViews` or `TeamViews` query |
 | **StatusUpdateCard** | Single update + comments | From `TeamProjectPage` + `StatusUpdateComments`; send comment via REST |
 | **StatusUpdateComposer** | — | Post via REST `POST .../project/updates` |
-| **ProjectStatusPanel** | Properties, milestones, activity | From `TeamProjectPage` (project subtree) |
+| **ProjectStatusPanel** | Properties, activity | From `TeamProjectPage` (project subtree) |
 | **PropertiesSection** | Property values | From project; updates via `PATCH .../project` |
-| **MilestonesSection** | Milestone list | From project; create/update via REST milestones API |
 | **ActivitySection** | Activity list | From project activity in same query |
-| **MilestoneForm** | Single milestone edit | Create: POST milestone; Update: PATCH milestone |
 | **TeamDropdown** | Teams list | `NavTeams` query |
 | **Team issues list (TeamIssuesScreen)** | Issues + tab filter | `TeamIssues` query; status update via `PATCH .../issues/:id` |
 
@@ -433,7 +423,7 @@ Services are thin wrappers around HTTP/GraphQL clients. Suggested location: `src
 | **graphqlClient** | Configure GraphQL client (e.g. Apollo or `fetch` to `POST /graphql`). Export `query<T>(document, variables)`. |
 | **restClient** | Base REST client (base URL, auth headers). Export `get`, `post`, `put`, `patch`, `delete`. |
 | **workspaceService** | Use GraphQL for: `workspaceProjects`, `workspaceTeams`, `workspaceMembers`, `workspaceViews`, `workspaceRoles`. Use REST for: `inviteMember`. |
-| **projectService** | Use GraphQL for: `teamProject`, `teamProjectUpdates`, `statusUpdate(id) { comments }`. Use REST for: `postStatusUpdate`, `postComment`, `createMilestone`, `updateMilestone`, `updateProject`. |
+| **projectService** | Use GraphQL for: `teamProject`, `teamProjectUpdates`, `statusUpdate(id) { comments }`. Use REST for: `postStatusUpdate`, `postComment`, `updateProject`. |
 | **issueService** | Use GraphQL for: `teamIssues`, `myIssues`. Use REST for: `updateIssue`. |
 | **teamService** | Use GraphQL for: `team` (by id), `teamViews`, `teamLogs`, `navTeams`. |
 | **inboxService** | Use GraphQL for: `inbox` / `me.notifications`. Optional REST for mark-read if needed. |
@@ -463,13 +453,11 @@ Hooks live in `src/hooks/` and use the services above. They expose loading/error
 | Hook | Purpose | Query / mutation |
 |------|----------|-------------------|
 | **useTeam** | Team by id (for name, etc.) | GraphQL `team(teamId)` (minimal fields) |
-| **useTeamProject** | Full project for team (updates, properties, milestones, activity) | GraphQL `TeamProjectPage` |
+| **useTeamProject** | Full project for team (updates, properties, activity) | GraphQL `TeamProjectPage` |
 | **useStatusUpdateComments** | Comments for one status update | GraphQL `StatusUpdateComments` (or embedded in project query) |
 | **usePostStatusUpdate** | Post new status update | REST `POST .../project/updates` |
 | **usePostStatusComment** | Post comment on update | REST `POST .../project/updates/:id/comments` |
 | **useUpdateProject** | Update project/properties | REST `PATCH .../project` |
-| **useCreateMilestone** | Create milestone | REST `POST .../project/milestones` |
-| **useUpdateMilestone** | Update milestone | REST `PATCH .../project/milestones/:id` |
 | **useTeamViews** | List team views | GraphQL `TeamViews` |
 | **useTeamLogs** | List team logs | GraphQL `TeamLogs` |
 
@@ -501,7 +489,7 @@ Hooks live in `src/hooks/` and use the services above. They expose loading/error
 | Workspace Roles | WorkspaceRoles | — |
 | Inbox | Inbox / notifications | Optional: mark read |
 | My Issues | MyIssues | — |
-| Team Projects | TeamProjectPage, StatusUpdateComments | Post update, Post comment, Update project, Milestones CRUD |
+| Team Projects | TeamProjectPage, StatusUpdateComments | Post update, Post comment, Update project |
 | Team Issues | TeamIssues | Update issue |
 | Team Views | TeamViews | — |
 | Team Logs | TeamLogs | — |
@@ -536,8 +524,6 @@ src/
     usePostStatusUpdate.ts
     usePostStatusComment.ts
     useUpdateProject.ts
-    useCreateMilestone.ts
-    useUpdateMilestone.ts
     useTeamViews.ts
     useTeamLogs.ts
     useTeamIssues.ts

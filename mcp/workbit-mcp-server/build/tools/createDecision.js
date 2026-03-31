@@ -36,12 +36,8 @@ export function registerCreateDecisionTool(server) {
                 .string()
                 .optional()
                 .describe('Comma-separated list of issue IDs related to this decision.'),
-            linkedMilestoneIds: z
-                .string()
-                .optional()
-                .describe('Comma-separated list of milestone IDs related to this decision.'),
         },
-    }, async ({ projectId, title, type, status, rationale, impact, decisionDate, tags, linkedIssueIds, linkedMilestoneIds, }) => {
+    }, async ({ projectId, title, type, status, rationale, impact, decisionDate, tags, linkedIssueIds, }) => {
         try {
             const payload = {
                 title,
@@ -66,12 +62,6 @@ export function registerCreateDecisionTool(server) {
             }
             if (linkedIssueIds) {
                 payload.linkedIssueIds = linkedIssueIds
-                    .split(',')
-                    .map((id) => id.trim())
-                    .filter(Boolean);
-            }
-            if (linkedMilestoneIds) {
-                payload.linkedMilestoneIds = linkedMilestoneIds
                     .split(',')
                     .map((id) => id.trim())
                     .filter(Boolean);

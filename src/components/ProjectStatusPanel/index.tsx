@@ -4,18 +4,12 @@ import { PanelContent } from './styles'
 import type { ProjectStatusPanelProps } from './types'
 import { buildProjectStatusNodes } from './utils/buildProjectStatusNodes'
 
-export function ProjectStatusPanel({
-  milestones,
-  activity,
-}: ProjectStatusPanelProps) {
-  const nodes = buildProjectStatusNodes({ milestones, activity })
+export function ProjectStatusPanel({ activity }: ProjectStatusPanelProps) {
+  const nodes = buildProjectStatusNodes({ activity })
 
   return (
     <PanelContent>
-      <Tree
-        nodes={nodes}
-        defaultExpandedIds={['properties', 'milestones', 'activity']}
-      />
+      <Tree nodes={nodes} defaultExpandedIds={['properties', 'activity']} />
     </PanelContent>
   )
 }

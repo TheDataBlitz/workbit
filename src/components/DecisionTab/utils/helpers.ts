@@ -11,7 +11,6 @@ export const EMPTY_FORM: DecisionForm = {
   decisionDate: '',
   tagsCsv: '',
   linkedIssueIdsCsv: '',
-  linkedMilestoneIdsCsv: '',
 }
 
 export function toCsv(values: string[]): string {

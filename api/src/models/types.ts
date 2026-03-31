@@ -77,7 +77,6 @@ export interface StatusUpdate {
   commentCount: number
   projectId?: string | null
   issueId?: string | null
-  milestoneId?: string | null
 }
 
 export interface StatusUpdateComment {
@@ -134,17 +133,7 @@ export interface ProjectDocumentSummary {
   updatedBy?: string
 }
 
-export interface Milestone {
-  id: string
-  teamId: string
-  name: string
-  progress: number
-  total: number
-  targetDate: string
-  description?: string
-}
-
-export type ActivityIcon = 'milestone' | 'project'
+export type ActivityIcon = 'project'
 
 export interface ActivityItem {
   id: string
@@ -183,7 +172,6 @@ export interface Decision {
   createdBy: { id: string; name: string }
   decisionDate?: string
   status: DecisionStatus
-  linkedMilestoneIds: string[]
   linkedIssueIds: string[]
   createdAt: string
   updatedAt: string
@@ -212,7 +200,6 @@ export interface Store {
   invitations: Invitation[]
   statusUpdates: StatusUpdate[]
   projectPropertiesByTeam: Record<string, ProjectProperties>
-  milestones: Milestone[]
   activity: ActivityItem[]
   issues: Issue[]
   decisions: Decision[]
@@ -228,7 +215,6 @@ export const EMPTY_STORE: Store = {
   invitations: [],
   statusUpdates: [],
   projectPropertiesByTeam: {},
-  milestones: [],
   activity: [],
   issues: [],
   decisions: [],

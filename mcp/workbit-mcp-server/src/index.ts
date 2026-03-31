@@ -5,7 +5,6 @@ import { registerGetIssueTool } from './tools/getIssue.js'
 import { registerGetDecisionTool } from './tools/getDecision.js'
 import { registerCreateIssueTool } from './tools/createIssue.js'
 import { registerCreateProjectTool } from './tools/createProject.js'
-import { registerCreateMilestoneTool } from './tools/createMilestone.js'
 import { registerCreateDecisionTool } from './tools/createDecision.js'
 import { registerCreateProjectStatusUpdateTool } from './tools/createProjectStatusUpdate.js'
 import { registerProjectUpdateTools } from './tools/projectUpdates.js'
@@ -14,7 +13,6 @@ import {
   registerUpdateProjectTool,
   registerUpdateProjectStatusTool,
 } from './tools/updateProject.js'
-import { registerUpdateMilestoneTool } from './tools/updateMilestone.js'
 import { registerUpdateProjectDecisionTool } from './tools/updateDecision.js'
 import { initLogging, logMcpError } from './logging.js'
 
@@ -28,14 +26,12 @@ registerGetIssueTool(server)
 registerGetDecisionTool(server)
 registerCreateIssueTool(server)
 registerCreateProjectTool(server)
-registerCreateMilestoneTool(server)
 registerCreateDecisionTool(server)
 registerCreateProjectStatusUpdateTool(server)
 registerProjectUpdateTools(server)
 registerUpdateIssueTool(server)
 registerUpdateProjectTool(server)
 registerUpdateProjectStatusTool(server)
-registerUpdateMilestoneTool(server)
 registerUpdateProjectDecisionTool(server)
 
 async function main() {

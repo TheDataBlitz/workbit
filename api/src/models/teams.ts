@@ -4,13 +4,11 @@ import type {
   StatusUpdate,
   StatusUpdateComment,
   ProjectProperties,
-  Milestone,
 } from './types.js'
 import * as dbTeams from '../db/teams.js'
 import * as dbStatusUpdates from '../db/statusUpdates.js'
 import * as dbIssueComments from '../db/issueComments.js'
 import * as dbProjectProperties from '../db/projectProperties.js'
-import * as dbMilestones from '../db/milestones.js'
 import * as dbActivity from '../db/activity.js'
 import * as dbProjects from '../db/projects.js'
 import * as dbMembers from '../db/members.js'
@@ -64,14 +62,12 @@ export async function getTeamProject(teamId: string) {
       project: null,
     }
   }
-  const [project, updates, properties, milestones, activity] =
-    await Promise.all([
-      dbProjects.getProjectById(team.projectId),
-      dbStatusUpdates.getStatusUpdatesByProjectId(team.projectId, 20),
-      dbProjectProperties.getProjectPropertiesByTeamId(teamId),
-      dbMilestones.getMilestonesByTeamId(teamId),
-      dbActivity.getActivityByTeamId(teamId),
-    ])
+  const [project, updates, properties, activity] = await Promise.all([
+    dbProjects.getProjectById(team.projectId),
+    dbStatusUpdates.getStatusUpdatesByProjectId(team.projectId, 20),
+    dbProjectProperties.getProjectPropertiesByTeamId(teamId),
+    dbActivity.getActivityByTeamId(teamId),
+  ])
   const sortedActivity = [...activity].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   )
@@ -82,7 +78,6 @@ export async function getTeamProject(teamId: string) {
       description: project?.description ?? '',
       statusUpdates: { nodes: updates },
       properties,
-      milestones,
       activity: sortedActivity,
     },
   }
@@ -118,7 +113,6 @@ export async function addStatusUpdate(
   options?: {
     projectId?: string | null
     issueId?: string | null
-    milestoneId?: string | null
   }
 ): Promise<StatusUpdate> {
   const update: StatusUpdate = {
@@ -133,7 +127,6 @@ export async function addStatusUpdate(
     commentCount: 0,
     projectId: options?.projectId ?? null,
     issueId: options?.issueId ?? null,
-    milestoneId: options?.milestoneId ?? null,
   }
   await dbStatusUpdates.insertStatusUpdate(update)
   return update
@@ -192,38 +185,4 @@ export async function updateProjectProperties(
   const merged = { ...current, ...patch }
   await dbProjectProperties.upsertProjectProperties(teamId, merged)
   return merged
-}
-
-export async function addMilestone(
-  teamId: string,
-  body: { name: string; targetDate?: string; description?: string }
-): Promise<Milestone> {
-  const milestone: Milestone = {
-    id: generateId(),
-    teamId,
-    name: body.name,
-    progress: 0,
-    total: 0,
-    targetDate: body.targetDate ?? '',
-    description: body.description,
-  }
-  await dbMilestones.insertMilestone(milestone)
-  return milestone
-}
-
-export async function updateMilestone(
-  teamId: string,
-  milestoneId: string,
-  patch: Partial<
-    Pick<
-      Milestone,
-      'name' | 'targetDate' | 'description' | 'progress' | 'total'
-    >
-  >
-): Promise<Milestone | null> {
-  const list = await dbMilestones.getMilestonesByTeamId(teamId)
-  const m = list.find((x) => x.id === milestoneId)
-  if (!m) return null
-  await dbMilestones.updateMilestone(milestoneId, patch)
-  return { ...m, ...patch }
 }

@@ -1,4 +1,4 @@
-export type ActivityIcon = 'milestone' | 'project'
+export type ActivityIcon = 'project'
 
 export type ActivityItem = {
   id: string

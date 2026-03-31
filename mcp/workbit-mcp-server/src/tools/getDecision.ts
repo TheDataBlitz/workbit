@@ -169,10 +169,6 @@ export function registerGetDecisionTool(server: McpServer): void {
           .array(z.string())
           .optional()
           .describe('Optional related issue IDs.'),
-        linkedMilestoneIds: z
-          .array(z.string())
-          .optional()
-          .describe('Optional related milestone IDs.'),
       },
     },
     async ({
@@ -185,7 +181,6 @@ export function registerGetDecisionTool(server: McpServer): void {
       decisionDate,
       tags,
       linkedIssueIds,
-      linkedMilestoneIds,
     }) => {
       try {
         const payload: Record<string, unknown> = {
@@ -199,9 +194,6 @@ export function registerGetDecisionTool(server: McpServer): void {
         if (tags !== undefined) payload.tags = tags
         if (linkedIssueIds !== undefined)
           payload.linkedIssueIds = linkedIssueIds
-        if (linkedMilestoneIds !== undefined) {
-          payload.linkedMilestoneIds = linkedMilestoneIds
-        }
 
         const decision = await makeWorkbitPostRequest<unknown>(
           `/projects/${encodeURIComponent(projectId)}/decisions`,

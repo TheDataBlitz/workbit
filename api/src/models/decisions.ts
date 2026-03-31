@@ -28,7 +28,6 @@ export type DecisionApi = {
   createdBy: { id: string; name: string }
   decisionDate?: string
   status: DecisionStatus
-  linkedMilestoneIds: string[]
   linkedIssueIds: string[]
   createdAt: string
   updatedAt: string
@@ -89,7 +88,6 @@ function toDecisionApi(d: Decision): DecisionApi {
     createdBy: d.createdBy,
     decisionDate: d.decisionDate,
     status: d.status,
-    linkedMilestoneIds: d.linkedMilestoneIds,
     linkedIssueIds: d.linkedIssueIds,
     createdAt: d.createdAt,
     updatedAt: d.updatedAt,
@@ -139,7 +137,6 @@ export async function createDecisionForApi(input: {
   createdBy?: { id?: string; name?: string }
   decisionDate?: string
   status?: DecisionStatus
-  linkedMilestoneIds?: string[]
   linkedIssueIds?: string[]
 }): Promise<DecisionApi> {
   const project = await getProjectById(input.projectId)
@@ -162,7 +159,6 @@ export async function createDecisionForApi(input: {
     },
     decisionDate: input.decisionDate?.trim() || undefined,
     status: input.status ?? 'approved',
-    linkedMilestoneIds: input.linkedMilestoneIds ?? [],
     linkedIssueIds: input.linkedIssueIds ?? [],
     createdAt: now,
     updatedAt: now,
@@ -183,7 +179,6 @@ export async function updateDecisionForApi(
     tags?: string[]
     decisionDate?: string
     status?: DecisionStatus
-    linkedMilestoneIds?: string[]
     linkedIssueIds?: string[]
   }
 ): Promise<DecisionApi | null> {
@@ -204,9 +199,6 @@ export async function updateDecisionForApi(
       decisionDate: patch.decisionDate.trim() || undefined,
     }),
     ...(patch.status !== undefined && { status: patch.status }),
-    ...(patch.linkedMilestoneIds !== undefined && {
-      linkedMilestoneIds: patch.linkedMilestoneIds,
-    }),
     ...(patch.linkedIssueIds !== undefined && {
       linkedIssueIds: patch.linkedIssueIds,
     }),

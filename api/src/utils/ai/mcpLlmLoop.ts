@@ -153,7 +153,7 @@ function hasNonEmptyString(value: unknown): value is string {
 }
 
 const WORKSPACE_ENTITY =
-  /\b(projects?|issues?|milestones?|decisions?|teams?|workspace|workbit)\b/
+  /\b(projects?|issues?|decisions?|teams?|workspace|workbit)\b/
 
 function looksLikeWorkspaceDataRequest(message: string): boolean {
   const m = message.toLowerCase()
@@ -172,7 +172,7 @@ function looksLikeWorkspaceDataRequest(message: string): boolean {
   ) {
     return true
   }
-  if (/\b(my|our) (projects|issues|teams|milestones|decisions)\b/.test(m)) {
+  if (/\b(my|our) (projects|issues|teams|decisions)\b/.test(m)) {
     return true
   }
   if (/\ball projects\b/.test(m) || /\bhow many projects\b/.test(m)) {

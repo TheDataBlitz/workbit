@@ -71,7 +71,6 @@ export async function insertStatusUpdate(update: StatusUpdate): Promise<void> {
     comment_count: update.commentCount ?? 0,
     project_id: update.projectId ?? null,
     issue_id: update.issueId ?? null,
-    milestone_id: update.milestoneId ?? null,
   }
   const { error } = await getClient()
     .from('status_updates')

@@ -72,7 +72,6 @@ export async function createProjectDecision(req: Request, res: Response) {
       createdBy?: { id?: string; name?: string }
       decisionDate?: string
       status?: 'proposed' | 'approved' | 'rejected' | 'superseded'
-      linkedMilestoneIds?: string[]
       linkedIssueIds?: string[]
     }
 
@@ -102,7 +101,6 @@ export async function createProjectDecision(req: Request, res: Response) {
       createdBy: body.createdBy,
       decisionDate: body.decisionDate,
       status: parseStatus(body.status),
-      linkedMilestoneIds: body.linkedMilestoneIds,
       linkedIssueIds: body.linkedIssueIds,
     })
 
@@ -133,7 +131,6 @@ export async function updateProjectDecision(req: Request, res: Response) {
       tags?: string[]
       decisionDate?: string
       status?: 'proposed' | 'approved' | 'rejected' | 'superseded'
-      linkedMilestoneIds?: string[]
       linkedIssueIds?: string[]
     }
 
@@ -150,9 +147,6 @@ export async function updateProjectDecision(req: Request, res: Response) {
           decisionDate: body.decisionDate,
         }),
         ...(body.status !== undefined && { status: body.status }),
-        ...(body.linkedMilestoneIds !== undefined && {
-          linkedMilestoneIds: body.linkedMilestoneIds,
-        }),
         ...(body.linkedIssueIds !== undefined && {
           linkedIssueIds: body.linkedIssueIds,
         }),

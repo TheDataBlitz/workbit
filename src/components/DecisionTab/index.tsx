@@ -35,12 +35,7 @@ import { csvToArray, EMPTY_FORM, toCsv } from './utils/helpers'
 import { Plus } from 'lucide-react'
 import { Button } from '@thedatablitz/button'
 
-export function DecisionTab({
-  projectId,
-  issues,
-  milestones,
-  isActive,
-}: DecisionTabProps) {
+export function DecisionTab({ projectId, issues, isActive }: DecisionTabProps) {
   const [items, setItems] = useState<ApiDecision[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -105,12 +100,6 @@ export function DecisionTab({
     return new Map(issues.map((issue) => [issue.id, issue.title]))
   }, [issues])
 
-  const milestoneMap = useMemo(() => {
-    return new Map(
-      milestones.map((milestone) => [milestone.id, milestone.name])
-    )
-  }, [milestones])
-
   const load = useCallback(async () => {
     if (!projectId) {
       setItems([])
@@ -159,7 +148,6 @@ export function DecisionTab({
       decisionDate: decision.decisionDate ?? '',
       tagsCsv: toCsv(decision.tags),
       linkedIssueIdsCsv: toCsv(decision.linkedIssueIds),
-      linkedMilestoneIdsCsv: toCsv(decision.linkedMilestoneIds),
     })
     setIsModalOpen(true)
   }
@@ -178,7 +166,6 @@ export function DecisionTab({
       decisionDate: form.decisionDate || undefined,
       tags: csvToArray(form.tagsCsv),
       linkedIssueIds: csvToArray(form.linkedIssueIdsCsv),
-      linkedMilestoneIds: csvToArray(form.linkedMilestoneIdsCsv),
     }
 
     try {
@@ -366,22 +353,13 @@ export function DecisionTab({
                     </Inline>
                   ) : null}
 
-                  {(decision.linkedIssueIds.length > 0 ||
-                    decision.linkedMilestoneIds.length > 0) && (
+                  {decision.linkedIssueIds.length > 0 && (
                     <Stack gap="050">
                       {decision.linkedIssueIds.length > 0 ? (
                         <Text variant="caption2" color="color.text.subtle">
                           Issues:{' '}
                           {decision.linkedIssueIds
                             .map((id) => issueMap.get(id) ?? id)
-                            .join(', ')}
-                        </Text>
-                      ) : null}
-                      {decision.linkedMilestoneIds.length > 0 ? (
-                        <Text variant="caption2" color="color.text.subtle">
-                          Milestones:{' '}
-                          {decision.linkedMilestoneIds
-                            .map((id) => milestoneMap.get(id) ?? id)
                             .join(', ')}
                         </Text>
                       ) : null}
@@ -497,16 +475,6 @@ export function DecisionTab({
               }))
             }
             placeholder="Linked issue IDs (comma separated)"
-          />
-          <Input
-            value={form.linkedMilestoneIdsCsv}
-            onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                linkedMilestoneIdsCsv: e.target.value,
-              }))
-            }
-            placeholder="Linked milestone IDs (comma separated)"
           />
         </Stack>
       </Modal>

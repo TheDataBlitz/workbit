@@ -70,7 +70,6 @@ export async function updateDecision(
       | 'tags'
       | 'decisionDate'
       | 'status'
-      | 'linkedMilestoneIds'
       | 'linkedIssueIds'
     >
   >

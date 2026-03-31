@@ -9,16 +9,13 @@ import { Breadcrumbs, BreadcrumbsItem } from '@thedatablitz/breadcrumb'
 import { Button } from '@thedatablitz/button'
 import { Card, CardContent, CardFooter } from '@thedatablitz/card'
 import { Inline } from '@thedatablitz/inline'
-import { Modal } from '@thedatablitz/modal'
 import { Stack } from '@thedatablitz/stack'
 import { Table, type ColumnDef } from '@thedatablitz/table'
 import { Tabs } from '@thedatablitz/tabs'
 import { Text } from '@thedatablitz/text'
 import { Avatar } from '@thedatablitz/avatar'
-import { TextInput as Input } from '@thedatablitz/text-input'
 import {
   StatusUpdateComposer,
-  MilestonesSection,
   ActivitySection,
   PropertiesSection,
   ProjectUpdateHighlightCard,
@@ -31,7 +28,6 @@ import type {
   StatusUpdateCardData,
   UpdateItem,
   ProjectStatus,
-  MilestoneItem,
   ActivityItem,
 } from '../../components'
 import { noop } from '../../utils/noop'
@@ -44,7 +40,6 @@ import {
   fetchStatusUpdateComments,
   postStatusUpdate,
   postComment,
-  createMilestone,
   patchProject,
   generateProjectSummary,
   runProjectAgent,
@@ -141,7 +136,6 @@ export function TeamProjectDetailScreen({
   const navigate = useNavigate()
 
   const [updates, setUpdates] = useState<StatusUpdateCardData[]>([])
-  const [milestones, setMilestones] = useState<MilestoneItem[]>([])
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [properties, setProperties] = useState<ApiProjectProperties | null>(
     null
@@ -154,9 +148,6 @@ export function TeamProjectDetailScreen({
   const [documents, setDocuments] = useState<ApiProjectDocumentSummary[]>([])
   const [docsLoading, setDocsLoading] = useState(false)
   const [docsError, setDocsError] = useState<string | null>(null)
-  const [showMilestoneModal, setShowMilestoneModal] = useState(false)
-  const [milestoneName, setMilestoneName] = useState('')
-  const [milestoneDate, setMilestoneDate] = useState('')
   const [projectDescription, setProjectDescription] = useState('')
   const [projectSummary, setProjectSummary] = useState<string | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
@@ -321,10 +312,9 @@ export function TeamProjectDetailScreen({
         if (!data.project) {
           setUpdates([])
           setCommentsByUpdateId({})
-          setMilestones([])
           setActivity([])
           setProjectDescription('')
-          setProperties({})
+          setProperties(null)
           return
         }
 
@@ -355,15 +345,6 @@ export function TeamProjectDetailScreen({
           setCommentsByUpdateId({})
         }
 
-        setMilestones(
-          data.project.milestones.map((milestone) => ({
-            id: milestone.id,
-            name: milestone.name,
-            progress: milestone.progress,
-            total: milestone.total,
-            targetDate: milestone.targetDate,
-          }))
-        )
         setActivity(
           data.project.activity.map((item) => ({
             ...item,
@@ -444,34 +425,6 @@ export function TeamProjectDetailScreen({
         logError(e, 'TeamProjectDetail.postComment')
         throw e
       })
-  }
-
-  const handleAddMilestone = () => {
-    setShowMilestoneModal(true)
-  }
-
-  const handleCreateMilestone = () => {
-    if (!teamId || !milestoneName.trim()) return
-    void createMilestone(teamId, {
-      name: milestoneName,
-      targetDate: milestoneDate,
-    })
-      .then((milestone) => {
-        setMilestones((prev) => [
-          ...prev,
-          {
-            id: milestone.id,
-            name: milestone.name,
-            progress: milestone.progress,
-            total: milestone.total,
-            targetDate: milestone.targetDate,
-          },
-        ])
-        setShowMilestoneModal(false)
-        setMilestoneName('')
-        setMilestoneDate('')
-      })
-      .catch((e) => logError(e, 'TeamProjectDetail'))
   }
 
   const handleStatusChange = (status: string) => {
@@ -981,11 +934,6 @@ export function TeamProjectDetailScreen({
                   </Stack>
                 )}
 
-                <MilestonesSection
-                  milestones={milestones}
-                  onAdd={handleAddMilestone}
-                />
-
                 <ActivitySection items={activity} />
               </Stack>
             </Box>
@@ -1134,10 +1082,6 @@ export function TeamProjectDetailScreen({
                 id: issue.id,
                 title: issue.title,
               }))}
-              milestones={milestones.map((milestone) => ({
-                id: milestone.id,
-                name: milestone.name,
-              }))}
               isActive
             />
           )}
@@ -1185,22 +1129,6 @@ export function TeamProjectDetailScreen({
 
           <Box border padding="200">
             <Inline align="center" justify="space-between" fullWidth>
-              <Text variant="heading7">Milestones</Text>
-              <Button
-                size="small"
-                onClick={handleAddMilestone}
-                icon={<Plus size={14} />}
-              >
-                Create
-              </Button>
-            </Inline>
-            <Text variant="caption2" color="color.text.subtle">
-              Add milestones to organize work into granular stages.
-            </Text>
-          </Box>
-
-          <Box border padding="200">
-            <Inline align="center" justify="space-between" fullWidth>
               <Text variant="heading7">Activity</Text>
               <Button buttonType="link" size="small" onClick={noop}>
                 See all
@@ -1219,49 +1147,6 @@ export function TeamProjectDetailScreen({
           </Box>
         </Stack>
       </Inline>
-
-      <Modal
-        open={showMilestoneModal}
-        onClose={() => setShowMilestoneModal(false)}
-        title="Create New Milestone"
-        size="medium"
-        footer={
-          <Inline justify="flex-end" gap="100" fullWidth>
-            <Button
-              variant="glass"
-              onClick={() => setShowMilestoneModal(false)}
-            >
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleCreateMilestone}>
-              Create
-            </Button>
-          </Inline>
-        }
-      >
-        <Stack gap="300">
-          <Stack gap="050">
-            <Text as="div" variant="body3">
-              Milestone Name
-            </Text>
-            <Input
-              value={milestoneName}
-              onChange={(e) => setMilestoneName(e.target.value)}
-              placeholder="Enter milestone name"
-            />
-          </Stack>
-          <Stack gap="050">
-            <Text as="div" variant="body3">
-              Target Date
-            </Text>
-            <Input
-              value={milestoneDate}
-              onChange={(e) => setMilestoneDate(e.target.value)}
-              placeholder="e.g. Mar 15"
-            />
-          </Stack>
-        </Stack>
-      </Modal>
     </>
   )
 }

@@ -143,7 +143,6 @@ export interface ApiDecision {
   createdBy: { id: string; name: string }
   decisionDate?: string
   status: ApiDecisionStatus
-  linkedMilestoneIds: string[]
   linkedIssueIds: string[]
   createdAt: string
   updatedAt: string
@@ -296,7 +295,7 @@ export async function fetchRoles(): Promise<
 
 // --- Teams ---
 
-export type ActivityIcon = 'milestone' | 'project'
+export type ActivityIcon = 'project'
 
 export type TeamProjectResponse =
   | {
@@ -306,13 +305,6 @@ export type TeamProjectResponse =
         description: string
         statusUpdates: { nodes: ApiStatusUpdate[] }
         properties: ApiProjectProperties
-        milestones: {
-          id: string
-          name: string
-          progress: number
-          total: number
-          targetDate: string
-        }[]
         activity: {
           id: string
           message: string
@@ -349,18 +341,16 @@ export async function postStatusUpdate(
   teamId: string,
   content: string,
   status: ProjectStatus,
-  options?: { projectId?: string; issueId?: string; milestoneId?: string }
+  options?: { projectId?: string; issueId?: string }
 ): Promise<ApiStatusUpdate> {
   const body: {
     content: string
     status: string
     projectId?: string
     issueId?: string
-    milestoneId?: string
   } = { content, status }
   if (options?.projectId) body.projectId = options.projectId
   if (options?.issueId) body.issueId = options.issueId
-  if (options?.milestoneId) body.milestoneId = options.milestoneId
   const raw = (await authFetch(`/teams/${teamId}/project/updates`, {
     method: 'POST',
     body: JSON.stringify(body),
@@ -447,28 +437,6 @@ export async function fetchStatusUpdateComments(
       parentCommentId: string | null
     }[]
   >
-}
-
-export async function createMilestone(
-  teamId: string,
-  body: { name: string; targetDate?: string; description?: string }
-): Promise<{
-  id: string
-  name: string
-  progress: number
-  total: number
-  targetDate: string
-}> {
-  return authFetch(`/teams/${teamId}/project/milestones`, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  }) as Promise<{
-    id: string
-    name: string
-    progress: number
-    total: number
-    targetDate: string
-  }>
 }
 
 export async function patchProject(
@@ -657,7 +625,6 @@ export async function createProjectDecision(
     createdBy?: { id?: string; name?: string }
     decisionDate?: string
     status?: ApiDecisionStatus
-    linkedMilestoneIds?: string[]
     linkedIssueIds?: string[]
   }
 ): Promise<ApiDecision> {
@@ -678,7 +645,6 @@ export async function updateProjectDecision(
     tags?: string[]
     decisionDate?: string
     status?: ApiDecisionStatus
-    linkedMilestoneIds?: string[]
     linkedIssueIds?: string[]
   }
 ): Promise<ApiDecision> {

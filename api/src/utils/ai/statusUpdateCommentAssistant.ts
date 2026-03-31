@@ -96,7 +96,6 @@ Project context:
 - Project Description: ${teamProject.project.description || 'N/A'}
 - Project Status: ${teamProject.project.properties?.status ?? 'N/A'}
 - Project Priority: ${teamProject.project.properties?.priority ?? 'N/A'}
-- Milestones: ${teamProject.project.milestones.map((m) => `${m.name} (${m.progress}/${m.total})`).join('; ') || 'None'}
 - Issues/sub-issues: ${issues.map((i) => `${i.id}: ${i.title} [${i.status}] parent=${i.parentIssueId ?? 'none'} subCount=${i.subIssueCount}`).join(' | ') || 'None'}
 - Decisions: ${decisions.items.map((d) => `${d.id}: ${d.title} [${d.status}]`).join(' | ') || 'None'}
 - Parent comment context: ${parentComment ? `${parentComment.authorName}: ${parentComment.content}` : 'Top-level update thread'}

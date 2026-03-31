@@ -38,10 +38,6 @@ export function registerUpdateProjectDecisionTool(server: McpServer): void {
           .array(z.string())
           .optional()
           .describe('Optional linked issue IDs.'),
-        linkedMilestoneIds: z
-          .array(z.string())
-          .optional()
-          .describe('Optional linked milestone IDs.'),
       },
     },
     async ({
@@ -55,7 +51,6 @@ export function registerUpdateProjectDecisionTool(server: McpServer): void {
       status,
       tags,
       linkedIssueIds,
-      linkedMilestoneIds,
     }) => {
       try {
         const payload: Record<string, unknown> = {}
@@ -68,9 +63,6 @@ export function registerUpdateProjectDecisionTool(server: McpServer): void {
         if (tags !== undefined) payload.tags = tags
         if (linkedIssueIds !== undefined)
           payload.linkedIssueIds = linkedIssueIds
-        if (linkedMilestoneIds !== undefined) {
-          payload.linkedMilestoneIds = linkedMilestoneIds
-        }
 
         if (Object.keys(payload).length === 0) {
           return {

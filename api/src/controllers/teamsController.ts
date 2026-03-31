@@ -69,7 +69,6 @@ export async function getTeamProject(req: Request, res: Response) {
         description: data.project.description,
         statusUpdates: { nodes },
         properties: data.project.properties,
-        milestones: data.project.milestones,
         activity: data.project.activity,
       },
     })
@@ -125,12 +124,11 @@ export async function getTeamProjectIssues(req: Request, res: Response) {
 export async function postStatusUpdate(req: Request, res: Response) {
   try {
     const { teamId } = req.params
-    const { content, status, projectId, issueId, milestoneId } = req.body as {
+    const { content, status, projectId, issueId } = req.body as {
       content?: string
       status?: string
       projectId?: string
       issueId?: string
-      milestoneId?: string
     }
     if (!content || typeof content !== 'string') {
       res.status(400).json({ error: 'content is required' })
@@ -152,7 +150,6 @@ export async function postStatusUpdate(req: Request, res: Response) {
       {
         projectId: projectId ?? null,
         issueId: issueId ?? null,
-        milestoneId: milestoneId ?? null,
       }
     )
     res.status(201).json(update)
@@ -174,53 +171,6 @@ export async function patchProject(req: Request, res: Response) {
   }
 }
 
-export async function postMilestone(req: Request, res: Response) {
-  try {
-    const { teamId } = req.params
-    const body = req.body as {
-      name?: string
-      targetDate?: string
-      description?: string
-    }
-    if (!body.name || typeof body.name !== 'string') {
-      res.status(400).json({ error: 'name is required' })
-      return
-    }
-    const milestone = await teamsModel.addMilestone(teamId, {
-      name: body.name,
-      targetDate: body.targetDate,
-      description: body.description,
-    })
-    res.status(201).json(milestone)
-  } catch (e) {
-    logApiError(e, 'teams.postMilestone', { teamId: req.params.teamId })
-    res.status(500).json({ error: (e as Error).message })
-  }
-}
-
-export async function patchMilestone(req: Request, res: Response) {
-  try {
-    const { teamId, milestoneId } = req.params
-    const body = req.body as Record<string, unknown>
-    const milestone = await teamsModel.updateMilestone(
-      teamId,
-      milestoneId,
-      body
-    )
-    if (!milestone) {
-      res.status(404).json({ error: 'Milestone not found' })
-      return
-    }
-    res.json(milestone)
-  } catch (e) {
-    logApiError(e, 'teams.patchMilestone', {
-      teamId: req.params.teamId,
-      milestoneId: req.params.milestoneId,
-    })
-    res.status(500).json({ error: (e as Error).message })
-  }
-}
-
 const AI_AUTHOR_ID = 'ai'
 const AI_AUTHOR_NAME = 'AI'
 const AI_SUMMARY_PREFIX = '[ai-generated]'
@@ -230,12 +180,6 @@ function buildProjectContext(params: {
   projectName: string
   projectId: string
   properties: { status?: string; priority?: string }
-  milestones: {
-    name: string
-    progress?: number
-    total?: number
-    targetDate?: string
-  }[]
   issues: {
     id: string
     title: string
@@ -251,12 +195,6 @@ function buildProjectContext(params: {
   if (params.properties?.status || params.properties?.priority) {
     lines.push(
       `Status: ${params.properties.status ?? '—'}. Priority: ${params.properties.priority ?? '—'}.`
-    )
-    lines.push('')
-  }
-  if (params.milestones.length > 0) {
-    lines.push(
-      `Milestones: ${params.milestones.map((m) => `${m.name} (${m.progress ?? 0}/${m.total ?? 0})${m.targetDate ? ` by ${m.targetDate}` : ''}`).join('; ')}.`
     )
     lines.push('')
   }
@@ -302,7 +240,6 @@ export async function postProjectSummary(req: Request, res: Response) {
       projectName,
       projectId,
       properties: data.project.properties ?? {},
-      milestones: data.project.milestones,
       issues,
       statusUpdates: data.project.statusUpdates.nodes.map((u) => ({
         status: u.status,
@@ -323,7 +260,7 @@ export async function postProjectSummary(req: Request, res: Response) {
       content,
       'on-track',
       author,
-      { projectId, issueId: null, milestoneId: null }
+      { projectId, issueId: null }
     )
     res.status(201).json({
       id: update.id,

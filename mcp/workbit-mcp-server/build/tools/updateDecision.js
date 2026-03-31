@@ -33,12 +33,8 @@ export function registerUpdateProjectDecisionTool(server) {
                 .array(z.string())
                 .optional()
                 .describe('Optional linked issue IDs.'),
-            linkedMilestoneIds: z
-                .array(z.string())
-                .optional()
-                .describe('Optional linked milestone IDs.'),
         },
-    }, async ({ projectId, decisionId, title, type, rationale, impact, decisionDate, status, tags, linkedIssueIds, linkedMilestoneIds, }) => {
+    }, async ({ projectId, decisionId, title, type, rationale, impact, decisionDate, status, tags, linkedIssueIds, }) => {
         try {
             const payload = {};
             if (title !== undefined)
@@ -57,9 +53,6 @@ export function registerUpdateProjectDecisionTool(server) {
                 payload.tags = tags;
             if (linkedIssueIds !== undefined)
                 payload.linkedIssueIds = linkedIssueIds;
-            if (linkedMilestoneIds !== undefined) {
-                payload.linkedMilestoneIds = linkedMilestoneIds;
-            }
             if (Object.keys(payload).length === 0) {
                 return {
                     content: [
