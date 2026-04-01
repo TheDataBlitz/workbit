@@ -285,14 +285,6 @@ export async function createTeam(body: {
   }>
 }
 
-export async function fetchRoles(): Promise<
-  { id: string; role: string; memberCount: number; description: string }[]
-> {
-  return authFetch('/workspace/roles') as Promise<
-    { id: string; role: string; memberCount: number; description: string }[]
-  >
-}
-
 // --- Teams ---
 
 export type ActivityIcon = 'project'
@@ -479,31 +471,6 @@ export async function runProjectAgent(
     }),
   })) as RunProjectAgentResponse
   return raw
-}
-
-/** Generate an AI summary for the team project; stored as a status update with [ai-generated] prefix. Returns the new status update. */
-export async function generateProjectSummary(
-  teamId: string
-): Promise<ApiStatusUpdate> {
-  const raw = (await authFetch(`/teams/${teamId}/project/summary`, {
-    method: 'POST',
-    body: JSON.stringify({}),
-  })) as {
-    id: string
-    status: string
-    content: string
-    author: { id: string; name: string; avatarSrc?: string }
-    createdAt: string
-    commentCount: number
-  }
-  return {
-    id: raw.id,
-    status: raw.status as ProjectStatus,
-    content: raw.content,
-    author: raw.author,
-    createdAt: raw.createdAt,
-    commentCount: raw.commentCount,
-  }
 }
 
 // --- Team issues ---

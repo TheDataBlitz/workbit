@@ -31,16 +31,9 @@ create table if not exists public.views (
   owner_id text not null,
   team_id text
 );
-create table if not exists public.roles (
-  id text primary key,
-  role text not null,
-  member_count int not null default 0,
-  description text not null default ''
-);
 create table if not exists public.invitations (
   id text primary key,
   email text not null,
-  role_id text,
   created_at timestamptz not null default now()
 );
 create table if not exists public.status_updates (

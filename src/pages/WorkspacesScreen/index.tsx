@@ -107,7 +107,7 @@ export function WorkspacesScreen() {
 
   function handleSelectWorkspace(workspace: ApiWorkspace) {
     setCurrentWorkspace(workspace)
-    navigate(`/workspace/${workspace.id}/inbox`)
+    navigate(`/workspace/${workspace.id}/workspace/projects`)
   }
 
   return (

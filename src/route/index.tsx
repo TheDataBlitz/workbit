@@ -4,16 +4,13 @@ import {
   AuthGate,
   MainLayout,
   LoginScreen,
-  InboxScreen,
   WorkspaceProjectsScreen,
   WorkspaceMemberScreen,
   WorkspaceTeamsScreen,
-  WorkspaceRolesScreen,
   WorkspacesScreen,
   CreateTeamScreen,
   CreateMemberScreen,
   CreateProjectScreen,
-  CreateIssueScreen,
   TeamIssuesScreenWrapper,
   TeamProjectsScreenWrapper,
   TeamProjectDetailScreenWrapper,
@@ -43,7 +40,6 @@ export function AppRoutes() {
     <Routes>
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/login" element={<LoginScreen />} />
-      <Route path="/signup" element={<Navigate to="/login" replace />} />
       <Route
         path="/workspaces"
         element={
@@ -61,8 +57,7 @@ export function AppRoutes() {
           </AuthGate>
         }
       >
-        <Route index element={<Navigate to="inbox" replace />} />
-        <Route path="inbox" element={<InboxScreen />} />
+        <Route index element={<Navigate to="workspace/projects" replace />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route
           path="workspace/projects"
@@ -76,8 +71,6 @@ export function AppRoutes() {
           path="workspace/projects/new"
           element={<CreateProjectScreen />}
         />
-        <Route path="workspace/roles" element={<WorkspaceRolesScreen />} />
-        <Route path="issues/new" element={<CreateIssueScreen />} />
         <Route path="team/:teamId" element={<RedirectToTeamIssues />} />
         <Route
           path="team/:teamId/issues/:tab"
@@ -111,7 +104,6 @@ export function AppRoutes() {
           path="team/:teamId/projects/:projectId/documentation"
           element={<TeamProjectDocumentationScreenWrapper />}
         />
-        <Route path="team/:teamId/issues/new" element={<CreateIssueScreen />} />
         <Route
           path="team/:teamId/member/new"
           element={<CreateMemberScreen />}

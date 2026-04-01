@@ -88,12 +88,12 @@ export async function getMembers(_req: Request, res: Response) {
 
 export async function inviteMember(req: Request, res: Response) {
   try {
-    const { email, roleId } = req.body as { email?: string; roleId?: string }
+    const { email } = req.body as { email?: string }
     if (!email || typeof email !== 'string') {
       sendError(res, 'email is required', 400)
       return
     }
-    const invitation = await workspaceModel.inviteMember(email, roleId)
+    const invitation = await workspaceModel.inviteMember(email)
     res.status(201).json(invitation)
   } catch (e) {
     logApiError(e, 'workspace.inviteMember')
@@ -184,16 +184,6 @@ export async function provisionMember(req: Request, res: Response) {
     res.status(200).json(member)
   } catch (e) {
     logApiError(e, 'workspace.provisionMember')
-    sendError(res, e)
-  }
-}
-
-export async function getRoles(_req: Request, res: Response) {
-  try {
-    const roles = await workspaceModel.getRoles()
-    res.json(roles.map((r) => ({ ...r, memberCount: r.memberCount })))
-  } catch (e) {
-    logApiError(e, 'workspace.getRoles')
     sendError(res, e)
   }
 }

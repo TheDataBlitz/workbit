@@ -4,7 +4,7 @@ import { useWorkspace } from '../contexts/WorkspaceContext'
 import { useAuthRequired } from '../pages/auth/AuthContext'
 
 /**
- * Sends signed-in users with a remembered workspace to inbox; others to the workspace list.
+ * Sends signed-in users with a remembered workspace to projects; others to the workspace list.
  * Unsigned users are sent to /workspaces (AuthGate then forwards to login).
  */
 export function RootRedirect() {

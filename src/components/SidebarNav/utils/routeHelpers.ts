@@ -31,11 +31,9 @@ export function getSelectedNavTreeId(
   base: string,
   teams: Team[]
 ): string | null {
-  if (pathname === `${base}/inbox`) return 'nav-inbox'
   if (pathname === `${base}/workspace/projects`) return 'ws-projects'
   if (pathname === `${base}/workspace/member`) return 'ws-members'
   if (pathname === `${base}/workspace/teams`) return 'ws-teams'
-  if (pathname === `${base}/workspace/roles`) return 'ws-roles'
   for (const team of teams) {
     if (isTeamIssues(base, team.id, pathname)) return `team:${team.id}:i`
     if (isTeamProjects(base, team.id, pathname)) return `team:${team.id}:p`

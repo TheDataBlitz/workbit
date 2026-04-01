@@ -48,17 +48,9 @@ export interface Member {
   userAuthId?: string | null
 }
 
-export interface Role {
-  id: string
-  role: string
-  memberCount: number
-  description: string
-}
-
 export interface Invitation {
   id: string
   email: string
-  roleId?: string
   createdAt: string
 }
 
@@ -196,7 +188,6 @@ export interface Store {
   projects: Project[]
   teams: Team[]
   members: Member[]
-  roles: Role[]
   invitations: Invitation[]
   statusUpdates: StatusUpdate[]
   projectPropertiesByTeam: Record<string, ProjectProperties>
@@ -211,7 +202,6 @@ export const EMPTY_STORE: Store = {
   projects: [],
   teams: [],
   members: [],
-  roles: [],
   invitations: [],
   statusUpdates: [],
   projectPropertiesByTeam: {},

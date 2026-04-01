@@ -41,7 +41,6 @@ import {
   postStatusUpdate,
   postComment,
   patchProject,
-  generateProjectSummary,
   runProjectAgent,
   updateIssue as apiUpdateIssue,
   fetchProjectDocuments,
@@ -149,9 +148,6 @@ export function TeamProjectDetailScreen({
   const [docsLoading, setDocsLoading] = useState(false)
   const [docsError, setDocsError] = useState<string | null>(null)
   const [projectDescription, setProjectDescription] = useState('')
-  const [projectSummary, setProjectSummary] = useState<string | null>(null)
-  const [summaryLoading, setSummaryLoading] = useState(false)
-  const [summaryError, setSummaryError] = useState<string | null>(null)
   const [agentRunningMode, setAgentRunningMode] = useState<
     'single' | 'planner_worker' | null
   >(null)
@@ -441,23 +437,6 @@ export function TeamProjectDetailScreen({
     void patchProject(teamId, { priority }).catch((e) =>
       logError(e, 'TeamProjectDetail')
     )
-  }
-
-  const handleGenerateSummary = () => {
-    if (!teamId) return
-    setSummaryLoading(true)
-    setSummaryError(null)
-    generateProjectSummary(teamId)
-      .then((update) => {
-        setProjectSummary(update.content)
-        setSummaryError(null)
-        setUpdates((prev) => [apiUpdateToCard(update), ...prev])
-      })
-      .catch((e) => {
-        logError(e, 'TeamProjectDetail')
-        setSummaryError((e as Error).message)
-      })
-      .finally(() => setSummaryLoading(false))
   }
 
   const handleRunAgent = (mode: 'single' | 'planner_worker') => {
@@ -758,15 +737,6 @@ export function TeamProjectDetailScreen({
                         Add document or link
                       </Button>
                       <Button
-                        variant="ai"
-                        size="small"
-                        onClick={handleGenerateSummary}
-                        disabled={summaryLoading}
-                        icon={<Plus size={16} />}
-                      >
-                        {summaryLoading ? 'Generating…' : 'Generate Summary'}
-                      </Button>
-                      <Button
                         variant="glass"
                         size="small"
                         icon={<Bot size={16} />}
@@ -847,92 +817,36 @@ export function TeamProjectDetailScreen({
                   </Card>
                 ) : null}
 
-                {projectSummary !== null ? (
-                  <Card fullWidth variant="default" size="small">
-                    <CardContent>
-                      <Text
-                        variant="body3"
-                        paragraphSpacing
-                        style={{ whiteSpace: 'pre-wrap' }}
-                      >
-                        {projectSummary}
-                      </Text>
-                    </CardContent>
-                    <CardFooter>
-                      <Inline gap="200" align="center" wrap>
-                        <Button
-                          buttonType="link"
-                          size="small"
-                          onClick={() => {
-                            setProjectSummary(null)
-                            setSummaryError(null)
-                          }}
-                        >
-                          Show latest updates
-                        </Button>
-                        <Text variant="caption2" color="color.text.subtle">
-                          ·
-                        </Text>
-                        <Button
-                          buttonType="link"
-                          size="small"
-                          onClick={handleGenerateSummary}
-                          disabled={summaryLoading}
-                        >
-                          {summaryLoading
-                            ? 'Generating…'
-                            : 'Regenerate summary'}
-                        </Button>
-                      </Inline>
-                    </CardFooter>
-                  </Card>
-                ) : summaryError ? (
-                  <Stack gap="200">
+                <Stack gap="200">
+                  {updates.length === 0 ? (
                     <Banner
-                      variant="danger"
                       size="small"
-                      title={summaryError}
+                      variant="default"
+                      title="Write the first project update to get started"
                     />
-                    <Button
-                      variant="glass"
-                      onClick={handleGenerateSummary}
-                      disabled={summaryLoading}
-                    >
-                      Try again
-                    </Button>
-                  </Stack>
-                ) : (
-                  <Stack gap="200">
-                    {updates.length === 0 ? (
-                      <Banner
-                        size="small"
-                        variant="default"
-                        title="Write the first project update to get started"
+                  ) : (
+                    <>
+                      <ProjectUpdateHighlightCard
+                        update={featuredUpdate}
+                        onAddComment={handleAddComment}
                       />
-                    ) : (
-                      <>
-                        <ProjectUpdateHighlightCard
-                          update={featuredUpdate}
-                          onAddComment={handleAddComment}
-                        />
-                        <UpdatesTree
-                          updates={updatesTreeItems}
-                          enableSearch={false}
-                          onAddComment={handleAddComment}
-                          onReact={noop}
-                        />
-                      </>
-                    )}
+                      <UpdatesTree
+                        updates={updatesTreeItems}
+                        enableSearch={false}
+                        onAddComment={handleAddComment}
+                        onReact={noop}
+                      />
+                    </>
+                  )}
 
-                    <StatusUpdateComposer
-                      placeholder="Write first project update"
-                      onPost={handlePostUpdate}
-                      onChooseFile={noop}
-                      onCreateDocument={noop}
-                      onAddLink={noop}
-                    />
-                  </Stack>
-                )}
+                  <StatusUpdateComposer
+                    placeholder="Write first project update"
+                    onPost={handlePostUpdate}
+                    onChooseFile={noop}
+                    onCreateDocument={noop}
+                    onAddLink={noop}
+                  />
+                </Stack>
 
                 <ActivitySection items={activity} />
               </Stack>

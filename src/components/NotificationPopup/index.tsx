@@ -92,9 +92,9 @@ export function NotificationsPopupTrigger({
         content: <EmptyTabMessage message="No mentions yet." />,
       },
       {
-        id: 'inbox',
-        label: 'Inbox',
-        content: <EmptyTabMessage message="Your inbox is empty." />,
+        id: 'activity',
+        label: 'Activity',
+        content: <EmptyTabMessage message="No activity yet." />,
       },
       {
         id: 'archive',

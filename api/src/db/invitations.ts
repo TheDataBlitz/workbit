@@ -7,7 +7,6 @@ export async function insertInvitation(invitation: Invitation): Promise<void> {
   const row = {
     id: invitation.id,
     email: invitation.email,
-    role_id: invitation.roleId ?? null,
     created_at: invitation.createdAt,
   }
   const { error } = await getClient()

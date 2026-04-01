@@ -99,7 +99,7 @@ query WorkspaceMembers {
 **REST (example):**
 
 - `POST /api/v1/workspace/members/invite`  
-  Body: `{ "email": string, "roleId"?: string }`
+  Body: `{ "email": string }`
 
 ---
 
@@ -120,30 +120,6 @@ query WorkspaceViews {
       name
       type
       owner { id name }
-    }
-  }
-}
-```
-
----
-
-#### Workspace Roles (`WorkspaceRolesScreen`)
-
-| Need | Type | API |
-|------|------|-----|
-| List workspace roles | GET | **GraphQL** `workspaceRoles` |
-| **Query fields**: `id`, `role`, `memberCount`, `description` |
-
-**GraphQL (example):**
-
-```graphql
-query WorkspaceRoles {
-  workspace {
-    roles {
-      id
-      role
-      memberCount
-      description
     }
   }
 }

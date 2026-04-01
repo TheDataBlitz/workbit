@@ -26,7 +26,6 @@ export async function writeStoreSupabase(store: Store): Promise<void> {
   const rows = storeToRows(store)
   const ordered = [
     { table: 'workspaces', rows: rows.workspaces, idColumn: 'id' as const },
-    { table: 'roles', rows: rows.roles, idColumn: 'id' as const },
     { table: 'members', rows: rows.members, idColumn: 'id' as const },
     { table: 'teams', rows: rows.teams, idColumn: 'id' as const },
     { table: 'projects', rows: rows.projects, idColumn: 'id' as const },

@@ -45,7 +45,9 @@ export function NavbarRight({ workspaceId }: NavbarRightProps) {
       {hasNotifications && (
         <IconButton
           aria-label="Notifications"
-          onClick={() => navigate(`/workspace/${workspaceId}/inbox`)}
+          onClick={() =>
+            navigate(`/workspace/${workspaceId}/workspace/projects`)
+          }
         >
           <Bell size={18} />
         </IconButton>

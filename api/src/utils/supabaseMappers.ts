@@ -8,7 +8,6 @@ import type {
   Project,
   Team,
   Member,
-  Role,
   Invitation,
   StatusUpdate,
   ProjectProperties,
@@ -72,20 +71,10 @@ export function rowToMember(r: DbRow): Member {
   }
 }
 
-export function rowToRole(r: DbRow): Role {
-  return {
-    id: r.id as string,
-    role: r.role as string,
-    memberCount: (r.member_count as number) ?? 0,
-    description: (r.description as string) ?? '',
-  }
-}
-
 export function rowToInvitation(r: DbRow): Invitation {
   return {
     id: r.id as string,
     email: r.email as string,
-    roleId: r.role_id as string | undefined,
     createdAt: r.created_at as string,
   }
 }
@@ -263,20 +252,10 @@ function memberToRow(m: Member): Record<string, unknown> {
   }
 }
 
-function roleToRow(r: Role): Record<string, unknown> {
-  return {
-    id: r.id,
-    role: r.role,
-    member_count: r.memberCount,
-    description: r.description,
-  }
-}
-
 function invitationToRow(i: Invitation): Record<string, unknown> {
   return {
     id: i.id,
     email: i.email,
-    role_id: i.roleId ?? null,
     created_at: i.createdAt,
   }
 }
@@ -358,7 +337,6 @@ export function storeToRows(store: Store) {
     projects: store.projects.map((p) => projectToRow(p)),
     teams: store.teams.map((t) => teamToRow(t)),
     members: store.members.map((m) => memberToRow(m)),
-    roles: store.roles.map((r) => roleToRow(r)),
     invitations: store.invitations.map((i) => invitationToRow(i)),
     status_updates: store.statusUpdates.map((u) => statusUpdateToRow(u)),
     project_properties: Object.entries(store.projectPropertiesByTeam ?? {}).map(

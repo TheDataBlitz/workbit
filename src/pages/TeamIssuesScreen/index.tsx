@@ -41,7 +41,6 @@ import type {
   TeamIssuesScreenProps,
 } from './types'
 import {
-  CREATE_ISSUE_CHIPS,
   INLINE_PRIORITY_OPTIONS,
   buildTeamIssueTreeData,
   getIssueDetailPath,
@@ -466,19 +465,6 @@ export function TeamIssuesScreen({ teamName }: TeamIssuesScreenProps) {
             placeholder="Issue title"
             disabled={creating}
           />
-
-          <Text variant="body3" color="color.text.subtle">
-            Create in {createStatus === 'backlog' ? 'Backlog' : 'Active'}
-            {createStatus === 'backlog' ? ' tab' : ' workflow'}.
-          </Text>
-
-          <Inline gap="100" wrap fullWidth>
-            {CREATE_ISSUE_CHIPS.map((chip) => (
-              <Badge key={chip} icon={<Plus size={12} />} size="small">
-                {chip}
-              </Badge>
-            ))}
-          </Inline>
 
           <MarkdownEditor
             value={issueDescription}

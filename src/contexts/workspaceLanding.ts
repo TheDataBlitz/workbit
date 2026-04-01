@@ -9,7 +9,7 @@ export const WORKSPACE_ID_STORAGE_KEY = 'workbit.currentWorkspaceId'
 export function getStoredWorkspaceInboxPath(): string {
   try {
     const id = localStorage.getItem(WORKSPACE_ID_STORAGE_KEY)
-    if (id) return `/workspace/${id}/inbox`
+    if (id) return `/workspace/${id}/workspace/projects`
   } catch {
     // ignore
   }
@@ -22,12 +22,12 @@ export function getAuthenticatedLandingPath(
   currentWorkspace: ApiWorkspace | null
 ): string {
   if (currentWorkspace?.id) {
-    return `/workspace/${currentWorkspace.id}/inbox`
+    return `/workspace/${currentWorkspace.id}/workspace/projects`
   }
   try {
     const stored = localStorage.getItem(WORKSPACE_ID_STORAGE_KEY)
     if (stored && workspaces.some((w) => w.id === stored)) {
-      return `/workspace/${stored}/inbox`
+      return `/workspace/${stored}/workspace/projects`
     }
   } catch {
     // ignore

@@ -3,7 +3,6 @@ import type {
   Project,
   Team,
   Member,
-  Role,
   Invitation,
   StatusUpdate,
 } from './types.js'
@@ -11,7 +10,6 @@ import * as dbProjects from '../db/projects.js'
 import * as dbTeams from '../db/teams.js'
 import * as dbStatusUpdates from '../db/statusUpdates.js'
 import * as dbMembers from '../db/members.js'
-import * as dbRoles from '../db/roles.js'
 import * as dbInvitations from '../db/invitations.js'
 import { insertTeam } from '../db/teams.js'
 
@@ -178,18 +176,10 @@ export async function getMembersForApi(): Promise<MemberListItemApi[]> {
   })
 }
 
-export async function getRoles(): Promise<Role[]> {
-  return dbRoles.getRoles()
-}
-
-export async function inviteMember(
-  email: string,
-  roleId?: string
-): Promise<Invitation> {
+export async function inviteMember(email: string): Promise<Invitation> {
   const inv: Invitation = {
     id: generateId(),
     email,
-    roleId,
     createdAt: new Date().toISOString(),
   }
   await dbInvitations.insertInvitation(inv)

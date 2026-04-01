@@ -59,7 +59,7 @@ export function WorkspaceDropdown({
         const workspace = workspaces.find((w) => w.id === value)
         if (workspace) {
           onSelect(workspace)
-          navigate(`/workspace/${workspace.id}/inbox`)
+          navigate(`/workspace/${workspace.id}/workspace/projects`)
         }
       }}
     />

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  Mail,
   FileText,
   Folder,
   ArrowLeft,
@@ -10,7 +9,6 @@ import {
   BarChart3,
   Users,
   UsersRound,
-  Shield,
 } from 'lucide-react'
 
 import { Avatar } from '@thedatablitz/avatar'
@@ -109,11 +107,9 @@ export function SidebarNav({
 
   const navPaths = useMemo(() => {
     const paths: Record<string, string> = {
-      'nav-inbox': `${base}/inbox`,
       'ws-projects': `${base}/workspace/projects`,
       'ws-members': `${base}/workspace/member`,
       'ws-teams': `${base}/workspace/teams`,
-      'ws-roles': `${base}/workspace/roles`,
     }
     return paths
   }, [base])
@@ -153,31 +149,9 @@ export function SidebarNav({
           </Inline>
         ),
       },
-      {
-        id: 'ws-roles',
-        label: (
-          <Inline align="center" gap="100" fullWidth className="min-w-0">
-            <Shield size={15} className="shrink-0" />
-            <Text as="span" variant="body3" truncate className="min-w-0 flex-1">
-              Roles
-            </Text>
-          </Inline>
-        ),
-      },
     ]
 
     const roots: TreeNode[] = [
-      {
-        id: 'nav-inbox',
-        label: (
-          <Inline align="center" gap="100" fullWidth className="min-w-0">
-            <Mail size={15} className="shrink-0" />
-            <Text as="span" variant="body3" truncate className="min-w-0 flex-1">
-              Inbox
-            </Text>
-          </Inline>
-        ),
-      },
       {
         id: 'sec-workspace',
         label: (
@@ -225,7 +199,7 @@ export function SidebarNav({
     return (
       <Stack gap="050" padding="050" className="px-1">
         <Link
-          to={`${base}/inbox`}
+          to={`${base}/workspace/projects`}
           className={cn(
             navClasses.navItemBase,
             navClasses.navItemCollapsed,
@@ -285,20 +259,22 @@ export function SidebarNav({
     return (
       <Stack gap="050" padding="050" className="px-1">
         <Link
-          to={`${base}/inbox`}
+          to={`${base}/workspace/projects`}
           className={cn(
             navClasses.navItemBase,
             navClasses.navItemCollapsed,
-            location.pathname === `${base}/inbox`
+            location.pathname === `${base}/workspace/projects`
               ? navClasses.navItemActive
               : navClasses.navItemInactive
           )}
           aria-current={
-            location.pathname === `${base}/inbox` ? 'page' : undefined
+            location.pathname === `${base}/workspace/projects`
+              ? 'page'
+              : undefined
           }
         >
-          <Mail size={15} className="shrink-0" />
-          <span>Inbox</span>
+          <Folder size={15} className="shrink-0" />
+          <span>Projects</span>
         </Link>
         <Link
           to={`${base}/workspace/projects`}
@@ -342,7 +318,7 @@ export function SidebarNav({
     return (
       <Stack gap="200" className="px-2">
         <Link
-          to={`${base}/inbox`}
+          to={`${base}/workspace/projects`}
           className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[13px] text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900"
         >
           <ArrowLeft size={15} className="shrink-0" />
