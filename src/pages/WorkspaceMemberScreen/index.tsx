@@ -1,9 +1,12 @@
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Alert } from '@thedatablitz/alert'
 import { PageHeader } from '@thedatablitz/page-header'
 
 import { fetchMembers } from '../../api/client'
-import { useFetch } from '../../hooks/useFetch'
+import { workspaceMembersQueryKey } from '../../contexts/workspaceQueryKeys'
+import { useAuth } from '../auth/AuthContext'
+import { logError } from '../../utils/errorHandling'
 import { UserPlus } from 'lucide-react'
 import { Table } from '@thedatablitz/table'
 import { Badge } from '@thedatablitz/badge'
@@ -18,9 +21,34 @@ import { Stack } from '@thedatablitz/stack'
 export function WorkspaceMemberScreen() {
   const { workspaceId } = useParams<WorkspaceMemberScreenRouteParams>()
   const navigate = useNavigate()
-  const { data: members, loading, error } = useFetch(fetchMembers)
+  const { state: authState } = useAuth()
+  const isAuthLoading = authState.status === 'loading'
+  const userId =
+    authState.status === 'authenticated' ? authState.session.user.id : null
 
-  const memberRows = mapMembersToRows(members ?? [])
+  const membersQuery = useQuery({
+    queryKey: workspaceMembersQueryKey(userId),
+    queryFn: async () => {
+      try {
+        return await fetchMembers()
+      } catch (e) {
+        logError(e, 'WorkspaceMemberScreen.fetchMembers')
+        throw e
+      }
+    },
+    enabled: !isAuthLoading && !!userId,
+  })
+
+  const members = membersQuery.data ?? []
+  const loading = isAuthLoading || (Boolean(userId) && membersQuery.isPending)
+  const error =
+    membersQuery.isError && membersQuery.error
+      ? membersQuery.error instanceof Error
+        ? membersQuery.error.message
+        : 'Failed to load members'
+      : null
+
+  const memberRows = mapMembersToRows(members)
 
   return (
     <Stack gap="400">

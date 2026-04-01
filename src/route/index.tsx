@@ -13,8 +13,8 @@ import {
   CreateProjectScreen,
   TeamIssuesScreenWrapper,
   TeamProjectsScreenWrapper,
-  TeamProjectDetailScreenWrapper,
-  TeamProjectDocumentationScreenWrapper,
+  TeamProjectDetailIndexRedirect,
+  TeamProjectDetailTabScreenWrapper,
   TeamProjectNewDocumentScreenWrapper,
   TeamProjectEditDocumentScreenWrapper,
   IssueDetailScreenWrapper,
@@ -89,10 +89,6 @@ export function AppRoutes() {
           element={<CreateProjectScreen />}
         />
         <Route
-          path="team/:teamId/projects/:projectId"
-          element={<TeamProjectDetailScreenWrapper />}
-        />
-        <Route
           path="team/:teamId/projects/:projectId/documentation/new"
           element={<TeamProjectNewDocumentScreenWrapper />}
         />
@@ -101,8 +97,12 @@ export function AppRoutes() {
           element={<TeamProjectEditDocumentScreenWrapper />}
         />
         <Route
-          path="team/:teamId/projects/:projectId/documentation"
-          element={<TeamProjectDocumentationScreenWrapper />}
+          path="team/:teamId/projects/:projectId/:projectDetailTab"
+          element={<TeamProjectDetailTabScreenWrapper />}
+        />
+        <Route
+          path="team/:teamId/projects/:projectId"
+          element={<TeamProjectDetailIndexRedirect />}
         />
         <Route
           path="team/:teamId/member/new"

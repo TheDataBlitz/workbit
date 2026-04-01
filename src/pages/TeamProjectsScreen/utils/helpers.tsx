@@ -69,7 +69,7 @@ export function getTeamProjectPath(
   teamId: string,
   projectId: string
 ): string {
-  return `/workspace/${workspaceId}/team/${teamId}/projects/${projectId}`
+  return `/workspace/${workspaceId}/team/${teamId}/projects/${projectId}/overview`
 }
 
 export function getNewTeamProjectPath(

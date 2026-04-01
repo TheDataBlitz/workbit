@@ -1,10 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ChangeEvent,
-} from 'react'
+import { useCallback, useMemo, useState, type ChangeEvent } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { Accordion } from '@thedatablitz/accordion'
 import { Dropdown } from '@thedatablitz/dropdown'
@@ -17,10 +12,13 @@ import { TextInput as Input } from '@thedatablitz/text-input'
 import { TextBox } from '@thedatablitz/textbox'
 import { Box } from '@thedatablitz/box'
 import { Alert } from '@thedatablitz/alert'
+import { Button } from '@thedatablitz/button'
+import { Plus } from 'lucide-react'
 
 import {
   createProjectDecision,
   fetchProjectDecisions,
+  fetchTeamProjectIssues,
   updateProjectDecision,
 } from '../../api/client'
 import type {
@@ -30,25 +28,162 @@ import type {
 } from '../../api/client'
 import { logError } from '../../utils/errorHandling'
 import { formatDateTime } from '../../utils/format'
-import type { DecisionForm, DecisionTabProps } from './types'
-import { csvToArray, EMPTY_FORM, toCsv } from './utils/helpers'
-import { Plus } from 'lucide-react'
-import { Button } from '@thedatablitz/button'
+import { teamProjectIssuesQueryKey } from './Issues'
 
-export function DecisionTab({ projectId, issues, isActive }: DecisionTabProps) {
-  const [items, setItems] = useState<ApiDecision[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+export type ProjectDetailDecisionsTabProps = {
+  projectId: string
+  teamId: string
+}
+
+type DecisionForm = {
+  title: string
+  type: ApiDecisionType
+  status: ApiDecisionStatus
+  rationale: string
+  impact: string
+  decisionDate: string
+  tagsCsv: string
+  linkedIssueIdsCsv: string
+}
+
+const EMPTY_FORM: DecisionForm = {
+  title: '',
+  type: 'minor',
+  status: 'approved',
+  rationale: '',
+  impact: '',
+  decisionDate: '',
+  tagsCsv: '',
+  linkedIssueIdsCsv: '',
+}
+
+function toCsv(values: string[]): string {
+  return values.join(', ')
+}
+
+function csvToArray(value: string): string[] {
+  return value
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+}
+
+function projectDecisionsQueryKey(
+  projectId: string,
+  filters: {
+    typeFilter: 'all' | ApiDecisionType
+    statusFilter: 'all' | ApiDecisionStatus
+    mode: 'mixed' | 'sequential'
+    order: 'asc' | 'desc'
+  }
+) {
+  return [
+    'project',
+    projectId,
+    'decisions',
+    filters.typeFilter,
+    filters.statusFilter,
+    filters.mode,
+    filters.order,
+  ] as const
+}
+
+export function ProjectDetailDecisionsTab({
+  projectId,
+  teamId,
+}: ProjectDetailDecisionsTabProps) {
+  const queryClient = useQueryClient()
+
+  const issuesQuery = useQuery({
+    queryKey: teamProjectIssuesQueryKey(teamId, projectId, 'all'),
+    queryFn: () => fetchTeamProjectIssues(teamId, 'all', projectId),
+    enabled: Boolean(teamId),
+  })
+
+  const issues = useMemo(
+    () =>
+      (issuesQuery.data ?? []).map((issue) => ({
+        id: issue.id,
+        title: issue.title,
+      })),
+    [issuesQuery.data]
+  )
+
   const [typeFilter, setTypeFilter] = useState<'all' | ApiDecisionType>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | ApiDecisionStatus>(
     'all'
   )
   const [mode, setMode] = useState<'mixed' | 'sequential'>('mixed')
   const [order, setOrder] = useState<'asc' | 'desc'>('desc')
+
+  const filters = useMemo(
+    () => ({ typeFilter, statusFilter, mode, order }),
+    [typeFilter, statusFilter, mode, order]
+  )
+
+  const decisionsQuery = useQuery({
+    queryKey: projectDecisionsQueryKey(projectId, filters),
+    queryFn: () =>
+      fetchProjectDecisions(projectId, {
+        type: typeFilter === 'all' ? undefined : typeFilter,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        mode,
+        order,
+        page: 1,
+        pageSize: 100,
+      }),
+    enabled: Boolean(projectId),
+  })
+
+  const items = decisionsQuery.data?.items ?? []
+  const decisionsLoading = decisionsQuery.isPending
+  const decisionsError =
+    decisionsQuery.error instanceof Error
+      ? decisionsQuery.error.message
+      : decisionsQuery.error
+        ? String(decisionsQuery.error)
+        : null
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<DecisionForm>(EMPTY_FORM)
-  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  const saveMutation = useMutation({
+    mutationFn: async (vars: {
+      editingId: string | null
+      form: DecisionForm
+    }) => {
+      const payload = {
+        title: vars.form.title,
+        type: vars.form.type,
+        status: vars.form.status,
+        rationale: vars.form.rationale,
+        impact: vars.form.impact,
+        decisionDate: vars.form.decisionDate || undefined,
+        tags: csvToArray(vars.form.tagsCsv),
+        linkedIssueIds: csvToArray(vars.form.linkedIssueIdsCsv),
+      }
+      if (vars.editingId) {
+        await updateProjectDecision(projectId, vars.editingId, payload)
+      } else {
+        await createProjectDecision(projectId, payload)
+      }
+    },
+    onSuccess: () => {
+      setSaveError(null)
+      setIsModalOpen(false)
+      setEditingId(null)
+      setForm(EMPTY_FORM)
+      void queryClient.invalidateQueries({
+        queryKey: ['project', projectId, 'decisions'],
+      })
+    },
+    onError: (e) => {
+      logError(e, 'ProjectDetailDecisionsTab.save')
+      setSaveError(e instanceof Error ? e.message : 'Failed to save')
+    },
+  })
 
   const typeOptions = [
     { value: 'all', label: 'All' },
@@ -100,44 +235,15 @@ export function DecisionTab({ projectId, issues, isActive }: DecisionTabProps) {
     return new Map(issues.map((issue) => [issue.id, issue.title]))
   }, [issues])
 
-  const load = useCallback(async () => {
-    if (!projectId) {
-      setItems([])
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await fetchProjectDecisions(projectId, {
-        type: typeFilter === 'all' ? undefined : typeFilter,
-        status: statusFilter === 'all' ? undefined : statusFilter,
-        mode,
-        order,
-        page: 1,
-        pageSize: 100,
-      })
-      setItems(result.items)
-    } catch (e) {
-      logError(e, 'DecisionTab.load')
-      setError((e as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [mode, order, projectId, statusFilter, typeFilter])
-
-  useEffect(() => {
-    if (!isActive) return
-    void load()
-  }, [isActive, load])
-
-  const openCreate = () => {
+  const openCreate = useCallback(() => {
+    setSaveError(null)
     setEditingId(null)
     setForm(EMPTY_FORM)
     setIsModalOpen(true)
-  }
+  }, [])
 
-  const openEdit = (decision: ApiDecision) => {
+  const openEdit = useCallback((decision: ApiDecision) => {
+    setSaveError(null)
     setEditingId(decision.id)
     setForm({
       title: decision.title,
@@ -150,40 +256,13 @@ export function DecisionTab({ projectId, issues, isActive }: DecisionTabProps) {
       linkedIssueIdsCsv: toCsv(decision.linkedIssueIds),
     })
     setIsModalOpen(true)
-  }
+  }, [])
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!projectId) return
     if (!form.title.trim() || !form.rationale.trim()) return
-
-    setSaving(true)
-    const payload = {
-      title: form.title,
-      type: form.type,
-      status: form.status,
-      rationale: form.rationale,
-      impact: form.impact,
-      decisionDate: form.decisionDate || undefined,
-      tags: csvToArray(form.tagsCsv),
-      linkedIssueIds: csvToArray(form.linkedIssueIdsCsv),
-    }
-
-    try {
-      if (editingId) {
-        await updateProjectDecision(projectId, editingId, payload)
-      } else {
-        await createProjectDecision(projectId, payload)
-      }
-      setIsModalOpen(false)
-      setEditingId(null)
-      setForm(EMPTY_FORM)
-      await load()
-    } catch (e) {
-      logError(e, 'DecisionTab.save')
-      setError((e as Error).message)
-    } finally {
-      setSaving(false)
-    }
+    setSaveError(null)
+    saveMutation.mutate({ editingId, form })
   }
 
   return (
@@ -257,15 +336,24 @@ export function DecisionTab({ projectId, issues, isActive }: DecisionTabProps) {
           </Stack>
         </Inline>
 
-        {loading ? (
-          <Text variant="body3" color="color.text.subtle">
-            Loading decisions...
-          </Text>
-        ) : error ? (
+        {saveError ? (
           <Alert
             variant="error"
             placement="inline"
-            description={error}
+            description={saveError}
+            className="w-full"
+          />
+        ) : null}
+
+        {decisionsLoading ? (
+          <Text variant="body3" color="color.text.subtle">
+            Loading decisions...
+          </Text>
+        ) : decisionsError ? (
+          <Alert
+            variant="error"
+            placement="inline"
+            description={decisionsError}
             className="w-full"
           />
         ) : items.length === 0 ? (
@@ -355,14 +443,12 @@ export function DecisionTab({ projectId, issues, isActive }: DecisionTabProps) {
 
                   {decision.linkedIssueIds.length > 0 && (
                     <Stack gap="050">
-                      {decision.linkedIssueIds.length > 0 ? (
-                        <Text variant="caption2" color="color.text.subtle">
-                          Issues:{' '}
-                          {decision.linkedIssueIds
-                            .map((id) => issueMap.get(id) ?? id)
-                            .join(', ')}
-                        </Text>
-                      ) : null}
+                      <Text variant="caption2" color="color.text.subtle">
+                        Issues:{' '}
+                        {decision.linkedIssueIds
+                          .map((id) => issueMap.get(id) ?? id)
+                          .join(', ')}
+                      </Text>
                     </Stack>
                   )}
                 </Stack>
@@ -381,8 +467,16 @@ export function DecisionTab({ projectId, issues, isActive }: DecisionTabProps) {
             <Button variant="glass" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : editingId ? 'Save changes' : 'Create'}
+            <Button
+              variant="primary"
+              onClick={handleSave}
+              disabled={saveMutation.isPending}
+            >
+              {saveMutation.isPending
+                ? 'Saving...'
+                : editingId
+                  ? 'Save changes'
+                  : 'Create'}
             </Button>
           </Inline>
         }

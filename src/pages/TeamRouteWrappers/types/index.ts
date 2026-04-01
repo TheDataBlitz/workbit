@@ -9,6 +9,11 @@ export type TeamProjectRouteParams = {
   projectId: string
 }
 
+/** Segment after project id for main project detail tabs (not documentation). */
+export type TeamProjectDetailTabParams = TeamProjectRouteParams & {
+  projectDetailTab: string
+}
+
 export type TeamProjectDocumentRouteParams = TeamProjectRouteParams & {
   documentId: string
 }

@@ -1,7 +1,15 @@
+export type ProjectDetailTab =
+  | 'overview'
+  | 'updates'
+  | 'issues'
+  | 'documentation'
+  | 'decisions'
+
 export type TeamProjectDetailScreenProps = {
   projectName: string
   teamId: string
-  initialTab?: 'overview' | 'updates' | 'issues' | 'documentation' | 'decisions'
+  /** Current tab from the URL (e.g. …/projects/:id/overview). */
+  activeTab: ProjectDetailTab
   /** When set, Documentation tab shows the multi-document list (used on /documentation URL). */
   documentationMode?: 'list'
 }

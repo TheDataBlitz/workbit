@@ -21,8 +21,8 @@ export { WorkspacesScreen } from './WorkspacesScreen'
 export {
   TeamIssuesScreenWrapper,
   TeamProjectsScreenWrapper,
-  TeamProjectDetailScreenWrapper,
-  TeamProjectDocumentationScreenWrapper,
+  TeamProjectDetailIndexRedirect,
+  TeamProjectDetailTabScreenWrapper,
   TeamProjectNewDocumentScreenWrapper,
   TeamProjectEditDocumentScreenWrapper,
   IssueDetailScreenWrapper,

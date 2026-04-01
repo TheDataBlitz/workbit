@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useWorkspace } from '../../contexts/WorkspaceContext'
 import { useFetch } from '../../hooks/useFetch'
@@ -11,6 +11,7 @@ import { ProjectDocumentEditorScreen } from '../ProjectDocumentEditorScreen'
 import type {
   TeamIssueRouteParams,
   TeamProjectDocumentRouteParams,
+  TeamProjectDetailTabParams,
   TeamProjectRouteParams,
   TeamRouteParams,
 } from './types'
@@ -71,31 +72,68 @@ export function TeamProjectsScreenWrapper() {
   return <TeamProjectsScreen teamName={teamName} />
 }
 
-export function TeamProjectDetailScreenWrapper() {
-  const { teamId, projectId } = useParams<TeamProjectRouteParams>()
-  useRedirectIfInvalidTeam()
-  const projectName = useProjectTitle(projectId)
+const URL_PROJECT_DETAIL_TABS = [
+  'overview',
+  'updates',
+  'issues',
+  'decisions',
+  'documentation',
+] as const
 
+type UrlProjectDetailTab = (typeof URL_PROJECT_DETAIL_TABS)[number]
+
+function isUrlProjectDetailTab(
+  segment: string | undefined
+): segment is UrlProjectDetailTab {
   return (
-    <TeamProjectDetailScreen
-      projectName={projectName}
-      teamId={teamId ?? ''}
-      initialTab="overview"
+    segment !== undefined &&
+    (URL_PROJECT_DETAIL_TABS as readonly string[]).includes(segment)
+  )
+}
+
+/** Redirect …/projects/:projectId → …/projects/:projectId/overview */
+export function TeamProjectDetailIndexRedirect() {
+  const { workspaceId, teamId, projectId } = useParams<TeamProjectRouteParams>()
+  if (!workspaceId || !teamId || !projectId) {
+    return null
+  }
+  return (
+    <Navigate
+      to={`/workspace/${workspaceId}/team/${teamId}/projects/${projectId}/overview`}
+      replace
     />
   )
 }
 
-export function TeamProjectDocumentationScreenWrapper() {
-  const { teamId, projectId } = useParams<TeamProjectRouteParams>()
+export function TeamProjectDetailTabScreenWrapper() {
+  const { workspaceId, teamId, projectId, projectDetailTab } =
+    useParams<TeamProjectDetailTabParams>()
   useRedirectIfInvalidTeam()
   const projectName = useProjectTitle(projectId)
+
+  if (
+    !workspaceId ||
+    !teamId ||
+    !projectId ||
+    !isUrlProjectDetailTab(projectDetailTab)
+  ) {
+    if (!workspaceId || !teamId || !projectId) return null
+    return (
+      <Navigate
+        to={`/workspace/${workspaceId}/team/${teamId}/projects/${projectId}/overview`}
+        replace
+      />
+    )
+  }
 
   return (
     <TeamProjectDetailScreen
       projectName={projectName}
-      teamId={teamId ?? ''}
-      initialTab="documentation"
-      documentationMode="list"
+      teamId={teamId}
+      activeTab={projectDetailTab}
+      documentationMode={
+        projectDetailTab === 'documentation' ? 'list' : undefined
+      }
     />
   )
 }

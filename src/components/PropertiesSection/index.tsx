@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { ChevronDown, Plus, Building2, Tag } from 'lucide-react'
+import { ChevronDown, Plus } from 'lucide-react'
 
 import { Inline } from '@thedatablitz/inline'
 import { Stack } from '@thedatablitz/stack'
-import { Text } from '@thedatablitz/text'
 import { DateTimePicker } from '@thedatablitz/date-time-picker'
 
 import { PrioritySelector } from '../PrioritySelector'
@@ -103,24 +102,6 @@ export function PropertiesSection({
             setEndDate(value?.end)
           }}
         />
-      </Row>
-      <Row>
-        <span className="row-label">Teams</span>
-        <span className="row-value">
-          <Building2 size={14} className="row-icon" />
-          <Text variant="body3" color="color.text.subtle">
-            Add team
-          </Text>
-        </span>
-      </Row>
-      <Row>
-        <span className="row-label">Labels</span>
-        <span className="row-value">
-          <Tag size={14} className="row-icon" />
-          <Text variant="body3" color="color.text.subtle">
-            Add label
-          </Text>
-        </span>
       </Row>
     </>
   )
