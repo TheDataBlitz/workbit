@@ -77,15 +77,15 @@ export function LandingNav() {
           >
             Log in
           </motion.button>
-          <Link to="/signup">
-            <motion.span
-              className="landing__btn landing__btn--primary"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              Get started
-            </motion.span>
-          </Link>
+          <motion.button
+            type="button"
+            className="landing__btn landing__btn--primary"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => navigate('/login')}
+          >
+            Get started
+          </motion.button>
         </motion.div>
       </div>
     </motion.nav>

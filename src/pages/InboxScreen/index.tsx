@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import { Mail, Plus, FolderKanban } from 'lucide-react'
+import { Plus, FolderKanban } from 'lucide-react'
 
-import { PageHeader, Stack as View } from '@design-system'
+import { PageHeader } from '@thedatablitz/page-header'
 import { Box } from '@thedatablitz/box'
 import { Button } from '@thedatablitz/button'
 import { Inline } from '@thedatablitz/inline'
@@ -14,18 +14,17 @@ export function InboxScreen() {
   const base = workspaceId ? `/workspace/${workspaceId}` : ''
 
   return (
-    <View gap={4} className="flex min-h-[min(72vh,680px)] w-full flex-col">
+    <Stack gap="400">
       <PageHeader
+        avatar={{
+          name: 'Inbox',
+        }}
         title="Inbox"
-        summary="Your notifications and updates will appear here."
+        subtitle="Your notifications and updates will appear here."
       />
 
       <Box border padding="600" fullWidth>
         <Stack gap="300" align="center" fullWidth>
-          <Mail size={28} strokeWidth={1.75} />
-          <Text as="h2" variant="heading3">
-            No notifications yet
-          </Text>
           <Text
             variant="body3"
             color="color.text.subtle"
@@ -54,6 +53,6 @@ export function InboxScreen() {
           </Inline>
         </Stack>
       </Box>
-    </View>
+    </Stack>
   )
 }

@@ -1,17 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
+import { Container, Input, Select } from '@design-system'
 import { Alert } from '@thedatablitz/alert'
-import {
-  Container,
-  Stack,
-  PageHeader,
-  Text,
-  Input,
-  Flex,
-  Select,
-} from '@design-system'
-
+import { Stack } from '@thedatablitz/stack'
+import { Text } from '@thedatablitz/text'
+import { PageHeader } from '@thedatablitz/page-header'
 import { createMember, fetchWorkspaceTeams } from '../../api/client'
 import { useWorkspace } from '../../contexts/WorkspaceContext'
 import { useFetch } from '../../hooks/useFetch'
@@ -26,6 +20,8 @@ import {
   toggleTeamIds,
 } from './utils/helpers'
 import { Button } from '@thedatablitz/button'
+import { Inline } from '@thedatablitz/inline'
+import { Box } from '@thedatablitz/box'
 
 export function CreateMemberScreen() {
   const { workspaceId, teamId: teamIdFromUrl } = useParams<RouteParams>()
@@ -100,14 +96,14 @@ export function CreateMemberScreen() {
   const summary = getSummary(isTeamScoped, currentWorkspace.name, teamName)
 
   return (
-    <Container maxWidth="600px">
-      <Stack gap={4}>
-        <PageHeader title="New member" summary={summary} />
+    <Box>
+      <Stack gap="400">
+        <PageHeader title="New member" subtitle={summary} />
         <form onSubmit={handleSubmit}>
-          <Stack gap={4}>
+          <Stack gap="400">
             <div>
               <label style={fieldLabelStyle}>
-                <Text size="sm">Name</Text>
+                <Text variant="body3">Name</Text>
               </label>
               <Input
                 value={name}
@@ -119,7 +115,7 @@ export function CreateMemberScreen() {
             </div>
             <div>
               <label style={fieldLabelStyle}>
-                <Text size="sm">Username</Text>
+                <Text variant="body3">Username</Text>
               </label>
               <Input
                 value={username}
@@ -130,7 +126,7 @@ export function CreateMemberScreen() {
             </div>
             <div>
               <label style={fieldLabelStyle}>
-                <Text size="sm">Email</Text>
+                <Text variant="body3">Email</Text>
               </label>
               <Input
                 type="email"
@@ -142,7 +138,7 @@ export function CreateMemberScreen() {
             </div>
             <div>
               <label style={fieldLabelStyle}>
-                <Text size="sm">Status</Text>
+                <Text variant="body3">Status</Text>
               </label>
               <Select
                 value={status}
@@ -153,9 +149,9 @@ export function CreateMemberScreen() {
             {teams && teams.length > 0 && (
               <div>
                 <label style={fieldLabelStyle}>
-                  <Text size="sm">Teams (optional)</Text>
+                  <Text variant="body3">Teams (optional)</Text>
                 </label>
-                <Stack gap={1}>
+                <Stack gap="100">
                   {teams.map((team) => (
                     <label key={team.id} style={checkboxRowStyle}>
                       <input
@@ -164,7 +160,7 @@ export function CreateMemberScreen() {
                         onChange={() => toggleTeam(team.id)}
                         disabled={submitting}
                       />
-                      <Text size="sm">{team.name}</Text>
+                      <Text variant="body3">{team.name}</Text>
                     </label>
                   ))}
                 </Stack>
@@ -178,7 +174,7 @@ export function CreateMemberScreen() {
                 className="w-full"
               />
             ) : null}
-            <Flex gap={2} justify="flex-start">
+            <Inline gap="200" justify="flex-start" fullWidth>
               <Button
                 variant="primary"
                 disabled={!canSubmit(name, username, email, submitting)}
@@ -188,10 +184,10 @@ export function CreateMemberScreen() {
               <Button variant="danger" onClick={handleCancel}>
                 Cancel
               </Button>
-            </Flex>
+            </Inline>
           </Stack>
         </form>
       </Stack>
-    </Container>
+    </Box>
   )
 }

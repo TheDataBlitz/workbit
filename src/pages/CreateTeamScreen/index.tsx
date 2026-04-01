@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { Alert } from '@thedatablitz/alert'
-import { Container, Stack, PageHeader, Flex } from '@design-system'
+import { Container, Stack, Flex } from '@design-system'
+import { PageHeader } from '@thedatablitz/page-header'
 import { TextInput } from '@thedatablitz/text-input'
 import { Text } from '@thedatablitz/text'
 import { createTeam } from '../../api/client'
@@ -58,7 +59,7 @@ export function CreateTeamScreen() {
       <Stack gap={4}>
         <PageHeader
           title="New team"
-          summary={getSummary(currentWorkspace.name)}
+          subtitle={getSummary(currentWorkspace.name)}
         />
         <form
           onSubmit={(e) => {

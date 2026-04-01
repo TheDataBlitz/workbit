@@ -36,7 +36,7 @@ export function CTASection() {
           Join teams that use Workbit to plan, track, and ship—without the
           chaos.
         </p>
-        <Link to="/signup">
+        <Link to="/login">
           <motion.span
             className="landing__btn landing__btn--primary landing__glow"
             style={{ padding: '14px 28px', fontSize: '1rem' }}

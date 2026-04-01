@@ -4,13 +4,16 @@ import { useNavigate, useParams } from 'react-router-dom'
 import type { Row, Table as TanStackTable } from '@tanstack/react-table'
 
 import { Alert } from '@thedatablitz/alert'
-import { Avatar, Flex, PageHeader, RichText, Stack } from '@design-system'
+import { Avatar } from '@thedatablitz/avatar'
+import { PageHeader } from '@thedatablitz/page-header'
 import { Badge } from '@thedatablitz/badge'
+import { MarkdownEditor } from '@thedatablitz/markdown-editor'
 import { Modal } from '@thedatablitz/modal'
 import { Tabs } from '@thedatablitz/tabs'
 import { Text } from '@thedatablitz/text'
 import { Button } from '@thedatablitz/button'
 import { Inline } from '@thedatablitz/inline'
+import { Stack } from '@thedatablitz/stack'
 import { TextInput } from '@thedatablitz/text-input'
 import {
   Table,
@@ -300,7 +303,7 @@ export function TeamIssuesScreen({ teamName }: TeamIssuesScreenProps) {
           row.original.__placeholder ? null : row.original.assignee ? (
             <Avatar
               name={row.original.assigneeInitials || row.original.assignee}
-              size={20}
+              size="small"
             />
           ) : (
             <MetaText>—</MetaText>
@@ -369,9 +372,9 @@ export function TeamIssuesScreen({ teamName }: TeamIssuesScreenProps) {
     setIssueDescription('')
     setCreateMore(false)
   }
-  console.log({ issueTreeData })
+
   return (
-    <Stack gap={4}>
+    <Stack gap="400">
       {createError ? (
         <Alert
           variant="error"
@@ -380,35 +383,39 @@ export function TeamIssuesScreen({ teamName }: TeamIssuesScreenProps) {
           className="w-full"
         />
       ) : null}
-      <Flex align="center" justify="space-between">
-        <PageHeader title={teamName} />
-        <Button
-          icon={<Plus size={16} />}
-          variant="primary"
-          onClick={handleOpenCreateModal}
-        >
-          New Issue
-        </Button>
-      </Flex>
+      <PageHeader
+        avatar={{
+          name: 'Issues',
+        }}
+        title={teamName}
+        subtitle="Issues for this team."
+      >
+        <Inline justify="flex-end">
+          {statusSummary.map((part) => (
+            <Badge
+              key={part.label}
+              icon={part.icon}
+              size="medium"
+              variant="default"
+            >
+              {part.count} - {part.label}
+            </Badge>
+          ))}
+          <Button
+            icon={<Plus size={16} />}
+            variant="glass"
+            onClick={handleOpenCreateModal}
+          >
+            New Issue
+          </Button>
+        </Inline>
+      </PageHeader>
 
       <Tabs
         items={[...ISSUE_TABS]}
         value={activeTab}
         onChange={handleTabChange}
       />
-
-      <Flex align="center" gap={2} wrap>
-        {statusSummary.map((part) => (
-          <Badge
-            key={part.label}
-            icon={part.icon}
-            size="medium"
-            variant="default"
-          >
-            {part.count} - {part.label}
-          </Badge>
-        ))}
-      </Flex>
 
       <Table<TeamIssueRow>
         data={issueTreeData}
@@ -433,7 +440,7 @@ export function TeamIssuesScreen({ teamName }: TeamIssuesScreenProps) {
         title="New issue"
         size="large"
         footer={
-          <Flex justify="flex-end" gap={2}>
+          <Inline justify="flex-end" gap="200" fullWidth>
             <Button
               variant="danger"
               onClick={handleCloseCreateModal}
@@ -448,10 +455,10 @@ export function TeamIssuesScreen({ teamName }: TeamIssuesScreenProps) {
             >
               {creating ? 'Creating…' : 'Create issue'}
             </Button>
-          </Flex>
+          </Inline>
         }
       >
-        <Stack gap={3}>
+        <Stack gap="300">
           <TextInput
             id="create-issue-title"
             value={issueTitle}
@@ -473,12 +480,15 @@ export function TeamIssuesScreen({ teamName }: TeamIssuesScreenProps) {
             ))}
           </Inline>
 
-          <RichText
+          <MarkdownEditor
             value={issueDescription}
-            onChange={setIssueDescription}
+            onChange={(next) => {
+              if (creating) return
+              setIssueDescription(next)
+            }}
             placeholder="Write a description, acceptance criteria, or notes..."
-            disabled={creating}
             minHeight={170}
+            aria-label="Issue description"
           />
         </Stack>
       </Modal>

@@ -1,5 +1,5 @@
 import { Alert } from '@thedatablitz/alert'
-import { PageHeader } from '@design-system'
+import { PageHeader } from '@thedatablitz/page-header'
 import { Text } from '@thedatablitz/text'
 import { Badge } from '@thedatablitz/badge'
 import { Inline } from '@thedatablitz/inline'
@@ -16,8 +16,14 @@ export function WorkspaceRolesScreen() {
   const roles = mapRolesToRows(data ?? [])
 
   return (
-    <Stack gap="100">
-      <PageHeader title="Roles" summary="Workspace roles and permissions." />
+    <Stack gap="400">
+      <PageHeader
+        avatar={{
+          name: 'Roles',
+        }}
+        title="Roles"
+        subtitle="Workspace roles and permissions."
+      />
       {error ? (
         <Alert
           variant="error"

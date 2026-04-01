@@ -1,12 +1,11 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
-const links: { label: string; href?: string; to?: '/login' | '/signup' }[] = [
+const links: { label: string; href?: string; to?: '/login' }[] = [
   { label: 'Product', href: '#product' },
   { label: 'Features', href: '#features' },
   { label: 'Pricing', href: '#pricing' },
   { label: 'Log in', to: '/login' },
-  { label: 'Sign up', to: '/signup' },
 ]
 
 export function Footer() {

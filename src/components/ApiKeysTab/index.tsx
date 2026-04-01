@@ -234,14 +234,6 @@ export function ApiKeysTab() {
   return (
     <>
       <Stack gap="100">
-        <Stack gap="050">
-          <Text variant="heading2">API access keys</Text>
-          <Text variant="body3" color="color.text.subtle">
-            Manage machine credentials for Workbit APIs. Treat these keys like
-            passwords.
-          </Text>
-        </Stack>
-
         <Banner
           variant="warning"
           message={

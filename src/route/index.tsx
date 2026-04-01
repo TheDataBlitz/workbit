@@ -1,9 +1,9 @@
 import { Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { RootRedirect } from './RootRedirect'
 import {
   AuthGate,
   MainLayout,
   LoginScreen,
-  SignupScreen,
   InboxScreen,
   WorkspaceProjectsScreen,
   WorkspaceMemberScreen,
@@ -43,7 +43,7 @@ export function AppRoutes() {
     <Routes>
       <Route path="/landing" element={<LandingPage />} />
       <Route path="/login" element={<LoginScreen />} />
-      <Route path="/signup" element={<SignupScreen />} />
+      <Route path="/signup" element={<Navigate to="/login" replace />} />
       <Route
         path="/workspaces"
         element={
@@ -52,7 +52,7 @@ export function AppRoutes() {
           </AuthGate>
         }
       />
-      <Route path="/" element={<Navigate to="/workspaces" replace />} />
+      <Route path="/" element={<RootRedirect />} />
       <Route
         path="/workspace/:workspaceId"
         element={
@@ -61,7 +61,7 @@ export function AppRoutes() {
           </AuthGate>
         }
       >
-        <Route index element={<Navigate to="/workspaces" replace />} />
+        <Route index element={<Navigate to="inbox" replace />} />
         <Route path="inbox" element={<InboxScreen />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route

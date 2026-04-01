@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Avatar } from '@thedatablitz/avatar'
 import { Box } from '@thedatablitz/box'
-import { Card, CardContent } from '@thedatablitz/card'
-import { BarGraph, type BarGraphDatum } from '@thedatablitz/chart'
+import { BarGraph, KpiCard, type BarGraphDatum } from '@thedatablitz/chart'
 import { Dropdown } from '@thedatablitz/dropdown'
 import { Inline } from '@thedatablitz/inline'
 import { Stack } from '@thedatablitz/stack'
@@ -37,58 +36,6 @@ function formatCurrency(n: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(n)
-}
-
-function clamp01(x: number) {
-  return Math.max(0, Math.min(1, x))
-}
-
-function TinyMeter({ ratio, color }: { ratio: number; color: string }) {
-  return (
-    <Box
-      fullWidth
-      className="h-2 rounded-full bg-slate-100 overflow-hidden"
-      aria-hidden
-    >
-      <div
-        className="h-full rounded-full"
-        style={{ width: `${clamp01(ratio) * 100}%`, backgroundColor: color }}
-      />
-    </Box>
-  )
-}
-
-function KpiCard({
-  label,
-  helper,
-  value,
-  ratio,
-  meterColor,
-}: {
-  label: string
-  helper: string
-  value: string
-  ratio: number
-  meterColor: string
-}) {
-  return (
-    <Card size="large" variant="default" fullWidth>
-      <CardContent>
-        <Stack gap="100">
-          <Stack gap="025">
-            <Text variant="body3" color="color.text.subtle">
-              {label}
-            </Text>
-            <Text variant="body3" color="color.text.subtle">
-              {helper}
-            </Text>
-          </Stack>
-          <Text variant="heading4">{value}</Text>
-          <TinyMeter ratio={ratio} color={meterColor} />
-        </Stack>
-      </CardContent>
-    </Card>
-  )
 }
 
 function TokenUsageChart({ points }: { points: UsagePoint[] }) {

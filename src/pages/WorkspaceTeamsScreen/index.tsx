@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { Alert } from '@thedatablitz/alert'
-import { PageHeader } from '@design-system'
+import { PageHeader } from '@thedatablitz/page-header'
 import { fetchWorkspaceTeams } from '../../api/client'
 import { useFetch } from '../../hooks/useFetch'
 import { useWorkspace } from '../../contexts/WorkspaceContext'
@@ -73,13 +73,16 @@ export function WorkspaceTeamsScreen() {
       >
         <div className="min-w-0 flex-1">
           <PageHeader
+            avatar={{
+              name: 'Teams',
+            }}
             title="Teams"
-            summary="Workspace teams, members and projects."
+            subtitle="Workspace teams, members and projects."
           />
         </div>
         {workspaceId ? (
           <Button
-            variant="primary"
+            variant="glass"
             className="shrink-0"
             onClick={() =>
               navigate(`/workspace/${workspaceId}/workspace/teams/new`)

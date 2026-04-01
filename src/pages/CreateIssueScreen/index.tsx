@@ -3,7 +3,7 @@ import { useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { X } from 'lucide-react'
 
-import { PageHeader, Stack as View } from '@design-system'
+import { Stack as View } from '@design-system'
 import { Alert } from '@thedatablitz/alert'
 import { Box } from '@thedatablitz/box'
 import { Button } from '@thedatablitz/button'
@@ -13,7 +13,7 @@ import { MarkdownEditor } from '@thedatablitz/markdown-editor'
 import { Stack } from '@thedatablitz/stack'
 import { Text } from '@thedatablitz/text'
 import { TextInput } from '@thedatablitz/text-input'
-
+import { PageHeader } from '@thedatablitz/page-header'
 import { createIssue, fetchWorkspaceTeams } from '../../api/client'
 import { useWorkspace } from '../../contexts/WorkspaceContext'
 import { workspaceTeamsPickerQueryKey } from '../../contexts/workspaceQueryKeys'
@@ -122,7 +122,7 @@ export function CreateIssueScreen() {
     <View gap={4} className="mx-auto w-full max-w-5xl px-4 py-6 md:px-6">
       <Inline align="flex-start" justify="space-between" gap="200" fullWidth>
         <div className="min-w-0 flex-1">
-          <PageHeader title="New issue" summary={summary} />
+          <PageHeader title="New issue" subtitle={summary} />
         </div>
         <Button
           variant="glass"

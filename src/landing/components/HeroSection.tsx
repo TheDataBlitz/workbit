@@ -71,7 +71,7 @@ export function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
-          <Link to="/signup">
+          <Link to="/login">
             <motion.span
               className="landing__btn landing__btn--primary landing__glow"
               whileHover={{ scale: 1.03 }}

@@ -50,7 +50,7 @@ export function PricingSection() {
           <p className="landing__text-muted" style={{ marginBottom: 24 }}>
             Projects, issues, and teams. Everything you need to get started.
           </p>
-          <Link to="/signup">
+          <Link to="/login">
             <motion.span
               className="landing__btn landing__btn--primary"
               whileHover={{ scale: 1.02 }}

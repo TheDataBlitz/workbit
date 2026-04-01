@@ -2,7 +2,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 
 import { Alert } from '@thedatablitz/alert'
-import { PageHeader, Stack as View } from '@design-system'
+import { Stack as View } from '@design-system'
+import { PageHeader } from '@thedatablitz/page-header'
 import { Button } from '@thedatablitz/button'
 import { Inline } from '@thedatablitz/inline'
 import { fetchProjects } from '../../api/client'
@@ -32,19 +33,24 @@ export function WorkspaceProjectsScreen() {
   return (
     <View gap={4} className="flex w-full flex-col">
       <PageHeader
+        avatar={{
+          name: 'Projects',
+        }}
         title={'Workspace projects'}
-        summary={'All projects in your workspace.'}
+        subtitle={'All projects in your workspace.'}
       />
 
       {workspaceId ? (
-        <Button
-          variant="glass"
-          className="shrink-0"
-          icon={<Plus size={16} />}
-          onClick={() => navigate(getNewProjectPath(workspaceId))}
-        >
-          New Project
-        </Button>
+        <Inline justify="flex-end">
+          <Button
+            variant="glass"
+            className="shrink-0"
+            icon={<Plus size={16} />}
+            onClick={() => navigate(getNewProjectPath(workspaceId))}
+          >
+            New Project
+          </Button>
+        </Inline>
       ) : null}
 
       {error ? (

@@ -8,7 +8,7 @@ import { Inline } from '@thedatablitz/inline'
 import { Stack } from '@thedatablitz/stack'
 import { Text } from '@thedatablitz/text'
 import { TextInput } from '@thedatablitz/text-input'
-import { Switch } from '@design-system'
+import { Toggle } from '@thedatablitz/toggle'
 import { ApiKeysTab, ProfileUsageTab } from '../../components'
 import { useAuth } from '../auth/AuthContext'
 import type { TabId } from './types'
@@ -217,12 +217,15 @@ export function ProfilePage() {
                               Commits data and history
                             </Text>
                           </Stack>
-                          <Switch
+                          <Toggle
                             checked={notificationPrefs.email}
-                            onChange={(checked) =>
+                            label="Email notifications"
+                            size="small"
+                            variant="primary"
+                            onChange={(e) =>
                               setNotificationPrefs((prev) => ({
                                 ...prev,
-                                email: checked,
+                                email: e.target.checked,
                               }))
                             }
                           />
@@ -234,12 +237,15 @@ export function ProfilePage() {
                               Commits data and history
                             </Text>
                           </Stack>
-                          <Switch
+                          <Toggle
                             checked={notificationPrefs.push}
-                            onChange={(checked) =>
+                            label="Push notifications"
+                            size="small"
+                            variant="primary"
+                            onChange={(e) =>
                               setNotificationPrefs((prev) => ({
                                 ...prev,
-                                push: checked,
+                                push: e.target.checked,
                               }))
                             }
                           />
@@ -256,12 +262,15 @@ export function ProfilePage() {
                               Commits data and history
                             </Text>
                           </Stack>
-                          <Switch
+                          <Toggle
                             checked={notificationPrefs.monthly}
-                            onChange={(checked) =>
+                            label="Monthly reports"
+                            size="small"
+                            variant="primary"
+                            onChange={(e) =>
                               setNotificationPrefs((prev) => ({
                                 ...prev,
-                                monthly: checked,
+                                monthly: e.target.checked,
                               }))
                             }
                           />
@@ -273,12 +282,15 @@ export function ProfilePage() {
                               Commits data and history
                             </Text>
                           </Stack>
-                          <Switch
+                          <Toggle
                             checked={notificationPrefs.quarterly}
-                            onChange={(checked) =>
+                            label="Quarter reports"
+                            size="small"
+                            variant="primary"
+                            onChange={(e) =>
                               setNotificationPrefs((prev) => ({
                                 ...prev,
-                                quarterly: checked,
+                                quarterly: e.target.checked,
                               }))
                             }
                           />

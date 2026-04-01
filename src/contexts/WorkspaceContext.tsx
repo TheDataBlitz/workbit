@@ -24,8 +24,7 @@ import {
   workspaceTeamsAndProjectsQueryKey,
   workspacesListQueryKeyPrefix,
 } from './workspaceQueryKeys'
-
-const STORAGE_KEY = 'workbit.currentWorkspaceId'
+import { WORKSPACE_ID_STORAGE_KEY } from './workspaceLanding'
 
 export type WorkspaceProject = {
   id: string
@@ -64,13 +63,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setCurrentWorkspaceState(ws)
     if (ws) {
       try {
-        localStorage.setItem(STORAGE_KEY, ws.id)
+        localStorage.setItem(WORKSPACE_ID_STORAGE_KEY, ws.id)
       } catch {
         // ignore
       }
     } else {
       try {
-        localStorage.removeItem(STORAGE_KEY)
+        localStorage.removeItem(WORKSPACE_ID_STORAGE_KEY)
       } catch {
         // ignore
       }
@@ -141,7 +140,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const list = workspacesQuery.data
     if (!list?.length) return
     try {
-      const storedId = localStorage.getItem(STORAGE_KEY)
+      const storedId = localStorage.getItem(WORKSPACE_ID_STORAGE_KEY)
       if (!storedId) return
       const found = list.find((w) => w.id === storedId)
       if (found) setCurrentWorkspaceState(found)

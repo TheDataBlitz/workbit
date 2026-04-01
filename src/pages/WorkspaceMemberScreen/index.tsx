@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { Alert } from '@thedatablitz/alert'
-import { Container, PageHeader } from '@design-system'
+import { PageHeader } from '@thedatablitz/page-header'
 
 import { fetchMembers } from '../../api/client'
 import { useFetch } from '../../hooks/useFetch'
@@ -23,47 +23,49 @@ export function WorkspaceMemberScreen() {
   const memberRows = mapMembersToRows(members ?? [])
 
   return (
-    <Container maxWidth="1100px">
-      <Stack gap="100">
-        <PageHeader
-          title="Members"
-          summary="Workspace members and invitations."
-        />
+    <Stack gap="400">
+      <PageHeader
+        avatar={{
+          name: 'Members',
+        }}
+        title="Members"
+        subtitle="Workspace members and invitations."
+      />
 
-        {error ? (
-          <Alert
-            variant="error"
-            placement="inline"
-            description={`Failed to load members: ${error}`}
-            className="w-full"
-          />
-        ) : null}
-        {workspaceId ? (
+      {error ? (
+        <Alert
+          variant="error"
+          placement="inline"
+          description={`Failed to load members: ${error}`}
+          className="w-full"
+        />
+      ) : null}
+      {workspaceId ? (
+        <Inline justify="flex-end">
           <Button
-            variant="primary"
+            variant="glass"
             icon={<UserPlus size={16} />}
-            size="small"
             onClick={() =>
               navigate(`/workspace/${workspaceId}/workspace/member/new`)
             }
           >
             New Member
           </Button>
-        ) : null}
-        {!loading ? (
-          <Stack gap="100">
-            <Inline gap="050">
-              <Text variant="heading6" as="span">
-                Members
-              </Text>
-              <Badge variant="warning" size="small">
-                {memberRows.length}
-              </Badge>
-            </Inline>
-            <Table columns={createMembersColumn()} data={memberRows} />
-          </Stack>
-        ) : null}
-      </Stack>
-    </Container>
+        </Inline>
+      ) : null}
+      {!loading ? (
+        <Stack gap="100">
+          <Inline gap="050">
+            <Text variant="heading6" as="span">
+              Members
+            </Text>
+            <Badge variant="warning" size="small">
+              {memberRows.length}
+            </Badge>
+          </Inline>
+          <Table columns={createMembersColumn()} data={memberRows} />
+        </Stack>
+      ) : null}
+    </Stack>
   )
 }

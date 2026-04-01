@@ -2,7 +2,6 @@ export { MainLayout } from './MainLayout'
 export {
   AuthGate,
   LoginScreen,
-  SignupScreen,
   AuthProvider,
   useAuth,
   useAuthRequired,
