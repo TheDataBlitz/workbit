@@ -1,23 +1,20 @@
 import { useState } from 'react'
-import { Paperclip } from 'lucide-react'
 
-import { IconButton } from '@design-system'
 import { Dropdown } from '@thedatablitz/dropdown'
+import {
+  TextEditor,
+  lexicalJsonToMarkdown,
+  lexicalJsonToPlainText,
+} from '@thedatablitz/text-editor'
 
 import type { ProjectStatus } from '../../constants/projectStatus'
-import { MarkdownEditor } from '@thedatablitz/markdown-editor'
-import { ResourceSelector } from '../ResourceSelector'
-import {
-  TextAreaWrap,
-  Divider,
-  ActionBar,
-  ActionLeft,
-  ActionRight,
-} from './styles'
+import { lexicalSerializedHasNonWhitespaceText } from '../../utils/textEditorState'
+import { TextAreaWrap, Divider } from './styles'
 import type { StatusUpdateComposerProps } from './types'
 import { buildStatusItems } from './utils/buildStatusItems'
 import { Box } from '@thedatablitz/box'
 import { Button } from '@thedatablitz/button'
+import { Inline } from '@thedatablitz/inline'
 
 export type { ProjectStatus } from '../../constants/projectStatus'
 
@@ -27,13 +24,11 @@ export function StatusUpdateComposer({
   placeholder = 'Write a project update...',
   onPost,
   onCancel,
-  onChooseFile,
-  onCreateDocument,
-  onAddLink,
 }: StatusUpdateComposerProps) {
   const [internalStatus, setInternalStatus] =
     useState<ProjectStatus>('on-track')
-  const [draft, setDraft] = useState('')
+  const [draftLexicalJson, setDraftLexicalJson] = useState('')
+  const [editorKey, setEditorKey] = useState(0)
 
   const status = controlledStatus ?? internalStatus
   const setStatus = (nextStatus: ProjectStatus) => {
@@ -47,15 +42,30 @@ export function StatusUpdateComposer({
 
   const statusItems = buildStatusItems()
 
+  const hasDraftContent =
+    lexicalSerializedHasNonWhitespaceText(draftLexicalJson)
+
   const handlePost = () => {
-    const trimmed = draft.trim()
-    if (!trimmed || !onPost) return
+    if (!hasDraftContent || !onPost) return
+    let markdown: string
+    try {
+      markdown = lexicalJsonToMarkdown(draftLexicalJson)
+    } catch {
+      try {
+        markdown = lexicalJsonToPlainText(draftLexicalJson)
+      } catch {
+        markdown = ''
+      }
+    }
+    const trimmed = markdown.trim()
+    if (!trimmed) return
     onPost(trimmed, status)
-    setDraft('')
+    setDraftLexicalJson('')
+    setEditorKey((k) => k + 1)
   }
 
   return (
-    <Box border padding="050">
+    <Box border padding="100">
       <Dropdown
         options={statusItems}
         value={status}
@@ -64,46 +74,38 @@ export function StatusUpdateComposer({
         size="small"
       />
       <TextAreaWrap>
-        <MarkdownEditor
-          value={draft}
-          onChange={setDraft}
+        <TextEditor
+          key={editorKey}
+          defaultEditorState=""
+          onChange={setDraftLexicalJson}
           placeholder={placeholder}
-          minHeight={96}
-          aria-label="Project update"
+          autoFocus={false}
         />
       </TextAreaWrap>
 
       <Divider aria-hidden />
 
-      <ActionBar>
-        <ActionLeft>
-          <ResourceSelector
-            trigger={
-              <IconButton aria-label="Attach file or link">
-                <Paperclip size={18} />
-              </IconButton>
-            }
-            onChooseFile={onChooseFile}
-            onCreateDocument={onCreateDocument}
-            onAddLink={onAddLink}
-          />
-        </ActionLeft>
-        <ActionRight>
-          {onCancel && (
-            <Button variant="outline" size="sm" onClick={onCancel}>
-              Cancel
-            </Button>
-          )}
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handlePost}
-            disabled={!draft.trim()}
-          >
-            Post update
+      <Inline
+        fullWidth
+        justify="flex-end"
+        align="center"
+        gap="100"
+        padding="100"
+      >
+        {onCancel && (
+          <Button variant="glass" size="small" onClick={onCancel}>
+            Cancel
           </Button>
-        </ActionRight>
-      </ActionBar>
+        )}
+        <Button
+          variant="primary"
+          size="small"
+          onClick={handlePost}
+          disabled={!hasDraftContent}
+        >
+          Post update
+        </Button>
+      </Inline>
     </Box>
   )
 }

@@ -7,7 +7,6 @@ import { Inline } from '@thedatablitz/inline'
 import { Stack } from '@thedatablitz/stack'
 import { Table, type ColumnDef } from '@thedatablitz/table'
 import { Text } from '@thedatablitz/text'
-import { Skeleton } from '@design-system'
 
 type TimeRangeValue = 'last-7' | 'last-30' | 'last-90'
 type ProjectFilterValue = 'all' | 'workbit' | 'core-api'
@@ -192,9 +191,9 @@ export function ProfileUsageTab() {
 
       {loading ? (
         <Inline gap="150" wrap fullWidth>
-          <Skeleton height="108px" />
-          <Skeleton height="108px" />
-          <Skeleton height="108px" />
+          <Text variant="body3" color="color.text.subtle">
+            Loading usage…
+          </Text>
         </Inline>
       ) : (
         <Inline gap="150" wrap={false} fullWidth>

@@ -1,7 +1,7 @@
 import { Folder } from 'lucide-react'
 import { Badge } from '@thedatablitz/badge'
 import { Text } from '@thedatablitz/text'
-import type { ColumnDef } from '@design-system'
+import type { ColumnDef } from '@thedatablitz/table'
 
 export type ProjectTableRow = {
   id: string

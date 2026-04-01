@@ -41,9 +41,6 @@ export function ProjectDetailUpdatesTab({
         <StatusUpdateComposer
           placeholder="Write a project update..."
           onPost={handlePostUpdate}
-          onChooseFile={noop}
-          onCreateDocument={noop}
-          onAddLink={noop}
         />
       </Stack>
     </Box>

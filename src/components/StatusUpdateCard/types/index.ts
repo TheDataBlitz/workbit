@@ -1,6 +1,17 @@
-import type { ChatMessage, ChatUser } from '@design-system'
-
 import type { ProjectStatus } from '../../../constants/projectStatus'
+
+/** Thread row shape compatible with `@thedatablitz/comment` `CommentItem`. */
+export type StatusUpdateCardComment = {
+  commentId: string
+  /** Rich text as serialized Lexical JSON or plain text. */
+  commentText: string
+  commentDate: string
+  commentAuthor: string
+  commentAuthorAvatar: string
+  parentCommentId: string | null
+  likes: number
+  mentionAuthorIds: string[]
+}
 
 export type StatusUpdateCardData = {
   id: string
@@ -14,17 +25,11 @@ export type StatusUpdateCardData = {
 
 export type StatusUpdateCardProps = {
   data: StatusUpdateCardData
-  /** Comments to show in the expandable chat thread. */
-  comments?: ChatMessage[]
-  /** Current user for the chat reply input. */
-  currentUser?: ChatUser
+  comments?: StatusUpdateCardComment[]
   onNewUpdate?: () => void
   onCommentsClick?: () => void
-  /** Called when the user sends a new comment. */
+  /** Called when the user submits a new comment (plain or serialized editor state). */
   onSendComment?: (text: string) => void
-  onChooseFile?: () => void
-  onCreateDocument?: () => void
-  onAddLink?: () => void
   onMore?: (action: 'edit' | 'delete') => void
   className?: string
 }

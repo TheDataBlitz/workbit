@@ -1,19 +1,6 @@
-import styled from 'styled-components'
 import { Alert } from '@thedatablitz/alert'
-import { Stack } from '@design-system'
-
-const Container = styled.div<{ $fullHeight?: boolean }>`
-  padding: ${(p) => p.theme.spacing[9]}px;
-  text-align: center;
-  ${(p) =>
-    p.$fullHeight &&
-    `
-    min-height: 200px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  `}
-`
+import { Box } from '@thedatablitz/box'
+import { Stack } from '@thedatablitz/stack'
 
 interface Props {
   message?: string
@@ -25,15 +12,29 @@ export function ErrorState({ message, error, fullHeight }: Props) {
   const displayMessage = error || message || 'An error occurred'
 
   return (
-    <Container $fullHeight={fullHeight}>
-      <Stack direction="vertical" gap={3}>
-        <Alert
-          variant="error"
-          placement="inline"
-          description={displayMessage}
-          className="max-w-md text-left"
-        />
-      </Stack>
-    </Container>
+    <div
+      style={{
+        textAlign: 'center',
+        ...(fullHeight
+          ? {
+              minHeight: 200,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }
+          : {}),
+      }}
+    >
+      <Box padding="400">
+        <Stack gap="150" align="center">
+          <Alert
+            variant="error"
+            placement="inline"
+            description={displayMessage}
+            className="max-w-md text-left"
+          />
+        </Stack>
+      </Box>
+    </div>
   )
 }

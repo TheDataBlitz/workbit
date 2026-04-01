@@ -47,24 +47,3 @@ export const Divider = styled.hr`
   background: ${(p) => p.theme.colors.border};
   margin: 0;
 `
-
-export const ActionBar = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: ${(p) => p.theme.spacing[2]}px;
-  padding: ${(p) => p.theme.spacing[2]}px ${(p) => p.theme.spacing[3]}px;
-  flex-shrink: 0;
-`
-
-export const ActionLeft = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${(p) => p.theme.spacing[1]}px;
-`
-
-export const ActionRight = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${(p) => p.theme.spacing[2]}px;
-`

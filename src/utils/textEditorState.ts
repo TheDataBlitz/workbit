@@ -1,5 +1,34 @@
 import { convertToLexicalJson } from '@thedatablitz/text-editor'
 
+/**
+ * True when serialized Lexical JSON (from {@link @thedatablitz/text-editor#TextEditor}
+ * `onChange`) contains any non-whitespace text. Use this instead of
+ * `lexicalJsonToPlainText` for enable/disable logic: the package helper uses a reduced
+ * node set and can throw or return "" for valid full-editor JSON.
+ */
+export function lexicalSerializedHasNonWhitespaceText(
+  serialized: string
+): boolean {
+  if (!serialized.trim()) return false
+  try {
+    const parsed = JSON.parse(serialized) as { root?: unknown }
+    return walkLexicalJsonForText(parsed?.root)
+  } catch {
+    return false
+  }
+}
+
+function walkLexicalJsonForText(node: unknown): boolean {
+  if (node == null || typeof node !== 'object') return false
+  const n = node as Record<string, unknown>
+  if (typeof n.text === 'string' && n.text.trim() !== '') return true
+  const children = n.children
+  if (Array.isArray(children)) {
+    return children.some((c) => walkLexicalJsonForText(c))
+  }
+  return false
+}
+
 function lexicalJsonHasBlockContent(serialized: string): boolean {
   try {
     const parsed = JSON.parse(serialized) as {

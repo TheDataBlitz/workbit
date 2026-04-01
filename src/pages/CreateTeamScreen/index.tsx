@@ -2,17 +2,21 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { Alert } from '@thedatablitz/alert'
-import { Container, Stack, Flex } from '@design-system'
+import { Box } from '@thedatablitz/box'
+import { Button } from '@thedatablitz/button'
+import { Inline } from '@thedatablitz/inline'
 import { PageHeader } from '@thedatablitz/page-header'
-import { TextInput } from '@thedatablitz/text-input'
+import { Stack } from '@thedatablitz/stack'
 import { Text } from '@thedatablitz/text'
+import { TextInput } from '@thedatablitz/text-input'
 import { createTeam } from '../../api/client'
 import { useWorkspace } from '../../contexts/WorkspaceContext'
 import { logError } from '../../utils/errorHandling'
 import { labelStyle } from './styles'
 import type { RouteParams } from './types'
 import { getReturnPath, getSummary } from './utils/helpers'
-import { Button } from '@thedatablitz/button'
+
+const formShellClassName = 'w-full max-w-[600px] mx-auto px-4'
 
 export function CreateTeamScreen() {
   const { workspaceId, teamId: teamIdFromUrl } = useParams<RouteParams>()
@@ -48,15 +52,15 @@ export function CreateTeamScreen() {
 
   if (!workspaceId || !currentWorkspace) {
     return (
-      <Container maxWidth="600px">
+      <Box fullWidth className={formShellClassName}>
         <Text variant="body3">Workspace not found.</Text>
-      </Container>
+      </Box>
     )
   }
 
   return (
-    <Container maxWidth="600px">
-      <Stack gap={4}>
+    <Box fullWidth className={formShellClassName}>
+      <Stack gap="400">
         <PageHeader
           title="New team"
           subtitle={getSummary(currentWorkspace.name)}
@@ -67,7 +71,7 @@ export function CreateTeamScreen() {
             void handleSubmit()
           }}
         >
-          <Stack gap={4}>
+          <Stack gap="400">
             <div>
               <label style={labelStyle}>
                 <Text variant="body3">Team name</Text>
@@ -78,6 +82,7 @@ export function CreateTeamScreen() {
                 placeholder="Enter team name"
                 disabled={submitting}
                 autoFocus
+                fullWidth
               />
             </div>
             {error ? (
@@ -88,7 +93,7 @@ export function CreateTeamScreen() {
                 className="w-full"
               />
             ) : null}
-            <Flex gap={2} justify="flex-start">
+            <Inline gap="200" justify="flex-start" fullWidth>
               <Button
                 variant="primary"
                 disabled={!name.trim() || submitting}
@@ -99,10 +104,10 @@ export function CreateTeamScreen() {
               <Button variant="danger" onClick={handleCancel}>
                 Cancel
               </Button>
-            </Flex>
+            </Inline>
           </Stack>
         </form>
       </Stack>
-    </Container>
+    </Box>
   )
 }

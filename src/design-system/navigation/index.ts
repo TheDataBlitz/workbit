@@ -1,5 +1,0 @@
-export { Navbar } from './Navbar'
-export { Breadcrumb } from './Breadcrumb'
-export type { BreadcrumbItem } from './Breadcrumb'
-export { Tabs } from './Tabs'
-export type { TabItem } from './Tabs'

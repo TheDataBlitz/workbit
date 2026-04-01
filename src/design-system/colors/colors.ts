@@ -1,19 +1,3 @@
-// Badge palette: light (bg, border) and solid (bg) per design screenshot
-const badgePaletteLight = {
-  blue: { bg: '#E0F2FE', border: '#BFDBFE' },
-  grey: { bg: '#F3F4F6', border: '#D1D5DB' },
-  green: { bg: '#D1FAE5', border: '#A7F3D0' },
-  red: { bg: '#FEE2E2', border: '#FECACA' },
-  orange: { bg: '#FFFBEB', border: '#FDE68A' },
-} as const
-const badgePaletteSolid = {
-  blue: '#3B82F6',
-  grey: '#6B7280',
-  green: '#10B981',
-  red: '#EF4444',
-  orange: '#F97316',
-} as const
-
 export const colorsLight = {
   primary: '#3B82F6',
   primaryHover: '#2563eb',
@@ -47,7 +31,6 @@ export const colorsLight = {
   tooltipDarkBg: '#2C3E50',
   notificationNeutral: '#2C3E50',
   notificationNeutralBg: '#F3F4F6',
-  badge: { light: badgePaletteLight, solid: badgePaletteSolid },
   dropdownHoverBg: '#E0F2FF',
   dropdownSelectedBg: '#E0F2FF',
 }
@@ -67,6 +50,7 @@ export const colorsDark = {
   text: '#f8fafc',
   textMuted: '#94a3b8',
   border: '#334155',
+  borderLight: '#1e293b',
   borderFocus: '#3b82f6',
   success: '#22c55e',
   successBg: '#14532d',
@@ -83,7 +67,6 @@ export const colorsDark = {
   tooltipDarkBg: '#1e293b',
   notificationNeutral: '#334155',
   notificationNeutralBg: '#1e293b',
-  badge: { light: badgePaletteLight, solid: badgePaletteSolid },
   dropdownHoverBg: '#1e3a5f',
   dropdownSelectedBg: '#1e3a5f',
 }

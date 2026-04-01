@@ -1,26 +1,28 @@
-import { useCallback, useRef } from 'react'
-import styled from 'styled-components'
+import { useCallback, useRef, type CSSProperties, type RefObject } from 'react'
 import { SmilePlus } from 'lucide-react'
-import { IconButton } from '../IconButton'
-import { Popup } from '../Popup'
 
-const HiddenInput = styled.input`
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-`
+import { Button } from '@thedatablitz/button'
+import { Popup } from '@thedatablitz/popup'
+import type { PopupPlacement } from '@thedatablitz/popup'
 
-const ShortcutHint = styled.div`
-  font-size: 0.8125rem;
-  color: ${(p) => p.theme.colors.textMuted};
-  white-space: nowrap;
-`
+const hiddenInputStyle: CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0, 0, 0, 0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+}
+
+const hintStyle: CSSProperties = {
+  fontSize: '0.8125rem',
+  color: 'var(--db-color-text-subtle, #6b7280)',
+  whiteSpace: 'nowrap',
+  padding: '8px 10px',
+}
 
 function isMac(): boolean {
   if (typeof navigator === 'undefined') return false
@@ -54,10 +56,18 @@ function tryOpenNativeEmojiPicker(inputEl: HTMLInputElement | null): void {
   inputEl.dispatchEvent(event)
 }
 
-type Props = {
-  /** Optional ref to an input/textarea; if provided, it will be focused so the OS emoji picker inserts into it. */
-  targetRef?: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>
-  /** Placement of the shortcut-hint popup. */
+const PLACEMENT_MAP: Record<
+  'top' | 'bottom' | 'left' | 'right',
+  PopupPlacement
+> = {
+  top: 'top-right',
+  bottom: 'bottom-right',
+  left: 'top-left',
+  right: 'top-right',
+}
+
+type NativeEmojiHintProps = {
+  targetRef?: RefObject<HTMLInputElement | HTMLTextAreaElement | null>
   placement?: 'top' | 'bottom' | 'left' | 'right'
   className?: string
 }
@@ -65,11 +75,11 @@ type Props = {
 const MAC_SHORTCUT = '⌘⌃Space'
 const WIN_SHORTCUT = 'Win + .'
 
-export function EmojiSelector({
+export function NativeEmojiHint({
   targetRef,
   placement = 'top',
   className,
-}: Props) {
+}: NativeEmojiHintProps) {
   const hiddenInputRef = useRef<HTMLInputElement>(null)
 
   const handleTriggerClick = useCallback(() => {
@@ -82,29 +92,31 @@ export function EmojiSelector({
 
   return (
     <>
-      <HiddenInput
+      <input
         ref={hiddenInputRef}
         type="text"
         aria-hidden
         tabIndex={-1}
         readOnly
         data-emoji-input
+        style={hiddenInputStyle}
       />
       <Popup
         trigger={
-          <IconButton
+          <Button
+            buttonType="icon"
+            variant="glass"
+            size="small"
             aria-label="Open emoji picker"
+            icon={<SmilePlus size={18} />}
             onClick={handleTriggerClick}
-          >
-            <SmilePlus size={18} />
-          </IconButton>
+          />
         }
-        placement={placement}
-        openOnClick
-        openOnHover={false}
+        placement={PLACEMENT_MAP[placement]}
+        showCloseButton={false}
         className={className}
       >
-        <ShortcutHint>Use {shortcut} to open the emoji picker</ShortcutHint>
+        <div style={hintStyle}>Use {shortcut} to open the emoji picker</div>
       </Popup>
     </>
   )

@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 
-import { Flex } from '@design-system'
-import { Text } from '@design-system/typography'
+import { Button } from '@thedatablitz/button'
+import { Inline } from '@thedatablitz/inline'
+import { Text } from '@thedatablitz/text'
 import { SectionHeader, CollapsibleContent } from '../CollapsibleSection'
 import { Timeline, TimelineItem, TimelineDot, TimelineBody } from './styles'
 import type { ActivitySectionProps } from './types'
 import { DEFAULT_ACTIVITY } from './utils/defaultActivity'
 import { getActivityIcon } from './utils/getActivityIcon'
-import { Button } from '@thedatablitz/button'
+
 export type { ActivityItem } from './types'
 
 export function ActivitySection({
@@ -29,12 +30,14 @@ export function ActivitySection({
         >
           <TimelineDot>{getActivityIcon(item.icon)}</TimelineDot>
           <TimelineBody>
-            <Text size="sm" as="span">
-              {item.message}
-            </Text>
-            <Text size="xs" muted as="span">
-              · {item.date}
-            </Text>
+            <Inline gap="050" align="baseline" wrap>
+              <Text variant="body3" as="span">
+                {item.message}
+              </Text>
+              <Text variant="caption2" color="color.text.subtle" as="span">
+                · {item.date}
+              </Text>
+            </Inline>
           </TimelineBody>
         </TimelineItem>
       ))}
@@ -46,19 +49,24 @@ export function ActivitySection({
   return (
     <div>
       <SectionHeader type="button" onClick={() => setOpen((o) => !o)}>
-        <Flex align="center" gap={2}>
-          <ChevronDown
-            size={14}
-            style={{
-              transform: open ? 'rotate(0deg)' : 'rotate(-90deg)',
-              transition: 'transform 0.2s',
-            }}
-          />
-          <Text>Activity</Text>
-        </Flex>
-        <Button buttonType="link" size="small" variant="primary">
-          See all
-        </Button>
+        <Inline align="center" justify="space-between" gap="100" fullWidth>
+          <Inline align="center" gap="050">
+            <ChevronDown
+              size={14}
+              style={{
+                transform: open ? 'rotate(0deg)' : 'rotate(-90deg)',
+                transition: 'transform 0.2s',
+              }}
+              aria-hidden
+            />
+            <Text variant="body2" as="span">
+              Activity
+            </Text>
+          </Inline>
+          <Button buttonType="link" size="small" variant="primary">
+            See all
+          </Button>
+        </Inline>
       </SectionHeader>
       <CollapsibleContent $open={open}>{content}</CollapsibleContent>
     </div>

@@ -2,13 +2,12 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 
 import { Alert } from '@thedatablitz/alert'
-import { Stack as View } from '@design-system'
+import { Stack } from '@thedatablitz/stack'
 import { PageHeader } from '@thedatablitz/page-header'
 import { Button } from '@thedatablitz/button'
 import { Inline } from '@thedatablitz/inline'
 import { fetchProjects } from '../../api/client'
 import { useFetch } from '../../hooks/useFetch'
-import { Stack } from '@thedatablitz/stack'
 import { Text } from '@thedatablitz/text'
 import { Badge } from '@thedatablitz/badge'
 import { Table } from '@thedatablitz/table'
@@ -31,7 +30,7 @@ export function WorkspaceProjectsScreen() {
   // }
 
   return (
-    <View gap={4} className="flex w-full flex-col">
+    <Stack gap="400" className="flex w-full flex-col">
       <PageHeader
         avatar={{
           name: 'Projects',
@@ -77,6 +76,6 @@ export function WorkspaceProjectsScreen() {
           />
         </Stack>
       ) : null}
-    </View>
+    </Stack>
   )
 }

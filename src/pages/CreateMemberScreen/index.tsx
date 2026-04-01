@@ -1,11 +1,15 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { Container, Input, Select } from '@design-system'
 import { Alert } from '@thedatablitz/alert'
+import { Box } from '@thedatablitz/box'
+import { Button } from '@thedatablitz/button'
+import { Dropdown } from '@thedatablitz/dropdown'
+import { Inline } from '@thedatablitz/inline'
+import { PageHeader } from '@thedatablitz/page-header'
 import { Stack } from '@thedatablitz/stack'
 import { Text } from '@thedatablitz/text'
-import { PageHeader } from '@thedatablitz/page-header'
+import { TextInput } from '@thedatablitz/text-input'
 import { createMember, fetchWorkspaceTeams } from '../../api/client'
 import { useWorkspace } from '../../contexts/WorkspaceContext'
 import { useFetch } from '../../hooks/useFetch'
@@ -19,9 +23,8 @@ import {
   STATUS_OPTIONS,
   toggleTeamIds,
 } from './utils/helpers'
-import { Button } from '@thedatablitz/button'
-import { Inline } from '@thedatablitz/inline'
-import { Box } from '@thedatablitz/box'
+
+const formShellClassName = 'w-full max-w-[600px] mx-auto px-4'
 
 export function CreateMemberScreen() {
   const { workspaceId, teamId: teamIdFromUrl } = useParams<RouteParams>()
@@ -87,16 +90,16 @@ export function CreateMemberScreen() {
 
   if (!workspaceId || !currentWorkspace) {
     return (
-      <Container maxWidth="600px">
+      <Box fullWidth className={formShellClassName}>
         <Text>Workspace not found.</Text>
-      </Container>
+      </Box>
     )
   }
 
   const summary = getSummary(isTeamScoped, currentWorkspace.name, teamName)
 
   return (
-    <Box>
+    <Box fullWidth className={formShellClassName}>
       <Stack gap="400">
         <PageHeader title="New member" subtitle={summary} />
         <form onSubmit={handleSubmit}>
@@ -105,45 +108,52 @@ export function CreateMemberScreen() {
               <label style={fieldLabelStyle}>
                 <Text variant="body3">Name</Text>
               </label>
-              <Input
+              <TextInput
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Full name"
                 disabled={submitting}
                 autoFocus
+                fullWidth
               />
             </div>
             <div>
               <label style={fieldLabelStyle}>
                 <Text variant="body3">Username</Text>
               </label>
-              <Input
+              <TextInput
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Username"
                 disabled={submitting}
+                fullWidth
               />
             </div>
             <div>
               <label style={fieldLabelStyle}>
                 <Text variant="body3">Email</Text>
               </label>
-              <Input
+              <TextInput
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="email@example.com"
                 disabled={submitting}
+                fullWidth
               />
             </div>
             <div>
               <label style={fieldLabelStyle}>
                 <Text variant="body3">Status</Text>
               </label>
-              <Select
+              <Dropdown
+                options={STATUS_OPTIONS.map((o) => ({
+                  value: o.value,
+                  label: o.label,
+                }))}
                 value={status}
                 onChange={(value) => setStatus(value as MemberStatus)}
-                options={STATUS_OPTIONS}
+                disabled={submitting}
               />
             </div>
             {teams && teams.length > 0 && (

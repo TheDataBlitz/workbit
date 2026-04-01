@@ -1,4 +1,4 @@
-import type { ProjectTableRow } from '../../../components'
+import type { ProjectTableRow } from '../utils/createProjectColumn'
 
 export type WorkspaceProjectsParams = {
   workspaceId: string

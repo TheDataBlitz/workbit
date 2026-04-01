@@ -10,7 +10,6 @@ export { SidebarNav } from './SidebarNav'
 export { PropertiesSection } from './PropertiesSection'
 export { ActivitySection, type ActivityItem } from './ActivitySection'
 export { ProjectStatusPanel } from './ProjectStatusPanel'
-export { ResourceSelector } from './ResourceSelector'
 export {
   StatusUpdateComposer,
   type ProjectStatus,
