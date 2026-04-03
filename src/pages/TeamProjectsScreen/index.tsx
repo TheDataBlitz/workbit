@@ -7,6 +7,7 @@ import { Stack } from '@thedatablitz/stack'
 import { Text } from '@thedatablitz/text'
 import { Table } from '@thedatablitz/table'
 
+import { InteleBit } from '../../components/InteleBit'
 import { useWorkspace } from '../../contexts/WorkspaceContext'
 import type {
   TeamProjectColumnDef,
@@ -29,6 +30,10 @@ export function TeamProjectsScreen({ teamName }: TeamProjectsScreenProps) {
   const { projects: workspaceProjects } = useWorkspace()
   const projects = toTeamProjects(workspaceProjects, teamId)
 
+  const handleOpenAsk = useCallback((row: TeamProjectRow) => {
+    InteleBit.ask({ projectId: row.id, projectName: row.name })
+  }, [])
+
   const handleRowClick = useCallback(
     (row: TeamProjectRow) => {
       if (workspaceId && teamId) {
@@ -39,8 +44,8 @@ export function TeamProjectsScreen({ teamName }: TeamProjectsScreenProps) {
   )
 
   const columns = useMemo<TeamProjectColumnDef[]>(
-    () => createColumns(handleRowClick),
-    [handleRowClick]
+    () => createColumns(handleRowClick, handleOpenAsk),
+    [handleOpenAsk, handleRowClick]
   )
 
   const handleNewProject = () => {

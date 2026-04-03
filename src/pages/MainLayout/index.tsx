@@ -36,6 +36,7 @@ import { isProfileRoute, shouldShowNoTeamBlocker } from './utils/helpers'
 import { Button } from '@thedatablitz/button'
 import { Inline } from '@thedatablitz/inline'
 import { GlobalSearch } from '../../components/GlobalSearch'
+import { InteleBit } from '../../components/InteleBit'
 
 type SidebarWithCollapseProps = ComponentProps<typeof Sidebar> & {
   collapsed: boolean
@@ -178,6 +179,8 @@ export function MainLayout() {
           </ContentInner>
         </ContentWrapper>
       </MainContainer>
+
+      <InteleBit />
     </LayoutContainer>
   )
 }

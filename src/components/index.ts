@@ -25,3 +25,18 @@ export { ProfileUsageTab } from './ProfileUsageTab'
 export { IssueActivity, type IssueActivityProps } from './IssueActivity'
 export { IssueProperties, type IssuePropertiesProps } from './IssueProperties'
 export { SubIssues, type SubIssuesProps } from './SubIssues'
+export { Chat, formatResponseDuration } from './Chat'
+export type {
+  ChatRootProps,
+  ChatHeaderProps,
+  ChatBodyProps,
+  ChatResponseProps,
+  ChatRequestProps,
+  ChatLoadingProps,
+  ChatInputProps,
+} from './Chat'
+export {
+  InteleBit,
+  type InteleBitOpenDetail,
+  type InteleBitType,
+} from './InteleBit'

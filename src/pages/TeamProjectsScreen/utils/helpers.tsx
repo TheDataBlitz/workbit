@@ -1,3 +1,5 @@
+import { Button } from '@thedatablitz/button'
+
 import type { TeamProjectColumnDef, TeamProjectRow } from '../types'
 
 type WorkspaceProject = {
@@ -10,7 +12,8 @@ type WorkspaceProject = {
 }
 
 export function createColumns(
-  onProjectOpen?: (row: TeamProjectRow) => void
+  onProjectOpen?: (row: TeamProjectRow) => void,
+  onAsk?: (row: TeamProjectRow) => void
 ): TeamProjectColumnDef[] {
   return [
     {
@@ -45,6 +48,24 @@ export function createColumns(
       header: 'Status',
       meta: { flex: 1 },
       cell: ({ row }) => row.original.status,
+    },
+    {
+      id: 'ask',
+      accessorKey: 'id',
+      header: '',
+      meta: { flex: 0.6 },
+      cell: ({ row }) => (
+        <Button
+          variant="glass"
+          size="small"
+          onClick={(event) => {
+            event.stopPropagation()
+            onAsk?.(row.original)
+          }}
+        >
+          Ask
+        </Button>
+      ),
     },
   ]
 }
