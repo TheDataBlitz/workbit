@@ -1,6 +1,6 @@
 {
   "name": "@thedatablitz/workbit-sdk",
-  "version": "0.1.22",
+  "version": "0.1.23",
   "private": false,
   "type": "module",
   "main": "dist/index.js",
@@ -30,6 +30,6 @@
     "dist"
   ],
   "dependencies": {
-    "@thedatablitz/workbit-sdk": "^0.1.16"
+    "@thedatablitz/text-editor": "^0.12.0"
   }
 }
