@@ -145,6 +145,61 @@ let config: { apiKey: string; baseUrl: string } | null = null
 
 const DEFAULT_BASE_URL = 'http://localhost:3001'
 
+type LexicalSerialized = string
+
+function plainTextToLexicalSerialized(input: string): LexicalSerialized {
+  const text = input.replace(/\r\n/g, '\n')
+  const rawLines = text.split('\n')
+
+  const blocks: Array<{ type: 'paragraph'; version: 1; children: unknown[] }> =
+    []
+
+  // Group into paragraphs separated by blank lines.
+  let current: string[] = []
+  const flush = () => {
+    if (current.length === 0) return
+    const paragraphText = current.join('\n').trimEnd()
+    blocks.push({
+      type: 'paragraph',
+      version: 1,
+      children: [
+        {
+          type: 'text',
+          version: 1,
+          text: paragraphText,
+          detail: 0,
+          format: 0,
+          mode: 'normal',
+          style: '',
+        },
+      ],
+    })
+    current = []
+  }
+
+  for (const line of rawLines) {
+    if (line.trim() === '') {
+      flush()
+      continue
+    }
+    current.push(line)
+  }
+  flush()
+
+  const lexical = {
+    root: {
+      type: 'root',
+      version: 1,
+      children: blocks,
+      direction: null,
+      format: '',
+      indent: 0,
+    },
+  }
+
+  return JSON.stringify(lexical)
+}
+
 function lexicalJsonHasMeaningfulText(serialized: string): boolean {
   try {
     const parsed = JSON.parse(serialized) as {
@@ -197,7 +252,8 @@ function toLexicalDescription(raw: string | null | undefined): string {
     const converted = convertToLexicalJson(s, 'markdown')
     return lexicalJsonHasMeaningfulText(converted) ? converted : ''
   } catch {
-    return s
+    const fallback = plainTextToLexicalSerialized(s)
+    return lexicalJsonHasMeaningfulText(fallback) ? fallback : ''
   }
 }
 
