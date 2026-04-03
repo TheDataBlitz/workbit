@@ -37,10 +37,16 @@ function useProjectTitle(projectId: string | undefined) {
 function useRedirectIfInvalidTeam() {
   const { workspaceId, teamId } = useParams<TeamRouteParams>()
   const navigate = useNavigate()
-  const { teams, teamsLoading } = useWorkspace()
+  const { teams, teamsLoading, workspacesLoading, currentWorkspace } =
+    useWorkspace()
 
   useEffect(() => {
-    if (!workspaceId || !teamId || teamsLoading) return
+    if (!workspaceId || !teamId) return
+    if (workspacesLoading) return
+    // On hard refresh, MainLayout resolves currentWorkspace asynchronously.
+    // Don't redirect based on an "unknown" workspace/teams state.
+    if (!currentWorkspace || currentWorkspace.id !== workspaceId) return
+    if (teamsLoading) return
     const isReserved = RESERVED_TEAM_SEGMENTS.has(teamId)
     const isValidTeam = teams.some((team) => team.id === teamId)
     if (isReserved || !isValidTeam) {
@@ -55,7 +61,15 @@ function useRedirectIfInvalidTeam() {
         navigate(`/workspace/${workspaceId}/workspace/teams`, { replace: true })
       }
     }
-  }, [workspaceId, teamId, teams, teamsLoading, navigate])
+  }, [
+    workspaceId,
+    teamId,
+    teams,
+    teamsLoading,
+    workspacesLoading,
+    currentWorkspace,
+    navigate,
+  ])
 }
 
 export function TeamIssuesScreenWrapper() {
