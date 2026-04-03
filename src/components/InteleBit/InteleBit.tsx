@@ -7,7 +7,7 @@ import { Box } from '@thedatablitz/box'
 import { Button } from '@thedatablitz/button'
 import { Popup } from '@thedatablitz/popup'
 
-import { Chat } from '../Chat'
+import { Chat } from '@thedatablitz/chat'
 import { postAiPrompt } from '../../api/aiClient'
 import { logError } from '../../utils/errorHandling'
 import {

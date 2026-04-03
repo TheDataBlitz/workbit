@@ -25,7 +25,12 @@ export { ProfileUsageTab } from './ProfileUsageTab'
 export { IssueActivity, type IssueActivityProps } from './IssueActivity'
 export { IssueProperties, type IssuePropertiesProps } from './IssueProperties'
 export { SubIssues, type SubIssuesProps } from './SubIssues'
-export { Chat, formatResponseDuration } from './Chat'
+export {
+  Chat,
+  formatResponseDuration,
+  formatChatTimestamp,
+  formatChatAbsoluteTimestamp,
+} from '@thedatablitz/chat'
 export type {
   ChatRootProps,
   ChatHeaderProps,
@@ -34,7 +39,9 @@ export type {
   ChatRequestProps,
   ChatLoadingProps,
   ChatInputProps,
-} from './Chat'
+  ChatTimestampMode,
+  FormatChatTimestampOptions,
+} from '@thedatablitz/chat'
 export {
   InteleBit,
   type InteleBitOpenDetail,
