@@ -145,13 +145,30 @@ let config: { apiKey: string; baseUrl: string } | null = null
 
 const DEFAULT_BASE_URL = 'http://localhost:3001'
 
-function lexicalJsonHasBlockContent(serialized: string): boolean {
+function lexicalJsonHasMeaningfulText(serialized: string): boolean {
   try {
     const parsed = JSON.parse(serialized) as {
       root?: { children?: unknown }
     }
     const children = parsed?.root?.children
-    return Array.isArray(children) && children.length > 0
+    if (!Array.isArray(children)) return false
+
+    const stack: unknown[] = [...children]
+    while (stack.length > 0) {
+      const node = stack.pop()
+      if (!node || typeof node !== 'object') continue
+
+      const anyNode = node as Record<string, unknown>
+      const text = anyNode.text
+      if (typeof text === 'string' && text.trim() !== '') return true
+
+      const nested = anyNode.children
+      if (Array.isArray(nested)) {
+        for (const child of nested) stack.push(child)
+      }
+    }
+
+    return false
   } catch {
     return false
   }
@@ -170,7 +187,7 @@ function toLexicalDescription(raw: string | null | undefined): string {
   try {
     const parsed = JSON.parse(s) as { root?: unknown }
     if (parsed && typeof parsed === 'object' && parsed.root != null) {
-      return lexicalJsonHasBlockContent(s) ? s : ''
+      return lexicalJsonHasMeaningfulText(s) ? s : ''
     }
   } catch {
     // not JSON — treat as markdown/plain text
@@ -178,16 +195,17 @@ function toLexicalDescription(raw: string | null | undefined): string {
 
   try {
     const converted = convertToLexicalJson(s, 'markdown')
-    return lexicalJsonHasBlockContent(converted) ? converted : ''
+    return lexicalJsonHasMeaningfulText(converted) ? converted : ''
   } catch {
-    return ''
+    return s
   }
 }
 
 function maybeLexicalDescription(
   raw: string | null | undefined
 ): string | undefined {
-  if (raw === undefined) return undefined
+  if (raw == null) return undefined
+  if (typeof raw === 'string' && raw.trim() === '') return undefined
   return toLexicalDescription(raw)
 }
 
