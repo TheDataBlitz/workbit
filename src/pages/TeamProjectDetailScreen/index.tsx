@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Box } from '@thedatablitz/box'
-import { Alert } from '@thedatablitz/alert'
 import { Breadcrumbs, BreadcrumbsItem } from '@thedatablitz/breadcrumb'
 import { Button } from '@thedatablitz/button'
-import { Card, CardContent, CardFooter } from '@thedatablitz/card'
 import { Inline } from '@thedatablitz/inline'
 import { Stack } from '@thedatablitz/stack'
 import { Tabs } from '@thedatablitz/tabs'
@@ -14,14 +12,10 @@ import type { ActivityItem } from '../../components'
 import { noop } from '../../utils/noop'
 import { formatDateTime } from '../../utils/format'
 import { logError } from '../../utils/errorHandling'
-import {
-  fetchTeamProject,
-  patchProject,
-  runProjectAgent,
-} from '../../api/client'
+import { fetchTeamProject, patchProject } from '../../api/client'
 import type { ApiProjectProperties } from '../../api/client'
 import type { TeamProjectDetailScreenProps } from './types'
-import { Bot, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useProjectPeopleProperties } from './hooks/useProjectPeopleProperties'
 import { PageHeader } from '@thedatablitz/page-header'
 import { ProjectDetailDecisionsTab } from './Decisions'
@@ -51,16 +45,6 @@ export function TeamProjectDetailScreen({
   )
   const [loading, setLoading] = useState(true)
   const [projectDescription, setProjectDescription] = useState('')
-  const [agentRunningMode, setAgentRunningMode] = useState<
-    'single' | 'planner_worker' | null
-  >(null)
-  const [agentError, setAgentError] = useState<string | null>(null)
-  const [agentOutcome, setAgentOutcome] = useState<{
-    summary: string
-    finishedReason?: string
-    plan?: string
-    mode: string
-  } | null>(null)
   const { teamMembers, handleLeadChange, handleMemberIdsChange } =
     useProjectPeopleProperties({
       teamId,
@@ -114,27 +98,6 @@ export function TeamProjectDetailScreen({
     void patchProject(teamId, { priority }).catch((e) =>
       logError(e, 'TeamProjectDetail')
     )
-  }
-
-  const handleRunAgent = (mode: 'single' | 'planner_worker') => {
-    if (!projectId) return
-    setAgentRunningMode(mode)
-    setAgentError(null)
-    setAgentOutcome(null)
-    runProjectAgent(projectId, { mode })
-      .then((out) => {
-        setAgentOutcome({
-          summary: out.summary,
-          finishedReason: out.finishedReason,
-          plan: out.plan,
-          mode: out.mode,
-        })
-      })
-      .catch((e) => {
-        logError(e, 'TeamProjectDetail.runProjectAgent')
-        setAgentError((e as Error).message)
-      })
-      .finally(() => setAgentRunningMode(null))
   }
 
   if (loading) {
@@ -204,86 +167,9 @@ export function TeamProjectDetailScreen({
                       >
                         Add document or link
                       </Button>
-                      <Button
-                        variant="glass"
-                        size="small"
-                        icon={<Bot size={16} />}
-                        disabled={agentRunningMode !== null || !projectId}
-                        onClick={() => handleRunAgent('single')}
-                      >
-                        {agentRunningMode === 'single'
-                          ? 'Running…'
-                          : 'Run agent'}
-                      </Button>
-                      <Button
-                        variant="glass"
-                        size="small"
-                        icon={<Bot size={16} />}
-                        disabled={agentRunningMode !== null || !projectId}
-                        onClick={() => handleRunAgent('planner_worker')}
-                      >
-                        {agentRunningMode === 'planner_worker'
-                          ? 'Running…'
-                          : 'Plan & run'}
-                      </Button>
                     </Inline>
                   </Stack>
                 </Inline>
-
-                {agentError ? (
-                  <Alert
-                    variant="error"
-                    placement="inline"
-                    description={agentError}
-                    className="w-full"
-                  />
-                ) : null}
-                {agentOutcome ? (
-                  <Card fullWidth variant="default" size="small">
-                    <CardContent>
-                      <Stack gap="200">
-                        <Text variant="caption2" color="color.text.subtle">
-                          Agent · {agentOutcome.mode}
-                          {agentOutcome.finishedReason
-                            ? ` · ${agentOutcome.finishedReason}`
-                            : ''}
-                        </Text>
-                        {agentOutcome.plan ? (
-                          <>
-                            <Text variant="heading6">Plan</Text>
-                            <Text
-                              variant="body3"
-                              paragraphSpacing
-                              style={{ whiteSpace: 'pre-wrap' }}
-                            >
-                              {agentOutcome.plan}
-                            </Text>
-                          </>
-                        ) : null}
-                        <Text variant="heading6">Summary</Text>
-                        <Text
-                          variant="body3"
-                          paragraphSpacing
-                          style={{ whiteSpace: 'pre-wrap' }}
-                        >
-                          {agentOutcome.summary}
-                        </Text>
-                      </Stack>
-                    </CardContent>
-                    <CardFooter>
-                      <Button
-                        buttonType="link"
-                        size="small"
-                        onClick={() => {
-                          setAgentOutcome(null)
-                          setAgentError(null)
-                        }}
-                      >
-                        Dismiss
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ) : null}
 
                 <ProjectDetailOverviewStatus {...projectUpdates} />
               </Stack>

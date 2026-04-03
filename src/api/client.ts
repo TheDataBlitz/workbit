@@ -441,38 +441,6 @@ export async function patchProject(
   }) as Promise<ApiProjectProperties>
 }
 
-export type AgentRunMode = 'single' | 'planner_worker'
-
-export type RunProjectAgentResponse = {
-  summary: string
-  finishedReason?: 'max_rounds' | 'model_done' | 'empty_reply' | 'no_message'
-  mode: AgentRunMode
-  plan?: string
-}
-
-/** Run the project-scoped MCP agent (NVIDIA + allowlisted tools). */
-export async function runProjectAgent(
-  projectId: string,
-  body?: {
-    instructions?: string
-    maxRounds?: number
-    mode?: AgentRunMode
-  }
-): Promise<RunProjectAgentResponse> {
-  const raw = (await authFetch('/agents/run', {
-    method: 'POST',
-    body: JSON.stringify({
-      projectId,
-      ...(body?.instructions !== undefined
-        ? { instructions: body.instructions }
-        : {}),
-      ...(body?.maxRounds !== undefined ? { maxRounds: body.maxRounds } : {}),
-      ...(body?.mode !== undefined ? { mode: body.mode } : {}),
-    }),
-  })) as RunProjectAgentResponse
-  return raw
-}
-
 // --- Team issues ---
 
 export async function fetchTeamIssues(
@@ -763,15 +731,4 @@ export async function updateIssue(
     method: 'PATCH',
     body: JSON.stringify(body),
   }) as Promise<ApiIssueDetail>
-}
-
-export type ApiChatReply = {
-  reply: string
-}
-
-export async function sendChatMessage(message: string): Promise<ApiChatReply> {
-  return authFetch('/chat', {
-    method: 'POST',
-    body: JSON.stringify({ message }),
-  }) as Promise<ApiChatReply>
 }

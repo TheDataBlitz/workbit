@@ -39,11 +39,8 @@ function getMcpSpawnConfig(): { command: string; args: string[] } {
 function mcpChildEnvOverrides(
   auth: WorkbitUpstreamAuth
 ): Record<string, string> {
-  const port = String(Number(process.env.PORT) || 3001)
-  const apiBase =
-    process.env.WORKBIT_API_BASE_URL_FOR_MCP ??
-    process.env.WORKBIT_API_BASE_URL ??
-    `http://127.0.0.1:${port}/api/v1`
+  const port = 3001
+  const apiBase = `http://127.0.0.1:${port}/api/v1`
 
   const env: Record<string, string> = {
     WORKBIT_API_BASE_URL: apiBase,

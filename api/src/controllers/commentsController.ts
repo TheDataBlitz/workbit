@@ -2,11 +2,7 @@ import type { Request, Response } from 'express'
 import * as teamsModel from '../models/teams.js'
 import * as issuesModel from '../models/issues.js'
 import { logApiError } from '../utils/log.js'
-import {
-  KNIFEEDGE_REPLY_AUTHOR,
-  prepareKnifeedgeCommentResult,
-} from '../utils/ai/statusUpdateCommentAssistant.js'
-import { isSerializedCommentEmpty } from '../utils/lexicalKnifeedge.js'
+import { isSerializedCommentEmpty } from '../utils/lexicalCommentContent.js'
 
 const DEFAULT_AUTHOR_NAME = 'You'
 
@@ -124,21 +120,8 @@ export async function postStatusUpdateComment(req: Request, res: Response) {
       res.status(400).json({ error: 'content is required' })
       return
     }
-    const knifeedgeResult = await prepareKnifeedgeCommentResult({
-      auth: req.workbitUpstreamAuth,
-      teamId,
-      updateId,
-      content,
-      parentCommentId:
-        parentCommentId === undefined || parentCommentId === ''
-          ? null
-          : parentCommentId,
-    })
-    const visibleCommentContent = knifeedgeResult.visibleCommentContent
-    if (isSerializedCommentEmpty(visibleCommentContent)) {
-      res
-        .status(400)
-        .json({ error: 'content is required after !knifedge prefix.' })
+    if (isSerializedCommentEmpty(content)) {
+      res.status(400).json({ error: 'content is required' })
       return
     }
 
@@ -146,7 +129,7 @@ export async function postStatusUpdateComment(req: Request, res: Response) {
     const comment = await teamsModel.addStatusUpdateComment(
       teamId,
       updateId,
-      visibleCommentContent,
+      content,
       authorName,
       undefined,
       {
@@ -156,29 +139,7 @@ export async function postStatusUpdateComment(req: Request, res: Response) {
             : parentCommentId,
       }
     )
-    const createdComments: Array<{
-      id: string
-      updateId: string
-      authorName: string
-      authorAvatarSrc?: string
-      content: string
-      timestamp: string
-      parentCommentId: string | null
-    }> = [comment]
-
-    if (knifeedgeResult.aiReplyText) {
-      const aiReplyComment = await teamsModel.addStatusUpdateComment(
-        teamId,
-        updateId,
-        knifeedgeResult.aiReplyText,
-        KNIFEEDGE_REPLY_AUTHOR,
-        undefined,
-        { parentCommentId: comment.id }
-      )
-      createdComments.push(aiReplyComment)
-    }
-
-    res.status(201).json({ comments: createdComments })
+    res.status(201).json({ comments: [comment] })
   } catch (e) {
     logApiError(e, 'comments.postStatusUpdateComment', {
       teamId: req.params.teamId,
