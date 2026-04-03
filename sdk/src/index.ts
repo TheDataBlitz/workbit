@@ -233,7 +233,7 @@ function lexicalJsonHasMeaningfulText(serialized: string): boolean {
  * Normalizes SDK `description` strings so the API always receives Lexical JSON.
  * - If `raw` is already Lexical JSON with non-empty `root.children`, returns as-is.
  * - Otherwise treats `raw` as markdown/plain text and converts to Lexical JSON.
- * - Returns `''` when there is no content (avoids invalid empty Lexical root objects).
+ * - Returns `''` when there is no content.
  */
 function toLexicalDescription(raw: string | null | undefined): string {
   const s = raw ?? ''
@@ -242,7 +242,10 @@ function toLexicalDescription(raw: string | null | undefined): string {
   try {
     const parsed = JSON.parse(s) as { root?: unknown }
     if (parsed && typeof parsed === 'object' && parsed.root != null) {
-      return lexicalJsonHasMeaningfulText(s) ? s : ''
+      // If callers provide already-serialized Lexical JSON, pass through as-is.
+      // We avoid trying to validate schema details here because different
+      // Lexical serializers can produce shapes our heuristic doesn't detect.
+      return s
     }
   } catch {
     // not JSON — treat as markdown/plain text
@@ -250,11 +253,16 @@ function toLexicalDescription(raw: string | null | undefined): string {
 
   try {
     const converted = convertToLexicalJson(s, 'markdown')
-    return lexicalJsonHasMeaningfulText(converted) ? converted : ''
+    // `convertToLexicalJson` can sometimes produce an empty Lexical root for
+    // non-empty input (observed with certain markdown inputs). When that
+    // happens, fall back to a simple plaintext → Lexical conversion so we
+    // don't silently drop content.
+    if (lexicalJsonHasMeaningfulText(converted)) return converted
   } catch {
-    const fallback = plainTextToLexicalSerialized(s)
-    return lexicalJsonHasMeaningfulText(fallback) ? fallback : ''
+    // ignore; we'll use the plaintext fallback below
   }
+
+  return plainTextToLexicalSerialized(s)
 }
 
 function maybeLexicalDescription(
