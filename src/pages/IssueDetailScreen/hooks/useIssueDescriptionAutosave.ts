@@ -17,6 +17,9 @@ export function useIssueDescriptionAutosave({
   const descriptionLatestRef = useRef('')
   const descriptionLastSavedRef = useRef('')
   const descriptionDirtyRef = useRef(false)
+  // `TextEditor` can fire `onChange` once on mount with an "empty" editor state.
+  // Ignore autosave until we've hydrated refs from the latest `initialDescription`.
+  const hydratedRef = useRef(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const issueIdRef = useRef(issueId)
   issueIdRef.current = issueId
@@ -24,6 +27,10 @@ export function useIssueDescriptionAutosave({
   const saveDescription = useCallback(
     (json: string) => {
       descriptionLatestRef.current = json
+      if (!hydratedRef.current) {
+        // Keep latest in sync, but don't mark dirty / schedule saves yet.
+        return
+      }
       descriptionDirtyRef.current = true
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       saveTimerRef.current = setTimeout(() => {
@@ -71,6 +78,7 @@ export function useIssueDescriptionAutosave({
     descriptionLatestRef.current = normalized
     descriptionLastSavedRef.current = normalized
     descriptionDirtyRef.current = false
+    hydratedRef.current = true
   }, [issueId, initialDescription])
 
   return { saveDescription }

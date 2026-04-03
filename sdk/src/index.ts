@@ -1,3 +1,5 @@
+import { convertToLexicalJson } from '@thedatablitz/text-editor'
+
 export interface WorkbitInitConfig {
   apiKey: string
   baseUrl?: string
@@ -143,6 +145,52 @@ let config: { apiKey: string; baseUrl: string } | null = null
 
 const DEFAULT_BASE_URL = 'http://localhost:3001'
 
+function lexicalJsonHasBlockContent(serialized: string): boolean {
+  try {
+    const parsed = JSON.parse(serialized) as {
+      root?: { children?: unknown }
+    }
+    const children = parsed?.root?.children
+    return Array.isArray(children) && children.length > 0
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Normalizes SDK `description` strings so the API always receives Lexical JSON.
+ * - If `raw` is already Lexical JSON with non-empty `root.children`, returns as-is.
+ * - Otherwise treats `raw` as markdown/plain text and converts to Lexical JSON.
+ * - Returns `''` when there is no content (avoids invalid empty Lexical root objects).
+ */
+function toLexicalDescription(raw: string | null | undefined): string {
+  const s = raw ?? ''
+  if (!s.trim()) return ''
+
+  try {
+    const parsed = JSON.parse(s) as { root?: unknown }
+    if (parsed && typeof parsed === 'object' && parsed.root != null) {
+      return lexicalJsonHasBlockContent(s) ? s : ''
+    }
+  } catch {
+    // not JSON — treat as markdown/plain text
+  }
+
+  try {
+    const converted = convertToLexicalJson(s, 'markdown')
+    return lexicalJsonHasBlockContent(converted) ? converted : ''
+  } catch {
+    return ''
+  }
+}
+
+function maybeLexicalDescription(
+  raw: string | null | undefined
+): string | undefined {
+  if (raw === undefined) return undefined
+  return toLexicalDescription(raw)
+}
+
 function requireConfig(): { apiKey: string; baseUrl: string } {
   if (!config) {
     throw new Error(
@@ -194,11 +242,15 @@ export const workbit = {
       assigneeId?: string | null
     }
   ) {
+    const normalizedPayload = {
+      ...payload,
+      description: maybeLexicalDescription(payload.description),
+    }
     return requestJson<IssueDetail>(
       `/api/v1/issues/${encodeURIComponent(issueId)}`,
       {
         method: 'PATCH',
-        body: JSON.stringify(payload),
+        body: JSON.stringify(normalizedPayload),
       }
     )
   },
@@ -223,14 +275,20 @@ export const workbit = {
   async issue(params: CreateIssueParams): Promise<CreatedIssue> {
     return requestJson<CreatedIssue>('/api/v1/issues', {
       method: 'POST',
-      body: JSON.stringify({ ...params }),
+      body: JSON.stringify({
+        ...params,
+        description: maybeLexicalDescription(params.description),
+      }),
     })
   },
 
   async createProject(params: CreateProjectParams): Promise<CreatedProject> {
     return requestJson<CreatedProject>('/api/v1/workspace/projects', {
       method: 'POST',
-      body: JSON.stringify({ ...params }),
+      body: JSON.stringify({
+        ...params,
+        description: maybeLexicalDescription(params.description),
+      }),
     })
   },
 
