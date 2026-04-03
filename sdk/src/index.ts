@@ -185,6 +185,24 @@ export const workbit = {
     )
   },
 
+  async updateIssue(
+    issueId: string,
+    payload: {
+      title?: string
+      description?: string
+      status?: string
+      assigneeId?: string | null
+    }
+  ) {
+    return requestJson<IssueDetail>(
+      `/api/v1/issues/${encodeURIComponent(issueId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }
+    )
+  },
+
   /** Project metadata — GET /api/v1/projects/:projectId */
   async getProject(projectId: string): Promise<ProjectSummary> {
     return requestJson<ProjectSummary>(
