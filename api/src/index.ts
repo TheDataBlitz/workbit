@@ -14,7 +14,7 @@ initLogbit({
   }),
 })
 import cors from 'cors'
-import { optionalAuth, requireAuthWhenConfigured } from './middleware/auth.js'
+import { optionalAuth, requireAuth } from './middleware/auth.js'
 import { workspaceRoutes } from './routes/workspace.js'
 import { workspacesRoutes } from './routes/workspaces.js'
 import { teamsRoutes } from './routes/teams.js'
@@ -35,7 +35,7 @@ app.use(cors())
 app.use(express.json())
 
 app.use(API_PREFIX, optionalAuth)
-app.use(API_PREFIX, requireAuthWhenConfigured)
+app.use(API_PREFIX, requireAuth)
 app.use(`${API_PREFIX}/auth`, authRoutes)
 app.use(`${API_PREFIX}/workspaces`, workspacesRoutes)
 app.use(`${API_PREFIX}/workspace`, workspaceRoutes)

@@ -80,13 +80,19 @@ export async function optionalAuth(
 }
 
 /**
- * Requires a valid Supabase session. Responds 401 if not configured or no valid token.
+ * Requires a valid session on `/api/v1/*` except `/api/v1/auth/*` (login/signup).
+ * 501 if Supabase is not configured; 401 if no `req.user` (set by `optionalAuth`).
  */
 export function requireAuth(
   req: Request,
   res: Response,
   next: NextFunction
 ): void {
+  const apiPrefix = process.env.API_PREFIX ?? '/api/v1'
+  if (req.path.startsWith(`${apiPrefix}/auth`)) {
+    next()
+    return
+  }
   if (!isSupabaseConfigured()) {
     res.status(501).json({ error: 'Auth not configured' })
     return
@@ -100,26 +106,4 @@ export function requireAuth(
 
 export function getUserId(req: Request, defaultId: string): string {
   return req.user?.id ?? defaultId
-}
-
-/**
- * When Supabase is configured, require auth (401 if no valid session).
- * When not configured, pass through so existing x-user-id/default user still works.
- * Skips auth requirement for /auth/* routes (e.g. login).
- */
-export function requireAuthWhenConfigured(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void {
-  if (!isSupabaseConfigured()) {
-    next()
-    return
-  }
-  const apiPrefix = process.env.API_PREFIX ?? '/api/v1'
-  if (req.path.startsWith(`${apiPrefix}/auth`)) {
-    next()
-    return
-  }
-  requireAuth(req, res, next)
 }

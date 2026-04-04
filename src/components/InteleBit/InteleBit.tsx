@@ -1,14 +1,20 @@
-import { useCallback, useLayoutEffect, useRef, useState, type FC } from 'react'
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FC,
+} from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 
 import { Alert } from '@thedatablitz/alert'
-import { Box } from '@thedatablitz/box'
 import { Button } from '@thedatablitz/button'
 import { Popup } from '@thedatablitz/popup'
 
 import { Chat } from '@thedatablitz/chat'
-import { postAiPrompt } from '../../api/aiClient'
+import { postAiPrompt, type AiChatTurn } from '../../api/aiClient'
 import { logError } from '../../utils/errorHandling'
 import {
   emitInteleBitClose,
@@ -17,10 +23,27 @@ import {
 } from './inteleBitBus'
 import { useInteleBitBus } from './useInteleBitBus'
 import { InteleBitWelcomeBanner } from './InteleBitWelcomeBanner'
+import { MarkdownPreview } from '@thedatablitz/markdown-editor'
 
 type UserTurn = { role: 'user'; content: string }
 type AssistantTurn = { role: 'assistant'; content: string; durationMs: number }
 type ChatTurn = UserTurn | AssistantTurn
+
+/** Flex column shell so Chat can flex-1; scroll stays inside Chat.Body, composer stays visible. */
+const intePopupPanelStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  maxHeight: 'min(85vh, 560px)',
+  minHeight: 0,
+  overflow: 'hidden',
+  padding: 0,
+}
+
+const inteChatFillStyle: CSSProperties = {
+  flex: '1 1 0%',
+  minHeight: 0,
+  minWidth: 0,
+}
 
 function buildContextualPrompt(
   project: InteleBitOpenDetail,
@@ -41,7 +64,7 @@ function InteleBitPanel() {
   const bodyScrollRef = useRef<HTMLDivElement>(null)
 
   const askMutation = useMutation({
-    mutationFn: (contextual: string) => postAiPrompt(contextual),
+    mutationFn: (messages: AiChatTurn[]) => postAiPrompt({ messages }),
     onSuccess: (data) => {
       const start = requestStartedAtRef.current
       requestStartedAtRef.current = null
@@ -101,11 +124,22 @@ function InteleBitPanel() {
   const handleSend = useCallback(() => {
     const trimmed = prompt.trim()
     if (!trimmed || !project || askMutation.isPending) return
+    const isFirstUserMessage = turns.length === 0
+    const userContent = isFirstUserMessage
+      ? buildContextualPrompt(project, trimmed)
+      : trimmed
+    const messages: AiChatTurn[] = [
+      ...turns.map((t) => ({
+        role: t.role,
+        content: t.content,
+      })),
+      { role: 'user', content: userContent },
+    ]
     setTurns((t) => [...t, { role: 'user', content: trimmed }])
     setPrompt('')
     requestStartedAtRef.current = Date.now()
-    askMutation.mutate(buildContextualPrompt(project, trimmed))
-  }, [askMutation, project, prompt])
+    askMutation.mutate(messages)
+  }, [askMutation, project, prompt, turns])
 
   if (!open || !project) {
     return null
@@ -118,79 +152,77 @@ function InteleBitPanel() {
       : project.projectId)
 
   return (
-    <Box className="fixed bottom-4 right-4 z-[10000]">
-      <Popup
-        open={open}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) handleClose()
-        }}
-        trigger={
-          <button
-            type="button"
-            tabIndex={-1}
-            aria-hidden
-            className="pointer-events-none size-0 min-h-0 min-w-0 overflow-hidden border-0 p-0 opacity-0"
-          />
-        }
-        placement="top-right"
-        offset={16}
-        zIndex={10_000}
-        width="min(420px, calc(100vw - 2rem))"
-        minWidth={280}
-        closeOnOutsideClick
-        closeOnEscape
-        showCloseButton={false}
-        className="flex max-h-[min(85vh,560px)] min-h-0 flex-col overflow-hidden p-0"
-      >
-        <Chat className="h-[min(85vh,560px)] min-h-0 min-w-0">
-          <Chat.Header
-            avatarName="InteleBit"
-            title="InteleBit"
-            subtitle={projectSubtitle}
-            trailing={
-              <Button
-                buttonType="icon"
-                variant="danger"
-                size="small"
-                icon={<X size={16} />}
-                aria-label="Close"
-                onClick={handleClose}
-              />
-            }
-          />
-          <Chat.Body ref={bodyScrollRef}>
-            {turns.length === 0 && !sendPending && !mutationError ? (
-              <InteleBitWelcomeBanner />
-            ) : null}
-            {turns.map((turn, i) =>
-              turn.role === 'user' ? (
-                <Chat.Request key={i}>{turn.content}</Chat.Request>
-              ) : (
-                <Chat.Response key={i} durationMs={turn.durationMs}>
-                  {turn.content}
-                </Chat.Response>
-              )
-            )}
-            {sendPending ? <Chat.Loading /> : null}
-            {mutationError && !sendPending ? (
-              <Alert
-                variant="error"
-                placement="inline"
-                description={mutationError}
-              />
-            ) : null}
-          </Chat.Body>
-          <Chat.Input
-            value={prompt}
-            onChange={setPrompt}
-            onSubmit={handleSend}
-            placeholder="Type here…"
-            disabled={false}
-            sendPending={sendPending}
-          />
-        </Chat>
-      </Popup>
-    </Box>
+    <Popup
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) handleClose()
+      }}
+      trigger={
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-hidden
+          className="pointer-events-none size-0 min-h-0 min-w-0 overflow-hidden border-0 p-0 opacity-0"
+        />
+      }
+      placement="top-right"
+      offset={16}
+      zIndex={10_000}
+      width="min(420px, calc(100vw - 2rem))"
+      minWidth={280}
+      closeOnOutsideClick
+      closeOnEscape
+      showCloseButton={false}
+      style={intePopupPanelStyle}
+    >
+      <Chat style={inteChatFillStyle}>
+        <Chat.Header
+          avatarName="InteleBit"
+          title="InteleBit"
+          subtitle={projectSubtitle}
+          trailing={
+            <Button
+              buttonType="icon"
+              variant="danger"
+              size="small"
+              icon={<X size={16} />}
+              aria-label="Close"
+              onClick={handleClose}
+            />
+          }
+        />
+        <Chat.Body ref={bodyScrollRef}>
+          {turns.length === 0 && !sendPending && !mutationError ? (
+            <InteleBitWelcomeBanner />
+          ) : null}
+          {turns.map((turn, i) =>
+            turn.role === 'user' ? (
+              <Chat.Request key={i}>{turn.content}</Chat.Request>
+            ) : (
+              <Chat.Response key={i} durationMs={turn.durationMs}>
+                <MarkdownPreview value={turn.content} />
+              </Chat.Response>
+            )
+          )}
+          {sendPending ? <Chat.Loading /> : null}
+          {mutationError && !sendPending ? (
+            <Alert
+              variant="error"
+              placement="inline"
+              description={mutationError}
+            />
+          ) : null}
+        </Chat.Body>
+        <Chat.Input
+          value={prompt}
+          onChange={setPrompt}
+          onSubmit={handleSend}
+          placeholder="Type here…"
+          disabled={false}
+          sendPending={sendPending}
+        />
+      </Chat>
+    </Popup>
   )
 }
 

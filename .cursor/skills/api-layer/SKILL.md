@@ -17,7 +17,7 @@ The API is Express under `api/src/`. All writes are **REST**; the frontend uses 
 ## Conventions
 
 - **Imports:** Use **relative imports with `.js` extension** (Node ESM): `import * as ctrl from '../controllers/issuesController.js'`, `import * as db from '../db/issues.js'`.
-- **Auth:** All routes under `/api/v1` get `optionalAuth` then `requireAuthWhenConfigured`. Use `getUserId(req)` from `../middleware/auth.js` when you need the current user; handle missing user (401) in the controller.
+- **Auth:** All routes under `/api/v1` get `optionalAuth` then `requireAuth`. Use `getUserId(req)` from `../middleware/auth.js` when you need the current user; handle missing user (401) in the controller.
 - **Mounting:** Register new routers in `api/src/index.ts` (e.g. `app.use(API_PREFIX + '/issues', issuesRoutes)`).
 - **Contract:** Align request/response shapes with `.cursor/docs/API_AND_SERVICES_SPEC.md` where applicable.
 

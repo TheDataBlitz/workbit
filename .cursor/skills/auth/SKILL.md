@@ -19,7 +19,7 @@ Do not add server-side auth logic or service-role usage in the frontend. API aut
 ## API (`api/src/middleware/auth.ts`)
 
 - **optionalAuth** runs first on `/api/v1`: if Supabase is configured, tries (1) Bearer as Supabase JWT → `req.user`, (2) X-API-Key or Bearer as API key → lookup and set `req.user`. Otherwise `req.user` stays undefined.
-- **requireAuthWhenConfigured** runs next: when Supabase is configured, requires a valid session (401 if missing), except for `/api/v1/auth/*` (e.g. login).
+- **requireAuth** (after `optionalAuth`): requires a valid session (401 if missing, 501 if Supabase not configured), except for `/api/v1/auth/*` (e.g. login).
 - **Helpers:** `getUserId(req)` returns `req.user?.id`; use in controllers that need the current user.
 
 ## Auth routes

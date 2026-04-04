@@ -1,0 +1,157 @@
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import {
+  runNimChatCompletion,
+  type NvidiaChatRequestMessage,
+} from '../nvidia-client.js'
+
+const MAX_TOOL_ROUNDS = 8
+
+const SYSTEM_PROMPT =
+  'You are a Workbit assistant. Use the provided tools to read or update projects, issues, decisions, and status when the user asks about their workspace. Prefer calling tools over guessing. Format answers in clear Markdown: use `##` / `###` headings for sections, bullet or numbered lists for items, and Markdown tables when comparing rows of data (e.g. orders, line items). Keep paragraphs short.'
+
+/** Prior turns from the client (current user message is the last entry). */
+export type AiChatTurn = { role: 'user' | 'assistant'; content: string }
+
+type McpTool = Awaited<ReturnType<Client['listTools']>>['tools'][number]
+
+function mcpTools(tools: McpTool[]): unknown[] {
+  return tools.map((t) => ({
+    type: 'function',
+    function: {
+      name: t.name,
+      description: t.description ?? t.name,
+      parameters: t.inputSchema,
+    },
+  }))
+}
+
+async function listAllTools(client: Client): Promise<McpTool[]> {
+  const out: McpTool[] = []
+  let cursor: string | undefined
+  do {
+    const page = await client.listTools(cursor ? { cursor } : undefined)
+    out.push(...page.tools)
+    cursor = page.nextCursor
+  } while (cursor)
+  return out
+}
+
+function formatMcpToolResult(result: unknown): string {
+  if (!result || typeof result !== 'object') {
+    return '(invalid tool result)'
+  }
+  const r = result as {
+    content?: Array<{ type: string; text?: string }>
+    structuredContent?: Record<string, unknown>
+    isError?: boolean
+  }
+  const blocks = Array.isArray(r.content) ? r.content : []
+  const text = blocks
+    .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+    .map((b) => b.text)
+    .join('\n')
+  if (text) return text
+  if (r.structuredContent && Object.keys(r.structuredContent).length) {
+    return JSON.stringify(r.structuredContent, null, 2)
+  }
+  return r.isError ? '(tool error, no details)' : '(empty tool result)'
+}
+
+function parseToolArguments(raw: string | undefined): Record<string, unknown> {
+  if (raw === undefined || raw.trim() === '') return {}
+  try {
+    const v = JSON.parse(raw) as unknown
+    if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+      return v as Record<string, unknown>
+    }
+    return { _note: 'invalid tool arguments shape', raw }
+  } catch {
+    return { _note: 'invalid JSON in tool arguments', raw }
+  }
+}
+
+function assertValidChatTurns(turns: AiChatTurn[]): void {
+  if (turns.length === 0) {
+    throw new Error('AI chat: messages must be non-empty.')
+  }
+  if (turns[turns.length - 1].role !== 'user') {
+    throw new Error('AI chat: last message must be from the user.')
+  }
+}
+
+/**
+ * Runs a tool-using chat loop: NIM proposes tool calls, MCP executes them, results go back until the model returns text.
+ * `chatTurns` is the full visible conversation (user/assistant pairs), ending with the latest user message.
+ */
+export async function completePromptWithMcpTools(
+  client: Client,
+  chatTurns: AiChatTurn[]
+): Promise<string> {
+  assertValidChatTurns(chatTurns)
+
+  const baseMessages: NvidiaChatRequestMessage[] = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    ...chatTurns.map(
+      (m): NvidiaChatRequestMessage =>
+        m.role === 'user'
+          ? { role: 'user', content: m.content }
+          : { role: 'assistant', content: m.content }
+    ),
+  ]
+
+  const tools = await listAllTools(client)
+  if (tools.length === 0) {
+    const m = await runNimChatCompletion({
+      messages: baseMessages,
+    })
+    return typeof m.content === 'string' ? m.content.trim() : ''
+  }
+
+  const aiTools = mcpTools(tools)
+  const messages: NvidiaChatRequestMessage[] = [...baseMessages]
+
+  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    const { content, tool_calls: toolCalls } = await runNimChatCompletion({
+      messages,
+      tools: aiTools,
+      tool_choice: 'auto',
+    })
+
+    if (!toolCalls?.length) {
+      return typeof content === 'string' ? content.trim() : ''
+    }
+
+    messages.push({
+      role: 'assistant',
+      content: content ?? null,
+      tool_calls: toolCalls,
+    })
+
+    for (const tc of toolCalls) {
+      const name = tc.function?.name
+      const id = tc.id
+      if (!name || !id) continue
+
+      let toolText: string
+      try {
+        const args = parseToolArguments(tc.function?.arguments)
+        const result = await client.callTool({ name, arguments: args })
+        toolText = formatMcpToolResult(result)
+      } catch (e) {
+        toolText =
+          e instanceof Error
+            ? `Tool invocation failed: ${e.message}`
+            : 'Tool invocation failed.'
+      }
+
+      messages.push({
+        role: 'tool',
+        tool_call_id: id,
+        content: toolText,
+      })
+    }
+  }
+
+  const final = await runNimChatCompletion({ messages })
+  return typeof final.content === 'string' ? final.content.trim() : ''
+}

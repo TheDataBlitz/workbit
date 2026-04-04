@@ -5,7 +5,7 @@ This folder handles **API** authentication. Sensitive: mistakes can open or lock
 ## Behavior
 
 - **optionalAuth:** Tries (1) `Authorization: Bearer <JWT>` as Supabase JWT → sets `req.user`; (2) if no user, `x-api-key` or Bearer as API key → looks up `api_keys`, sets `req.user` by `user_id`. If neither works, `req.user` stays undefined. Use for routes that work for both anonymous and signed-in users. On successful auth it also sets `req.workbitUpstreamAuth` (`bearer` or `apiKey`) for the MCP proxy subprocess. **Never log** `workbitUpstreamAuth`.
-- **Required auth:** Routes that need a user should use optionalAuth then check `req.user` and return 401 if missing (or use a small helper that does this).
+- **requireAuth:** Mounted in `index.ts` after `optionalAuth` for `/api/v1`; skips `/api/v1/auth/*`, otherwise 501 if Supabase not configured, 401 if no `req.user`.
 - **Secrets:** Uses `supabaseAdmin` (service role) from `utils/supabaseServer.js` only for JWT verification and API key lookup. No secrets in this file; env is loaded in `loadEnv.js`.
 
 ## Rules
