@@ -24,6 +24,7 @@ import { ProjectDetailIssuesTab } from './Issues'
 import { ProjectDetailOverviewStatus } from './Status'
 import { useProjectDetailUpdates } from './hooks/useProjectDetail'
 import { ProjectDetailUpdatesTab } from './Updates'
+import { ProjectAgentsPanel } from './ProjectAgentsPanel'
 
 export function TeamProjectDetailScreen({
   projectName,
@@ -264,6 +265,8 @@ export function TeamProjectDetailScreen({
               </Text>
             )}
           </Box>
+
+          <ProjectAgentsPanel projectId={projectId} />
         </Stack>
       </Inline>
     </Stack>

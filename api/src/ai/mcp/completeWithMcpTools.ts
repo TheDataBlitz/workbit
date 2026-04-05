@@ -6,8 +6,22 @@ import {
 
 const MAX_TOOL_ROUNDS = 8
 
-const SYSTEM_PROMPT =
+export const WORKBIT_AI_SYSTEM_PROMPT =
   'You are a Workbit assistant. Use the provided tools to read or update projects, issues, decisions, and status when the user asks about their workspace. Prefer calling tools over guessing. Format answers in clear Markdown: use `##` / `###` headings for sections, bullet or numbered lists for items, and Markdown tables when comparing rows of data (e.g. orders, line items). Keep paragraphs short.'
+
+const SYSTEM_PROMPT = WORKBIT_AI_SYSTEM_PROMPT
+
+export type CompleteWithMcpOptions = {
+  /** Appended to the base system prompt (e.g. per-agent role). */
+  systemPromptSuffix?: string
+}
+
+function buildSystemContent(suffix?: string): string {
+  if (suffix?.trim()) {
+    return `${SYSTEM_PROMPT}\n\n${suffix.trim()}`
+  }
+  return SYSTEM_PROMPT
+}
 
 /** Prior turns from the client (current user message is the last entry). */
 export type AiChatTurn = { role: 'user' | 'assistant'; content: string }
@@ -85,12 +99,15 @@ function assertValidChatTurns(turns: AiChatTurn[]): void {
  */
 export async function completePromptWithMcpTools(
   client: Client,
-  chatTurns: AiChatTurn[]
+  chatTurns: AiChatTurn[],
+  options?: CompleteWithMcpOptions
 ): Promise<string> {
   assertValidChatTurns(chatTurns)
 
+  const systemContent = buildSystemContent(options?.systemPromptSuffix)
+
   const baseMessages: NvidiaChatRequestMessage[] = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: systemContent },
     ...chatTurns.map(
       (m): NvidiaChatRequestMessage =>
         m.role === 'user'

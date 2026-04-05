@@ -524,4 +524,39 @@ src/
     # or single operations file
 ```
 
+---
+
+## REST reference: Project AI agents
+
+**Catalog (definitions for UI):** `GET /api/v1/agents/catalog` returns `{ "agents": [ { "agentKey", "title", "description" } ] }` (same auth as `/api/v1`).
+
+Base path: `/api/v1/projects/:projectId/agents`. Requires the same auth as other `/api/v1` routes (Bearer JWT or `x-api-key`). `agentKey` values are defined by the server catalog (for example `general`, `order_fulfillment`, `inventory`, `revenue_intelligence`, `customer_retention`, `payment_invoice`, `employee_productivity`, `exception_anomaly`, `workflow_orchestrator`, `rule_based_automation`).
+
+| Method | Path | Body | Success response |
+|--------|------|------|------------------|
+| GET | `/api/v1/projects/:projectId/agents` | — | `{ "agents": [ { "agentKey", "title", "description", "createdAt" } ] }` |
+| POST | `/api/v1/projects/:projectId/agents` | `{ "agentKey": string }` | `201` `{ "ok": true, "agentKey": string }` (idempotent enable) |
+| DELETE | `/api/v1/projects/:projectId/agents/:agentKey` | — | `204` no body |
+
+Errors: `404` if the project does not exist; `400` on enable if `agentKey` is unknown.
+
+---
+
+## REST reference: AI chat
+
+`POST /api/v1/ai` — same auth as above. Uses Workbit MCP tools and NVIDIA NIM on the server.
+
+| Field | Type | Required | Description |
+|--------|------|----------|-------------|
+| `messages` | array | yes* | Chat turns: `{ "role": "user" \| "assistant", "content": string }[]`. The last turn must be `user`. |
+| `prompt` | string | yes* | Legacy: single user message (use instead of `messages`). |
+| `projectId` | string | no | When set, resolves the project and applies enabled **project agents** (system prompt specialization). Returns `404` if the project does not exist. |
+| `selectedAgentKey` | string | no | Requires `projectId`. Must be enabled for that project; skips automatic routing when multiple agents are enabled. |
+
+\* Send either `messages` or `prompt`.
+
+Success: `{ "reply": string }`. Server errors include `503` when AI (NIM) is not configured.
+
+---
+
 This spec can be implemented incrementally: start with one screen (e.g. Workspace Projects or Team Projects), add its GraphQL query + REST calls, one service, and one or two hooks, then wire the screen to the hooks.

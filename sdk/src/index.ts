@@ -141,6 +141,43 @@ export interface PostStatusUpdateCommentResult {
   comments: StatusUpdateComment[]
 }
 
+/** Agent definition from catalog — GET /api/v1/agents/catalog */
+export interface AgentCatalogItem {
+  agentKey: string
+  title: string
+  description: string
+}
+
+export interface ListAgentCatalogResponse {
+  agents: AgentCatalogItem[]
+}
+
+/** Enabled AI agent on a project — GET /api/v1/projects/:projectId/agents */
+export interface ProjectAgentItem {
+  agentKey: string
+  title: string
+  description: string
+  createdAt: string
+}
+
+export interface ListProjectAgentsResponse {
+  agents: ProjectAgentItem[]
+}
+
+/** Chat turn for POST /api/v1/ai */
+export type AiChatTurn = { role: 'user' | 'assistant'; content: string }
+
+export interface PostAiParams {
+  /** Mutually exclusive with `prompt` — prefer `messages` for multi-turn chat. */
+  messages?: AiChatTurn[]
+  /** Legacy single user message. */
+  prompt?: string
+  /** When set, server applies enabled project agents to the system prompt. */
+  projectId?: string
+  /** Requires projectId; must be enabled on the project. */
+  selectedAgentKey?: string
+}
+
 let config: { apiKey: string; baseUrl: string } | null = null
 
 const DEFAULT_BASE_URL = 'http://localhost:3001'
@@ -301,6 +338,27 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   return data as T
 }
 
+async function requestVoid(path: string, init?: RequestInit): Promise<void> {
+  const c = requireConfig()
+  const url = `${c.baseUrl.replace(/\/$/, '')}${path}`
+  const res = await fetch(url, {
+    method: init?.method,
+    body: init?.body,
+    headers: {
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      'x-api-key': c.apiKey,
+    },
+  })
+  if (res.status === 204 || res.status === 200) {
+    if (res.ok) return
+  }
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const msg = (data as { error?: string }).error ?? res.statusText
+    throw new Error(msg)
+  }
+}
+
 export const workbit = {
   init(cfg: WorkbitInitConfig): void {
     config = {
@@ -371,6 +429,67 @@ export const workbit = {
         ...params,
         description: maybeLexicalDescription(params.description),
       }),
+    })
+  },
+
+  /** Built-in agent catalog (for UI) — GET /api/v1/agents/catalog */
+  async listAgentCatalog(): Promise<ListAgentCatalogResponse> {
+    return requestJson<ListAgentCatalogResponse>('/api/v1/agents/catalog')
+  },
+
+  /** Enabled AI agents for a project — GET /api/v1/projects/:projectId/agents */
+  async listProjectAgents(
+    projectId: string
+  ): Promise<ListProjectAgentsResponse> {
+    return requestJson<ListProjectAgentsResponse>(
+      `/api/v1/projects/${encodeURIComponent(projectId)}/agents`
+    )
+  },
+
+  /** Enable an agent on a project — POST /api/v1/projects/:projectId/agents */
+  async enableProjectAgent(
+    projectId: string,
+    agentKey: string
+  ): Promise<{ ok: true; agentKey: string }> {
+    return requestJson<{ ok: true; agentKey: string }>(
+      `/api/v1/projects/${encodeURIComponent(projectId)}/agents`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ agentKey }),
+      }
+    )
+  },
+
+  /** Disable an agent on a project — DELETE /api/v1/projects/:projectId/agents/:agentKey */
+  async disableProjectAgent(
+    projectId: string,
+    agentKey: string
+  ): Promise<void> {
+    await requestVoid(
+      `/api/v1/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentKey)}`,
+      { method: 'DELETE' }
+    )
+  },
+
+  /** AI assistant with optional project-scoped agents — POST /api/v1/ai */
+  async postAi(params: PostAiParams): Promise<{ reply: string }> {
+    const body: Record<string, unknown> = {}
+    if (params.messages?.length) {
+      body.messages = params.messages
+    } else if (typeof params.prompt === 'string' && params.prompt.trim()) {
+      body.prompt = params.prompt.trim()
+    } else {
+      throw new Error(
+        'workbit.postAi: provide either messages (non-empty) or a non-empty prompt.'
+      )
+    }
+    if (params.projectId?.trim()) body.projectId = params.projectId.trim()
+    if (params.selectedAgentKey?.trim()) {
+      body.selectedAgentKey = params.selectedAgentKey.trim()
+    }
+    return requestJson<{ reply: string }>('/api/v1/ai', {
+      method: 'POST',
+      body: JSON.stringify(body),
     })
   },
 

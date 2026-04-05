@@ -3,6 +3,7 @@ import * as ctrl from '../controllers/issuesController.js'
 import * as decisionsCtrl from '../controllers/decisionsController.js'
 import * as projectDocsCtrl from '../controllers/projectDocumentsController.js'
 import * as projectsCtrl from '../controllers/projectsController.js'
+import * as projectAgentsCtrl from '../controllers/projectAgentsController.js'
 
 export const projectRoutes = Router()
 
@@ -33,5 +34,11 @@ projectRoutes.patch(
 projectRoutes.delete(
   '/:projectId/decisions/:decisionId',
   decisionsCtrl.deleteProjectDecision
+)
+projectRoutes.get('/:projectId/agents', projectAgentsCtrl.listProjectAgents)
+projectRoutes.post('/:projectId/agents', projectAgentsCtrl.enableProjectAgent)
+projectRoutes.delete(
+  '/:projectId/agents/:agentKey',
+  projectAgentsCtrl.disableProjectAgent
 )
 projectRoutes.get('/:projectId', projectsCtrl.getProject)

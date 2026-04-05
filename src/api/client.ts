@@ -732,3 +732,54 @@ export async function updateIssue(
     body: JSON.stringify(body),
   }) as Promise<ApiIssueDetail>
 }
+
+// --- Project AI agents ---
+
+export type ApiAgentCatalogItem = {
+  agentKey: string
+  title: string
+  description: string
+}
+
+export async function fetchAgentCatalog(): Promise<{
+  agents: ApiAgentCatalogItem[]
+}> {
+  return authFetch('/agents/catalog') as Promise<{
+    agents: ApiAgentCatalogItem[]
+  }>
+}
+
+export type ApiProjectEnabledAgent = {
+  agentKey: string
+  title: string
+  description: string
+  createdAt: string
+}
+
+export async function fetchProjectEnabledAgents(
+  projectId: string
+): Promise<{ agents: ApiProjectEnabledAgent[] }> {
+  return authFetch(
+    `/projects/${encodeURIComponent(projectId)}/agents`
+  ) as Promise<{ agents: ApiProjectEnabledAgent[] }>
+}
+
+export async function enableProjectAgentForProject(
+  projectId: string,
+  agentKey: string
+): Promise<{ ok: true; agentKey: string }> {
+  return authFetch(`/projects/${encodeURIComponent(projectId)}/agents`, {
+    method: 'POST',
+    body: JSON.stringify({ agentKey }),
+  }) as Promise<{ ok: true; agentKey: string }>
+}
+
+export async function disableProjectAgentForProject(
+  projectId: string,
+  agentKey: string
+): Promise<void> {
+  await authFetch(
+    `/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentKey)}`,
+    { method: 'DELETE' }
+  )
+}
