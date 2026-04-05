@@ -5,6 +5,7 @@
 import type { ReactNode } from 'react';
 import type { TextStyle, ViewStyle } from 'react-native';
 
+/** RN `Button`: use `onPress`. `buttonType` is the Design Bit layout preset (not DOM `type`). */
 declare module '@thedatablitz/button' {
   export function Button(props: {
     variant?:
@@ -15,6 +16,7 @@ declare module '@thedatablitz/button' {
       | 'info'
       | 'glass'
       | 'ai';
+    /** `default` | `icon` (icon-only) | `link` | `icon-link` | `split` — matches `@thedatablitz/button` / MCP. */
     buttonType?: 'default' | 'icon' | 'link' | 'icon-link' | 'split';
     size?: 'small' | 'medium' | 'large';
     loading?: boolean;
@@ -127,6 +129,15 @@ declare module '@thedatablitz/text' {
     truncate?: boolean;
     paragraphSpacing?: boolean;
     style?: TextStyle;
+  }): ReactNode;
+}
+
+declare module '@thedatablitz/icon' {
+  export function Icon(props: {
+    name: string;
+    size?: 'small' | 'medium' | 'large' | number;
+    color?: string;
+    strokeWidth?: number;
   }): ReactNode;
 }
 

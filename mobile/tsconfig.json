@@ -6,6 +6,15 @@
     "paths": {
       "@thedatablitz/alert": [
         "./node_modules/@thedatablitz/alert/dist/alert/src/index.d.ts"
+      ],
+      "@thedatablitz/page-header": [
+        "./node_modules/@thedatablitz/page-header/dist/index.d.ts"
+      ],
+      "@thedatablitz/chat": [
+        "./node_modules/@thedatablitz/chat/dist/index.d.ts"
+      ],
+      "@thedatablitz/textbox": [
+        "./node_modules/@thedatablitz/textbox/dist/index.d.ts"
       ]
     }
   },

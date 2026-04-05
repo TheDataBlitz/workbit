@@ -182,6 +182,7 @@ export function LoginScreen() {
           ) : null}
 
           <Button
+            buttonType="default"
             variant="primary"
             size="large"
             loading={loading}
@@ -206,6 +207,7 @@ export function LoginScreen() {
           </Inline>
 
           <Button
+            buttonType="default"
             variant="glass"
             size="large"
             onPress={handleGooglePlaceholder}

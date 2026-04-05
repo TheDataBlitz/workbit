@@ -5,7 +5,6 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   StatusBar,
   StyleSheet,
   Text,
@@ -14,9 +13,13 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import type { ApiWorkspace } from './src/api/client';
+import { SignedInHeader } from './src/components/SignedInHeader';
 import { AppProviders } from './src/providers/AppProviders';
 import { isAuthConfigured, LoginScreen, useAuth } from './src/pages/auth';
-import { SelectWorkspacesScreen } from './src/pages/WorkspacesScreen';
+import {
+  SelectWorkspacesScreen,
+  WorkspaceProjectsScreen,
+} from './src/pages/WorkspacesScreen';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
@@ -69,37 +72,17 @@ function AppContent() {
         style={[styles.container, { backgroundColor: bg }]}
         edges={['top', 'left', 'right']}
       >
-        <View style={styles.signedInBar}>
-          <Text style={[styles.signedInEmail, { color: fg }]} numberOfLines={1}>
-            {state.session.user.email ?? state.session.user.id}
-          </Text>
-          <Text
-            style={styles.signOut}
-            onPress={() => void signOut()}
-            accessibilityRole="button"
-          >
-            Sign out
-          </Text>
-        </View>
+        <SignedInHeader
+          email={state.session.user.email}
+          userId={state.session.user.id}
+          onSignOut={signOut}
+          workspaceActive={Boolean(activeWorkspace)}
+          onSwitchWorkspace={
+            activeWorkspace ? () => setActiveWorkspace(null) : undefined
+          }
+        />
         {activeWorkspace ? (
-          <View style={styles.workspaceOpen}>
-            <Text style={[styles.workspaceOpenTitle, { color: fg }]}>
-              {activeWorkspace.name}
-            </Text>
-            <Text style={[styles.workspaceOpenMeta, { color: muted }]}>
-              workbit.app/{activeWorkspace.slug} ·{' '}
-              {activeWorkspace.region.toUpperCase()}
-            </Text>
-            <Pressable
-              onPress={() => setActiveWorkspace(null)}
-              style={({ pressed }) => [
-                styles.switchWsBtn,
-                { opacity: pressed ? 0.85 : 1 },
-              ]}
-            >
-              <Text style={styles.switchWsBtnText}>Switch workspace</Text>
-            </Pressable>
-          </View>
+          <WorkspaceProjectsScreen workspace={activeWorkspace} />
         ) : (
           <SelectWorkspacesScreen onWorkspaceSelected={setActiveWorkspace} />
         )}
@@ -131,50 +114,6 @@ const styles = StyleSheet.create({
   centered: {
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  signedInBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 12,
-  },
-  signedInEmail: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  signOut: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2563eb',
-  },
-  workspaceOpen: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-  },
-  workspaceOpenTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  workspaceOpenMeta: {
-    fontSize: 15,
-    marginBottom: 20,
-  },
-  switchWsBtn: {
-    alignSelf: 'flex-start',
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    backgroundColor: '#2563eb',
-  },
-  switchWsBtnText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   home: {
     flex: 1,

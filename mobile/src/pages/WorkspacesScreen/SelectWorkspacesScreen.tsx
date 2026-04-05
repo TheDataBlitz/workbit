@@ -3,6 +3,7 @@ import { Alert } from '@thedatablitz/alert';
 import { Button } from '@thedatablitz/button';
 import { Card, CardContent } from '@thedatablitz/card';
 import { Inline } from '@thedatablitz/inline';
+import { PageHeader } from '@thedatablitz/page-header';
 import { Stack } from '@thedatablitz/stack';
 import { Text } from '@thedatablitz/text';
 import { getToken } from '@thedatablitz/tokens';
@@ -42,17 +43,11 @@ export function SelectWorkspacesScreen({
       }}
     >
       <Stack gap="400" fullWidth>
-        <Inline align="center" gap="100" wrap={false}>
-          <Avatar name="Workbit" size="small" variant="brand" />
-          <Text variant="heading5">Workbit</Text>
-        </Inline>
-
-        <Stack gap="100" fullWidth>
-          <Text variant="heading1">Select Workspaces</Text>
-          <Text variant="body2" color="color.text.subtle">
-            Choose a workspace you belong to.
-          </Text>
-        </Stack>
+        <PageHeader
+          avatar={{ name: 'Workbit' }}
+          title="Select workspace"
+          subtitle="Choose a workspace you belong to."
+        />
 
         <Card type="bordered" variant="default" fullWidth>
           <CardContent>
@@ -130,6 +125,7 @@ export function SelectWorkspacesScreen({
                       </Text>
                     </Stack>
                     <Button
+                      buttonType="default"
                       variant="glass"
                       size="small"
                       onPress={() => onWorkspaceSelected(workspace)}

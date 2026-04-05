@@ -56,8 +56,10 @@ async function start() {
   console.log(
     `[Store] Using ${usingSupabase ? 'Supabase' : 'file (data.json)'}. SUPABASE_URL set: ${Boolean(process.env.SUPABASE_URL)}. SUPABASE_SERVICE_ROLE_KEY set: ${Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)}.`
   )
-  app.listen(port, () => {
-    console.log(`API listening on http://localhost:${port}`)
+  app.listen(port, '0.0.0.0', () => {
+    console.log(
+      `API listening on http://0.0.0.0:${port} (reachable at http://localhost:${port} on this machine; use your LAN IP from a phone)`
+    )
   })
 }
 
