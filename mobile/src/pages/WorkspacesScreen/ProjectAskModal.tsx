@@ -31,6 +31,8 @@ export type ProjectAskModalProps = {
   onClose: () => void;
   projectId: string;
   projectName: string;
+  /** Workspace id — AI usage shop tag. */
+  shopId: string;
 };
 
 type ChatTurn =
@@ -93,6 +95,7 @@ export function ProjectAskModal({
   onClose,
   projectId,
   projectName,
+  shopId,
 }: ProjectAskModalProps) {
   const insets = useSafeAreaInsets();
   const [prompt, setPrompt] = useState('');
@@ -101,7 +104,12 @@ export function ProjectAskModal({
   const requestStartedAtRef = useRef<number | null>(null);
 
   const askMutation = useMutation({
-    mutationFn: (messages: AiChatTurn[]) => postAiPrompt({ messages }),
+    mutationFn: (messages: AiChatTurn[]) =>
+      postAiPrompt({
+        messages,
+        projectId,
+        ...(shopId.trim() ? { shopId: shopId.trim() } : {}),
+      }),
     onSuccess: data => {
       const start = requestStartedAtRef.current;
       requestStartedAtRef.current = null;
@@ -124,7 +132,7 @@ export function ProjectAskModal({
     setTurns([]);
     requestStartedAtRef.current = null;
     resetMutationRef.current();
-  }, [visible, projectId]);
+  }, [visible, projectId, shopId]);
 
   useEffect(() => {
     if (!visible) return;
@@ -184,7 +192,7 @@ export function ProjectAskModal({
     setPrompt('');
     requestStartedAtRef.current = Date.now();
     askMutation.mutate(messages);
-  }, [askMutation, projectId, projectName, prompt, turns]);
+  }, [askMutation, projectId, projectName, prompt, shopId, turns]);
 
   const surface = getToken('elevation.surface.DEFAULT');
   const sendPending = askMutation.isPending;

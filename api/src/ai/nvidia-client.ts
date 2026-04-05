@@ -24,7 +24,41 @@ type NvidiaChatApiResponse = {
       tool_calls?: NvidiaToolCall[]
     }
   }>
+  usage?: {
+    prompt_tokens?: number
+    completion_tokens?: number
+    total_tokens?: number
+  }
   error?: { message?: string }
+}
+
+export type NvidiaUsageTotals = {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+}
+
+function usageFromResponse(data: NvidiaChatApiResponse): NvidiaUsageTotals {
+  const u = data.usage
+  const prompt = u?.prompt_tokens
+  const completion = u?.completion_tokens
+  const total = u?.total_tokens
+  const promptTokens =
+    typeof prompt === 'number' && Number.isFinite(prompt)
+      ? Math.max(0, Math.floor(prompt))
+      : 0
+  const completionTokens =
+    typeof completion === 'number' && Number.isFinite(completion)
+      ? Math.max(0, Math.floor(completion))
+      : 0
+  let totalTokens =
+    typeof total === 'number' && Number.isFinite(total)
+      ? Math.max(0, Math.floor(total))
+      : 0
+  if (totalTokens === 0 && (promptTokens > 0 || completionTokens > 0)) {
+    totalTokens = promptTokens + completionTokens
+  }
+  return { promptTokens, completionTokens, totalTokens }
 }
 
 /** Thrown when `NVIDIA_API_KEY` is missing — callers may map to HTTP 503. */
@@ -44,8 +78,8 @@ function requireNvidiaApiKey(): string {
 }
 
 function chatModel(): string {
-  return process.env.NVIDIA_CHAT_MODEL ?? 'google/gemma-4-31b-it'
-  // 'nvidia/nemotron-3-super-120b-a12b'
+  return process.env.NVIDIA_CHAT_MODEL ?? 'nvidia/nemotron-3-super-120b-a12b'
+  // 'google/gemma-4-31b-it'
 }
 
 function extractNvidiaErrorMessage(
@@ -74,6 +108,7 @@ export async function runNimChatCompletion(input: {
 }): Promise<{
   content: string | null | undefined
   tool_calls?: NvidiaToolCall[]
+  usage: NvidiaUsageTotals
 }> {
   const body: Record<string, unknown> = {
     model: chatModel(),
@@ -109,5 +144,6 @@ export async function runNimChatCompletion(input: {
   return {
     content: message?.content,
     tool_calls: message?.tool_calls,
+    usage: usageFromResponse(data),
   }
 }

@@ -30,9 +30,16 @@ export function TeamProjectsScreen({ teamName }: TeamProjectsScreenProps) {
   const { projects: workspaceProjects } = useWorkspace()
   const projects = toTeamProjects(workspaceProjects, teamId)
 
-  const handleOpenAsk = useCallback((row: TeamProjectRow) => {
-    InteleBit.ask({ projectId: row.id, projectName: row.name })
-  }, [])
+  const handleOpenAsk = useCallback(
+    (row: TeamProjectRow) => {
+      InteleBit.ask({
+        projectId: row.id,
+        projectName: row.name,
+        ...(workspaceId?.trim() ? { shopId: workspaceId.trim() } : {}),
+      })
+    },
+    [workspaceId]
+  )
 
   const handleRowClick = useCallback(
     (row: TeamProjectRow) => {

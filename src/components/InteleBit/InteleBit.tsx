@@ -64,7 +64,16 @@ function InteleBitPanel() {
   const bodyScrollRef = useRef<HTMLDivElement>(null)
 
   const askMutation = useMutation({
-    mutationFn: (messages: AiChatTurn[]) => postAiPrompt({ messages }),
+    mutationFn: (vars: {
+      messages: AiChatTurn[]
+      projectId: string
+      shopId?: string
+    }) =>
+      postAiPrompt({
+        messages: vars.messages,
+        projectId: vars.projectId,
+        ...(vars.shopId?.trim() ? { shopId: vars.shopId.trim() } : {}),
+      }),
     onSuccess: (data) => {
       const start = requestStartedAtRef.current
       requestStartedAtRef.current = null
@@ -138,7 +147,11 @@ function InteleBitPanel() {
     setTurns((t) => [...t, { role: 'user', content: trimmed }])
     setPrompt('')
     requestStartedAtRef.current = Date.now()
-    askMutation.mutate(messages)
+    askMutation.mutate({
+      messages,
+      projectId: project.projectId,
+      ...(project.shopId?.trim() ? { shopId: project.shopId.trim() } : {}),
+    })
   }, [askMutation, project, prompt, turns])
 
   if (!open || !project) {
@@ -242,6 +255,7 @@ export const InteleBit = Object.assign(InteleBitPanel, {
       ...(params.projectName !== undefined
         ? { projectName: params.projectName }
         : {}),
+      ...(params.shopId?.trim() ? { shopId: params.shopId.trim() } : {}),
     })
   },
   thanks() {

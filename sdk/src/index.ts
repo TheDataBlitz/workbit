@@ -176,6 +176,8 @@ export interface PostAiParams {
   projectId?: string
   /** Requires projectId; must be enabled on the project. */
   selectedAgentKey?: string
+  /** Tenant key for usage tracking; overrides workspace derived from projectId. */
+  shopId?: string
 }
 
 let config: { apiKey: string; baseUrl: string } | null = null
@@ -472,7 +474,19 @@ export const workbit = {
   },
 
   /** AI assistant with optional project-scoped agents — POST /api/v1/ai */
-  async postAi(params: PostAiParams): Promise<{ reply: string }> {
+  async postAi(params: PostAiParams): Promise<{
+    reply: string
+    usage?: {
+      tokens: number
+      intelebits: number
+      usagePercent: number
+      monthlyBudget: {
+        capIntelebits: number
+        usedIntelebits: number
+        usagePercent: number
+      } | null
+    }
+  }> {
     const body: Record<string, unknown> = {}
     if (params.messages?.length) {
       body.messages = params.messages
@@ -487,7 +501,20 @@ export const workbit = {
     if (params.selectedAgentKey?.trim()) {
       body.selectedAgentKey = params.selectedAgentKey.trim()
     }
-    return requestJson<{ reply: string }>('/api/v1/ai', {
+    if (params.shopId?.trim()) body.shopId = params.shopId.trim()
+    return requestJson<{
+      reply: string
+      usage?: {
+        tokens: number
+        intelebits: number
+        usagePercent: number
+        monthlyBudget: {
+          capIntelebits: number
+          usedIntelebits: number
+          usagePercent: number
+        } | null
+      }
+    }>('/api/v1/ai', {
       method: 'POST',
       body: JSON.stringify(body),
     })

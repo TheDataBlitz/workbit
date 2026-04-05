@@ -98,6 +98,17 @@ export async function getProjectByIdForApi(
   }
 }
 
+/** Workspace id for a project (tenant key for AI usage / shop_id). */
+export async function getWorkspaceIdForProject(
+  projectId: string
+): Promise<string | null> {
+  const project = await dbProjects.getProjectById(projectId)
+  if (!project) return null
+  const team = await dbTeams.getTeamById(project.teamId)
+  const wid = team?.workspaceId?.trim()
+  return wid && wid.length > 0 ? wid : null
+}
+
 /** Status updates for GET /api/v1/projects/:projectId/status-updates (20 most recent). */
 export async function getProjectStatusUpdatesForApi(
   projectId: string

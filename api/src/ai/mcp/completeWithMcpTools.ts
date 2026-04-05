@@ -93,6 +93,12 @@ function assertValidChatTurns(turns: AiChatTurn[]): void {
   }
 }
 
+export type CompleteWithMcpToolsResult = {
+  reply: string
+  /** Sum of provider-reported total_tokens across all NIM rounds in this request. */
+  totalTokens: number
+}
+
 /**
  * Runs a tool-using chat loop: NIM proposes tool calls, MCP executes them, results go back until the model returns text.
  * `chatTurns` is the full visible conversation (user/assistant pairs), ending with the latest user message.
@@ -101,7 +107,7 @@ export async function completePromptWithMcpTools(
   client: Client,
   chatTurns: AiChatTurn[],
   options?: CompleteWithMcpOptions
-): Promise<string> {
+): Promise<CompleteWithMcpToolsResult> {
   assertValidChatTurns(chatTurns)
 
   const systemContent = buildSystemContent(options?.systemPromptSuffix)
@@ -116,26 +122,40 @@ export async function completePromptWithMcpTools(
     ),
   ]
 
+  let totalTokens = 0
+
   const tools = await listAllTools(client)
   if (tools.length === 0) {
     const m = await runNimChatCompletion({
       messages: baseMessages,
     })
-    return typeof m.content === 'string' ? m.content.trim() : ''
+    totalTokens += m.usage.totalTokens
+    return {
+      reply: typeof m.content === 'string' ? m.content.trim() : '',
+      totalTokens,
+    }
   }
 
   const aiTools = mcpTools(tools)
   const messages: NvidiaChatRequestMessage[] = [...baseMessages]
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const { content, tool_calls: toolCalls } = await runNimChatCompletion({
+    const {
+      content,
+      tool_calls: toolCalls,
+      usage,
+    } = await runNimChatCompletion({
       messages,
       tools: aiTools,
       tool_choice: 'auto',
     })
+    totalTokens += usage.totalTokens
 
     if (!toolCalls?.length) {
-      return typeof content === 'string' ? content.trim() : ''
+      return {
+        reply: typeof content === 'string' ? content.trim() : '',
+        totalTokens,
+      }
     }
 
     messages.push({
@@ -170,5 +190,9 @@ export async function completePromptWithMcpTools(
   }
 
   const final = await runNimChatCompletion({ messages })
-  return typeof final.content === 'string' ? final.content.trim() : ''
+  totalTokens += final.usage.totalTokens
+  return {
+    reply: typeof final.content === 'string' ? final.content.trim() : '',
+    totalTokens,
+  }
 }

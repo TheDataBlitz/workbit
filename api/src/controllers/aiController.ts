@@ -12,6 +12,7 @@ import {
 } from '../models/agentCatalog.js'
 import * as projectAgentsModel from '../models/projectAgents.js'
 import * as workspaceModel from '../models/workspace.js'
+import * as aiUsageModel from '../models/aiUsage.js'
 import { logApiError, logApiWarn } from '../utils/log.js'
 
 /** Cap how many turns we send to NIM to limit tokens (each turn is user or assistant). */
@@ -27,6 +28,8 @@ type ParsedAiRequest = {
   turns: AiChatTurn[]
   projectId?: string
   selectedAgentKey?: string
+  /** Tenant key for usage tracking; if omitted, derived from project workspace when projectId is set. */
+  shopId?: string
 }
 
 function parseMessagesArray(raw: unknown): AiChatTurn[] | null {
@@ -56,10 +59,14 @@ function parseAiChatBody(body: unknown): ParsedAiRequest | null {
     typeof b.selectedAgentKey === 'string' && b.selectedAgentKey.trim()
       ? b.selectedAgentKey.trim()
       : undefined
+  const shopId =
+    typeof b.shopId === 'string' && b.shopId.trim()
+      ? b.shopId.trim()
+      : undefined
 
   const fromMessages = parseMessagesArray(b.messages)
   if (fromMessages) {
-    return { turns: fromMessages, projectId, selectedAgentKey }
+    return { turns: fromMessages, projectId, selectedAgentKey, shopId }
   }
 
   if (typeof b.prompt === 'string' && b.prompt.trim()) {
@@ -67,6 +74,7 @@ function parseAiChatBody(body: unknown): ParsedAiRequest | null {
       turns: [{ role: 'user', content: b.prompt.trim() }],
       projectId,
       selectedAgentKey,
+      shopId,
     }
   }
 
@@ -182,9 +190,37 @@ async function completionOptionsForParsedRequest(
   }
 }
 
+async function resolveShopIdForAi(
+  parsed: ParsedAiRequest
+): Promise<
+  { ok: true; shopId: string } | { ok: false; status: number; error: string }
+> {
+  if (parsed.shopId?.trim()) {
+    return { ok: true, shopId: parsed.shopId.trim() }
+  }
+  if (parsed.projectId) {
+    const wid = await workspaceModel.getWorkspaceIdForProject(parsed.projectId)
+    if (!wid) {
+      return {
+        ok: false,
+        status: 400,
+        error:
+          'Could not resolve shop for this project; send shopId or fix team workspace.',
+      }
+    }
+    return { ok: true, shopId: wid }
+  }
+  return {
+    ok: false,
+    status: 400,
+    error:
+      'shopId or projectId is required (shop tags AI usage; projectId can derive shop from workspace).',
+  }
+}
+
 /**
- * POST /api/v1/ai — body: `{ messages, projectId?, selectedAgentKey? }` or legacy `{ prompt, ... }` → `{ reply }`.
- * Last message must be `user`. Uses Workbit MCP + NIM.
+ * POST /api/v1/ai — body: `{ messages, projectId?, selectedAgentKey?, shopId? }` or legacy `{ prompt, ... }` → `{ reply, usage }`.
+ * Usage is tagged with `shopId` (body) or workspace from `projectId`. Last message must be `user`. Uses Workbit MCP + NIM.
  */
 export async function postAi(req: Request, res: Response) {
   const parsed = parseAiChatBody(req.body)
@@ -214,11 +250,55 @@ export async function postAi(req: Request, res: Response) {
       return
     }
 
-    const reply = await withMcpClient(auth, (c) =>
+    const shop = await resolveShopIdForAi(parsed)
+    if (!shop.ok) {
+      res.status(shop.status).json({ error: shop.error })
+      return
+    }
+
+    await aiUsageModel.assertShopMonthlyIntelebitCap(shop.shopId)
+    await aiUsageModel.assertShopTokenBudget(shop.shopId)
+
+    const { reply, totalTokens } = await withMcpClient(auth, (c) =>
       completePromptWithMcpTools(c, parsed.turns, opts.options)
     )
-    res.json({ reply })
+
+    const userId = req.user?.id
+    if (userId) {
+      try {
+        await aiUsageModel.recordAiTokenUsage({
+          shopId: shop.shopId,
+          userId,
+          tokens: totalTokens,
+        })
+      } catch (err) {
+        logApiWarn('ai.token_usage_persist_failed', {
+          context: 'ai.postAi',
+          shopId: shop.shopId,
+          message: err instanceof Error ? err.message : String(err),
+        })
+      }
+    }
+
+    const monthlyBudget = await aiUsageModel.getShopMonthlyBudget(shop.shopId)
+
+    res.json({
+      reply,
+      usage: {
+        tokens: totalTokens,
+        intelebits: aiUsageModel.tokensToIntelebits(totalTokens),
+        usagePercent: monthlyBudget?.usagePercent ?? 0,
+        monthlyBudget,
+      },
+    })
   } catch (e) {
+    const status = (e as { statusCode?: number }).statusCode
+    if (status === 429) {
+      res.status(429).json({
+        error: e instanceof Error ? e.message : 'AI rate limit exceeded.',
+      })
+      return
+    }
     if (e instanceof AiNotConfiguredError) {
       res.status(503).json({ error: e.message })
       return

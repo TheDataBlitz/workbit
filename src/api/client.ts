@@ -157,6 +157,47 @@ export interface ApiDecisionListResponse {
   }
 }
 
+/** GET /me/ai-usage — your AI token usage (aggregated from ai_token_usage). */
+export interface ApiMeAiUsageDaily {
+  date: string
+  tokens: number
+}
+
+export interface ApiMeAiUsageByShop {
+  shopId: string
+  requests: number
+  tokens: number
+}
+
+/** Workspace month-to-date vs monthly Intelebit cap (from GET /me/ai-usage / POST /ai). */
+export interface ApiMeAiUsageMonthlyBudget {
+  capIntelebits: number
+  usedIntelebits: number
+  usagePercent: number
+}
+
+export interface ApiMeAiUsageReport {
+  days: number
+  daily: ApiMeAiUsageDaily[]
+  totals: { requests: number; tokens: number; intelebits: number }
+  byShop: ApiMeAiUsageByShop[]
+  monthlyBudget: ApiMeAiUsageMonthlyBudget | null
+}
+
+export async function fetchMeAiUsage(params: {
+  days: number
+  shopId?: string | null
+}): Promise<ApiMeAiUsageReport> {
+  const sp = new URLSearchParams()
+  sp.set('days', String(params.days))
+  if (params.shopId?.trim()) {
+    sp.set('shopId', params.shopId.trim())
+  }
+  return authFetch(
+    `/me/ai-usage?${sp.toString()}`
+  ) as Promise<ApiMeAiUsageReport>
+}
+
 // --- Workspaces ---
 
 export async function fetchWorkspaces(

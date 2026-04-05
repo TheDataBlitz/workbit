@@ -293,6 +293,7 @@ export function WorkspaceProjectsScreen({
         onClose={() => setAskTarget(null)}
         projectId={askTarget?.id ?? ''}
         projectName={askTarget?.name ?? ''}
+        shopId={workspace.id}
       />
     </>
   );

@@ -1,6 +1,8 @@
 export type InteleBitOpenDetail = {
   projectId: string
   projectName?: string
+  /** Tenant key for AI usage (workspace id). */
+  shopId?: string
 }
 
 export const INTELEBIT_OPEN = 'intelebit:open'

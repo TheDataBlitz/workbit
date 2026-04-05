@@ -1,22 +1,22 @@
-import { useMemo, useState } from 'react'
-import { Avatar } from '@thedatablitz/avatar'
-import { Box } from '@thedatablitz/box'
-import { BarGraph, KpiCard, type BarGraphDatum } from '@thedatablitz/chart'
+import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Card, CardContent, type CardVariant } from '@thedatablitz/card'
+import { BarGraph, type BarGraphDatum } from '@thedatablitz/chart'
 import { Dropdown } from '@thedatablitz/dropdown'
 import { Inline } from '@thedatablitz/inline'
 import { Stack } from '@thedatablitz/stack'
 import { Table, type ColumnDef } from '@thedatablitz/table'
 import { Text } from '@thedatablitz/text'
+import { fetchMeAiUsage, type ApiMeAiUsageByShop } from '../../api/client'
 
 type TimeRangeValue = 'last-7' | 'last-30' | 'last-90'
-type ProjectFilterValue = 'all' | 'workbit' | 'core-api'
 
-type UsageUserRow = {
-  id: string
-  name: string
-  role: string
-  requests: number
-  tokensUsed: number
+const ALL_SHOPS = '__all__'
+/** Same as API billing: 100 tokens = 1 Intelebit. */
+const TOKENS_PER_INTELEBIT = 100
+
+function tokensToIntelebits(tokens: number): number {
+  return tokens / TOKENS_PER_INTELEBIT
 }
 
 type UsagePoint = {
@@ -24,42 +24,185 @@ type UsagePoint = {
   value: number
 }
 
+type ShopTableRow = {
+  id: string
+  shopLabel: string
+  requests: number
+  intelebits: number
+}
+
 function formatInt(n: number) {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(n)
 }
 
-function formatCurrency(n: number) {
+function formatIntelebits(n: number) {
   return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(n)
 }
 
-function TokenUsageChart({ points }: { points: UsagePoint[] }) {
+function shortShopId(shopId: string) {
+  const t = shopId.trim()
+  if (t.length <= 14) return t
+  return `${t.slice(0, 8)}…${t.slice(-4)}`
+}
+
+type UsageTone = 'ok' | 'warning' | 'danger'
+
+function usageToneFromPercent(percent: number): UsageTone {
+  if (percent >= 90) return 'danger'
+  if (percent >= 70) return 'warning'
+  return 'ok'
+}
+
+const BAR_COLOR: Record<UsageTone, string> = {
+  ok: '#0f172a',
+  warning: '#d97706',
+  danger: '#dc2626',
+}
+
+function metricCardVariant(tone: UsageTone): CardVariant {
+  if (tone === 'danger') return 'danger'
+  if (tone === 'warning') return 'warning'
+  return 'default'
+}
+
+/** One bar per calendar day (UTC); missing days are zero. */
+function buildChartPoints(
+  days: number,
+  daily: { date: string; tokens: number }[]
+): UsagePoint[] {
+  const byDate = new Map<string, number>()
+  for (const row of daily) {
+    const key = row.date.slice(0, 10)
+    byDate.set(key, (byDate.get(key) ?? 0) + row.tokens)
+  }
+  const out: UsagePoint[] = []
+  const end = new Date()
+  end.setUTCHours(0, 0, 0, 0)
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(
+      Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate() - i)
+    )
+    const key = d.toISOString().slice(0, 10)
+    const tokens = byDate.get(key) ?? 0
+    const dateLabel = d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    })
+    out.push({ dateLabel, value: tokensToIntelebits(tokens) })
+  }
+  return out
+}
+
+function IntelebitsUsageChart({
+  points,
+  tone,
+}: {
+  points: UsagePoint[]
+  tone: UsageTone
+}) {
   const data = useMemo<BarGraphDatum[]>(
     () => points.map((p) => ({ label: p.dateLabel, value: p.value })),
     [points]
   )
+  const barColor = BAR_COLOR[tone]
 
   return (
     <Stack gap="100">
-      <Text variant="heading5">Total Token Usage</Text>
-      <Box
+      <Text variant="heading5">Intelebits by day</Text>
+      <Text variant="caption1" color="color.text.subtle">
+        Bar color follows workspace monthly cap: ≥70% warning, ≥90% danger.
+      </Text>
+      <Card
+        size="medium"
+        variant={metricCardVariant(tone)}
+        type="bordered"
         fullWidth
-        className="rounded-[10px] border border-slate-200 bg-white px-4 pb-3 pt-4"
       >
-        <BarGraph data={data} height={200} barColor="#0f172a" />
-      </Box>
+        <CardContent>
+          {points.length === 0 ? (
+            <Text variant="body3" color="color.text.subtle">
+              No data in this range.
+            </Text>
+          ) : (
+            <BarGraph data={data} height={320} barColor={barColor} />
+          )}
+        </CardContent>
+      </Card>
     </Stack>
+  )
+}
+
+function MetricTile({
+  label,
+  helper,
+  value,
+  tone,
+}: {
+  label: string
+  helper: string
+  value: string
+  tone: UsageTone
+}) {
+  return (
+    <Card
+      size="small"
+      variant={metricCardVariant(tone)}
+      type="bordered"
+      fullWidth
+      className="min-w-[140px] flex-1"
+    >
+      <CardContent>
+        <Stack gap="050">
+          <Text variant="caption2" color="color.text.subtle">
+            {label}
+          </Text>
+          <Text variant="heading6">{value}</Text>
+          <Text variant="caption2" color="color.text.subtle">
+            {helper}
+          </Text>
+        </Stack>
+      </CardContent>
+    </Card>
   )
 }
 
 export function ProfileUsageTab() {
   const [timeRange, setTimeRange] = useState<TimeRangeValue>('last-30')
-  const [projectFilter, setProjectFilter] = useState<ProjectFilterValue>('all')
-  const [loading] = useState(false)
+  const [shopFilter, setShopFilter] = useState<string>(ALL_SHOPS)
+
+  const days = timeRange === 'last-7' ? 7 : timeRange === 'last-90' ? 90 : 30
+
+  const allUsageQuery = useQuery({
+    queryKey: ['me', 'ai-usage', days, 'all'],
+    queryFn: () => fetchMeAiUsage({ days }),
+  })
+
+  const filteredUsageQuery = useQuery({
+    queryKey: ['me', 'ai-usage', days, shopFilter],
+    queryFn: () =>
+      fetchMeAiUsage({
+        days,
+        shopId: shopFilter === ALL_SHOPS ? undefined : shopFilter,
+      }),
+    enabled: shopFilter !== ALL_SHOPS,
+  })
+
+  const activeReport =
+    shopFilter === ALL_SHOPS ? allUsageQuery.data : filteredUsageQuery.data
+
+  const loading =
+    shopFilter === ALL_SHOPS
+      ? allUsageQuery.isPending
+      : filteredUsageQuery.isPending || allUsageQuery.isPending
+
+  const error =
+    shopFilter === ALL_SHOPS
+      ? allUsageQuery.error
+      : (filteredUsageQuery.error ?? allUsageQuery.error)
 
   const timeRangeOptions = useMemo(
     () => [
@@ -70,107 +213,66 @@ export function ProfileUsageTab() {
     []
   )
 
-  const projectOptions = useMemo(
-    () => [
-      { value: 'all', label: 'All Projects' },
-      { value: 'workbit', label: 'Workbit' },
-      { value: 'core-api', label: 'Core API' },
-    ],
-    []
-  )
-
-  const kpis = useMemo(() => {
-    return {
-      volume: { current: 2_450_230, limit: 5_000_000 },
-      activity: { current: 14_302, limit: 18_000 },
-      cost: { current: 245.8, limit: 500 },
-    }
-  }, [])
-
-  const points = useMemo<UsagePoint[]>(() => {
-    const base: UsagePoint[] = [
-      { dateLabel: 'Dec 01', value: 28_900 },
-      { dateLabel: 'Dec 02', value: 31_250 },
-      { dateLabel: 'Dec 03', value: 34_100 },
-      { dateLabel: 'Dec 04', value: 27_400 },
-      { dateLabel: 'Dec 05', value: 38_600 },
-      { dateLabel: 'Dec 06', value: 25_900 },
-      { dateLabel: 'Dec 07', value: 35_700 },
-      { dateLabel: 'Dec 08', value: 29_200 },
-      { dateLabel: 'Dec 09', value: 33_950 },
-      { dateLabel: 'Dec 10', value: 26_700 },
-      { dateLabel: 'Dec 11', value: 39_850 },
+  const shopOptions = useMemo(() => {
+    const shops = allUsageQuery.data?.byShop ?? []
+    const opts = [
+      { value: ALL_SHOPS, label: 'All workspaces' },
+      ...shops.map((s) => ({
+        value: s.shopId,
+        label: shortShopId(s.shopId),
+      })),
     ]
+    return opts
+  }, [allUsageQuery.data?.byShop])
 
-    if (timeRange === 'last-7') return base.slice(-7)
-    if (timeRange === 'last-90') {
-      return [
-        ...base,
-        { dateLabel: 'Dec 12', value: 22_100 },
-        { dateLabel: 'Dec 13', value: 24_300 },
-        { dateLabel: 'Dec 14', value: 21_900 },
-        { dateLabel: 'Dec 15', value: 29_700 },
-      ]
+  useEffect(() => {
+    const shops = allUsageQuery.data?.byShop ?? []
+    if (shopFilter === ALL_SHOPS) return
+    if (!shops.some((s) => s.shopId === shopFilter)) {
+      setShopFilter(ALL_SHOPS)
     }
-    return base
-  }, [timeRange])
+  }, [allUsageQuery.data?.byShop, shopFilter])
 
-  const users = useMemo<UsageUserRow[]>(() => {
-    if (projectFilter === 'core-api') {
-      return [
-        {
-          id: 'u-1',
-          name: 'Arlene McCoy',
-          role: 'Engineering',
-          requests: 14,
-          tokensUsed: 12_004,
-        },
-      ]
-    }
-    return [
-      {
-        id: 'u-1',
-        name: 'Arlene McCoy',
-        role: 'Engineering',
-        requests: 14,
-        tokensUsed: 12_004,
-      },
-      {
-        id: 'u-2',
-        name: 'Bessie Cooper',
-        role: 'Engineering',
-        requests: 8,
-        tokensUsed: 18_502,
-      },
-    ]
-  }, [projectFilter])
+  const points = useMemo(() => {
+    if (!activeReport?.daily) return []
+    return buildChartPoints(days, activeReport.daily)
+  }, [activeReport?.daily, days])
 
-  const columns = useMemo<ColumnDef<UsageUserRow>[]>(
+  const tableRows = useMemo<ShopTableRow[]>(() => {
+    const rows: ApiMeAiUsageByShop[] = activeReport?.byShop ?? []
+    return rows.map((s) => ({
+      id: s.shopId,
+      shopLabel: shortShopId(s.shopId),
+      requests: s.requests,
+      intelebits: tokensToIntelebits(s.tokens),
+    }))
+  }, [activeReport?.byShop])
+
+  const columns = useMemo<ColumnDef<ShopTableRow>[]>(
     () => [
-      {
-        header: 'User',
-        accessorKey: 'name',
-        cell: ({ row }) => (
-          <Inline align="center" gap="100">
-            <Avatar name={row.original.name} size="small" />
-            <Text variant="body3">{row.original.name}</Text>
-          </Inline>
-        ),
-      },
-      { header: 'Role', accessorKey: 'role' },
+      { header: 'Workspace (shop)', accessorKey: 'shopLabel' },
       {
         header: 'Requests',
         accessorKey: 'requests',
         cell: ({ row }) => formatInt(row.original.requests),
       },
       {
-        header: 'Tokens Use',
-        accessorKey: 'tokensUsed',
-        cell: ({ row }) => formatInt(row.original.tokensUsed),
+        header: 'Intelebits',
+        accessorKey: 'intelebits',
+        cell: ({ row }) => formatIntelebits(row.original.intelebits),
       },
     ],
     []
   )
+
+  const totals = activeReport?.totals
+  const monthlyBudget = activeReport?.monthlyBudget
+  const usageTone = usageToneFromPercent(monthlyBudget?.usagePercent ?? 0)
+
+  const intelebitsHelper =
+    monthlyBudget != null
+      ? `Monthly cap: ${formatIntelebits(monthlyBudget.usedIntelebits)} / ${formatIntelebits(monthlyBudget.capIntelebits)} Intelebits (${monthlyBudget.usagePercent.toFixed(1)}%).`
+      : 'Total Intelebits in the selected range (100 tokens = 1 Intelebit). Monthly cap is disabled in this environment.'
 
   return (
     <Stack gap="200" fullWidth>
@@ -182,12 +284,18 @@ export function ProfileUsageTab() {
           onChange={(v) => setTimeRange(v as TimeRangeValue)}
         />
         <Dropdown
-          options={projectOptions}
-          value={projectFilter}
+          options={shopOptions}
+          value={shopFilter}
           size="small"
-          onChange={(v) => setProjectFilter(v as ProjectFilterValue)}
+          onChange={(v) => setShopFilter(v)}
         />
       </Inline>
+
+      {error ? (
+        <Text variant="body3" className="text-red-600">
+          {error instanceof Error ? error.message : 'Failed to load usage.'}
+        </Text>
+      ) : null}
 
       {loading ? (
         <Inline gap="150" wrap fullWidth>
@@ -196,44 +304,35 @@ export function ProfileUsageTab() {
           </Text>
         </Inline>
       ) : (
-        <Inline gap="150" wrap={false} fullWidth>
-          <KpiCard
-            label="Volume"
-            helper="Total Tokens Generated"
-            value={`${formatInt(kpis.volume.current)} of ${formatInt(
-              kpis.volume.limit
-            )}`}
-            ratio={kpis.volume.current / kpis.volume.limit}
-            meterColor="#22c55e"
+        <Inline gap="150" wrap fullWidth>
+          <MetricTile
+            label="Intelebits (range)"
+            helper={intelebitsHelper}
+            value={formatIntelebits(totals?.intelebits ?? 0)}
+            tone={usageTone}
           />
-          <KpiCard
-            label="Activity"
-            helper="Total Interactions"
-            value={`${formatInt(kpis.activity.current)} of ${formatInt(
-              kpis.activity.limit
-            )}`}
-            ratio={kpis.activity.current / kpis.activity.limit}
-            meterColor="#f59e0b"
-          />
-          <KpiCard
-            label="Cost"
-            helper="Estimated Cost"
-            value={`${formatCurrency(kpis.cost.current)}`}
-            ratio={kpis.cost.current / kpis.cost.limit}
-            meterColor="#10b981"
+          <MetricTile
+            label="Requests"
+            helper="AI calls in selected range"
+            value={formatInt(totals?.requests ?? 0)}
+            tone={usageTone}
           />
         </Inline>
       )}
 
-      <TokenUsageChart points={points} />
+      <IntelebitsUsageChart points={points} tone={usageTone} />
 
       <Stack gap="100">
-        <Text variant="heading5">User Usage</Text>
-        <Table<UsageUserRow>
-          data={loading ? [] : users}
+        <Text variant="heading5">Usage by workspace</Text>
+        <Table<ShopTableRow>
+          data={loading ? [] : tableRows}
           columns={columns}
           size="medium"
-          emptyMessage={loading ? 'Loading usage…' : 'No usage found'}
+          emptyMessage={
+            loading
+              ? 'Loading usage…'
+              : 'No usage in this range. Use the AI assistant to generate data.'
+          }
         />
       </Stack>
     </Stack>

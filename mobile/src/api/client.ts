@@ -176,11 +176,37 @@ export type AiChatTurn = {
   content: string;
 };
 
-export async function postAiPrompt(
-  body: { messages: AiChatTurn[] } | { prompt: string },
-): Promise<{ reply: string }> {
+export type PostAiBody =
+  | { messages: AiChatTurn[]; projectId?: string; shopId?: string }
+  | { prompt: string; projectId?: string; shopId?: string };
+
+export async function postAiPrompt(body: PostAiBody): Promise<{
+  reply: string;
+  usage?: {
+    tokens: number;
+    intelebits: number;
+    usagePercent: number;
+    monthlyBudget: {
+      capIntelebits: number;
+      usedIntelebits: number;
+      usagePercent: number;
+    } | null;
+  };
+}> {
   return authFetch('/ai', {
     method: 'POST',
     body: JSON.stringify(body),
-  }) as Promise<{ reply: string }>;
+  }) as Promise<{
+    reply: string;
+    usage?: {
+      tokens: number;
+      intelebits: number;
+      usagePercent: number;
+      monthlyBudget: {
+        capIntelebits: number;
+        usedIntelebits: number;
+        usagePercent: number;
+      } | null;
+    };
+  }>;
 }
