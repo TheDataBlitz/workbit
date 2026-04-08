@@ -1,5 +1,5 @@
 import type { ApiMember } from '../../../api/client'
-import type { MemberRow } from '../../../components'
+import type { MemberRow } from './createMembersColumn'
 import { formatDateTime } from '../../../utils/format'
 
 export function mapMembersToRows(members: ApiMember[]): MemberRow[] {

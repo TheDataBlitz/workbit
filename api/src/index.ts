@@ -27,6 +27,7 @@ import { LOGBIT_PROJECT_ID } from './utils/log.js'
 import { projectRoutes } from './routes/project.js'
 import { aiRoutes } from './routes/ai.js'
 import { agentsRoutes } from './routes/agents.js'
+import { workspaceMcpToolsRoutes } from './routes/workspaceMcpTools.js'
 
 const DEFAULT_PORT = 3001
 const API_PREFIX = '/api/v1'
@@ -39,6 +40,10 @@ app.use(API_PREFIX, optionalAuth)
 app.use(API_PREFIX, requireAuth)
 app.use(`${API_PREFIX}/auth`, authRoutes)
 app.use(`${API_PREFIX}/workspaces`, workspacesRoutes)
+app.use(
+  `${API_PREFIX}/workspaces/:workspaceId/mcp-tools`,
+  workspaceMcpToolsRoutes
+)
 app.use(`${API_PREFIX}/workspace`, workspaceRoutes)
 app.use(`${API_PREFIX}/projects`, projectRoutes)
 app.use(`${API_PREFIX}/teams`, teamsRoutes)

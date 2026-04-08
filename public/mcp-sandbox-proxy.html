@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCP Sandbox Proxy</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: white;
+      }
+      #app {
+        border: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        background: white;
+      }
+    </style>
+  </head>
+  <body>
+    <iframe id="app" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+    <script>
+      (function () {
+        const host = window.parent
+        const appFrame = document.getElementById('app')
+        let hostOrigin = '*'
+        let appReady = false
+
+        function postToHost(message) {
+          host.postMessage(message, hostOrigin)
+        }
+
+        // Tell host we're ready to receive sandbox-resource-ready.
+        postToHost({
+          jsonrpc: '2.0',
+          method: 'ui/notifications/sandbox-proxy-ready',
+          params: {},
+        })
+
+        window.addEventListener('message', (event) => {
+          // First message defines origin we respond to.
+          if (hostOrigin === '*' && typeof event.origin === 'string' && event.origin) {
+            hostOrigin = event.origin
+          }
+
+          const msg = event.data
+          if (!msg || typeof msg !== 'object') return
+
+          // Host -> Proxy: load HTML into inner iframe
+          if (msg.jsonrpc === '2.0' && msg.method === 'ui/notifications/sandbox-resource-ready') {
+            const params = msg.params || {}
+            if (params && typeof params === 'object') {
+              const html = params.html
+              const sandbox = params.sandbox
+              if (typeof sandbox === 'string' && sandbox.trim()) {
+                appFrame.setAttribute('sandbox', sandbox.trim())
+              }
+              if (typeof html === 'string') {
+                appFrame.srcdoc = html
+                appReady = true
+              }
+            }
+            return
+          }
+
+          // Host -> Proxy: forward any JSON-RPC message to the guest app
+          if (msg.jsonrpc === '2.0') {
+            if (appFrame.contentWindow) {
+              appFrame.contentWindow.postMessage(msg, '*')
+            }
+            return
+          }
+        })
+
+        // Guest app -> Proxy: forward JSON-RPC messages to host
+        window.addEventListener('message', (event) => {
+          if (!appReady) return
+          if (event.source !== appFrame.contentWindow) return
+          const msg = event.data
+          if (!msg || typeof msg !== 'object') return
+          if (msg.jsonrpc !== '2.0') return
+          postToHost(msg)
+        })
+      })()
+    </script>
+  </body>
+</html>
+

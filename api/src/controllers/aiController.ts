@@ -5,7 +5,7 @@ import {
   completePromptWithMcpTools,
   type AiChatTurn,
 } from '../ai/mcp/completeWithMcpTools.js'
-import { withMcpClient } from '../ai/mcp/workbit-mcp-client.js'
+import { withWorkspaceMcpClient } from '../ai/mcp/workspace-mcp-client.js'
 import {
   getAgentCatalogEntry,
   isValidAgentKey,
@@ -13,6 +13,7 @@ import {
 import * as projectAgentsModel from '../models/projectAgents.js'
 import * as workspaceModel from '../models/workspace.js'
 import * as aiUsageModel from '../models/aiUsage.js'
+import * as workspaceMcpToolsModel from '../models/workspaceMcpTools.js'
 import { logApiError, logApiWarn } from '../utils/log.js'
 
 /** Cap how many turns we send to NIM to limit tokens (each turn is user or assistant). */
@@ -157,36 +158,55 @@ type CompletionOptionsResult =
   | { ok: false; status: number; error: string }
 
 async function completionOptionsForParsedRequest(
-  parsed: ParsedAiRequest
+  parsed: ParsedAiRequest,
+  resolvedShopId?: string
 ): Promise<CompletionOptionsResult> {
   const { projectId, selectedAgentKey, turns } = parsed
-  if (!projectId) {
-    return { ok: true, options: undefined }
+  const shopId = resolvedShopId?.trim() || parsed.shopId?.trim() || undefined
+
+  // Start with any agent suffix (project-scoped).
+  let systemPromptSuffix: string | undefined
+  if (projectId) {
+    const project = await workspaceModel.getProjectByIdForApi(projectId)
+    if (!project) {
+      return { ok: false, status: 404, error: 'Project not found' }
+    }
+
+    const resolved = await resolveSystemSuffixForProjectAgents({
+      projectId,
+      projectName: project.name,
+      selectedAgentKey,
+      lastUserMessage: turns[turns.length - 1].content,
+    })
+
+    if (!resolved.ok) {
+      return { ok: false, status: resolved.status, error: resolved.error }
+    }
+
+    systemPromptSuffix = resolved.systemPromptSuffix
   }
 
-  const project = await workspaceModel.getProjectByIdForApi(projectId)
-  if (!project) {
-    return { ok: false, status: 404, error: 'Project not found' }
+  // Add tool capability hint when Excalidraw MCP is enabled for this workspace.
+  if (shopId) {
+    try {
+      const enabled =
+        await workspaceMcpToolsModel.listEnabledWorkspaceMcpTools(shopId)
+      const hasExcalidraw = enabled.some((t) => t.toolKey === 'excalidraw_mcp')
+      if (hasExcalidraw) {
+        const toolHint = `## Tooling\nThis workspace has Excalidraw diagram tools available (prefixed as \`excalidraw_mcp.*\`).\n\nWhen the user asks to draw a diagram/graph/architecture, prefer calling:\n1) \`excalidraw_mcp.read_me\`\n2) \`excalidraw_mcp.create_view\`\n\nReturn a short explanation plus any diagram link/download attachment that the tool produces.`
+        systemPromptSuffix = systemPromptSuffix?.trim()
+          ? `${systemPromptSuffix.trim()}\n\n${toolHint}`
+          : toolHint
+      }
+    } catch {
+      // If the mapping lookup fails, proceed without the tool hint.
+    }
   }
 
-  const resolved = await resolveSystemSuffixForProjectAgents({
-    projectId,
-    projectName: project.name,
-    selectedAgentKey,
-    lastUserMessage: turns[turns.length - 1].content,
-  })
-
-  if (!resolved.ok) {
-    return { ok: false, status: resolved.status, error: resolved.error }
-  }
-
-  if (!resolved.systemPromptSuffix) {
-    return { ok: true, options: undefined }
-  }
-
+  if (!systemPromptSuffix?.trim()) return { ok: true, options: undefined }
   return {
     ok: true,
-    options: { systemPromptSuffix: resolved.systemPromptSuffix },
+    options: { systemPromptSuffix: systemPromptSuffix.trim() },
   }
 }
 
@@ -244,24 +264,26 @@ export async function postAi(req: Request, res: Response) {
   }
 
   try {
-    const opts = await completionOptionsForParsedRequest(parsed)
-    if (!opts.ok) {
-      res.status(opts.status).json({ error: opts.error })
-      return
-    }
-
     const shop = await resolveShopIdForAi(parsed)
     if (!shop.ok) {
       res.status(shop.status).json({ error: shop.error })
       return
     }
 
+    const opts = await completionOptionsForParsedRequest(parsed, shop.shopId)
+    if (!opts.ok) {
+      res.status(opts.status).json({ error: opts.error })
+      return
+    }
+
     await aiUsageModel.assertShopMonthlyIntelebitCap(shop.shopId)
     await aiUsageModel.assertShopTokenBudget(shop.shopId)
 
-    const { reply, totalTokens } = await withMcpClient(auth, (c) =>
-      completePromptWithMcpTools(c, parsed.turns, opts.options)
-    )
+    const { reply, totalTokens, attachments } = await withWorkspaceMcpClient({
+      auth,
+      workspaceId: shop.shopId,
+      fn: (c) => completePromptWithMcpTools(c, parsed.turns, opts.options),
+    })
 
     const userId = req.user?.id
     if (userId) {
@@ -284,6 +306,7 @@ export async function postAi(req: Request, res: Response) {
 
     res.json({
       reply,
+      attachments,
       usage: {
         tokens: totalTokens,
         intelebits: aiUsageModel.tokensToIntelebits(totalTokens),

@@ -14,8 +14,14 @@ import { Button } from '@thedatablitz/button'
 import { Popup } from '@thedatablitz/popup'
 
 import { Chat } from '@thedatablitz/chat'
-import { postAiPrompt, type AiChatTurn } from '../../api/aiClient'
+import { Text } from '@thedatablitz/text'
+import {
+  postAiPrompt,
+  type AiChatTurn,
+  type PostAiAttachment,
+} from '../../api/aiClient'
 import { logError } from '../../utils/errorHandling'
+import { AppRenderer } from '@mcp-ui/client'
 import {
   emitInteleBitClose,
   emitInteleBitOpen,
@@ -26,7 +32,12 @@ import { InteleBitWelcomeBanner } from './InteleBitWelcomeBanner'
 import { MarkdownPreview } from '@thedatablitz/markdown-editor'
 
 type UserTurn = { role: 'user'; content: string }
-type AssistantTurn = { role: 'assistant'; content: string; durationMs: number }
+type AssistantTurn = {
+  role: 'assistant'
+  content: string
+  durationMs: number
+  attachments?: PostAiAttachment[]
+}
 type ChatTurn = UserTurn | AssistantTurn
 
 /** Flex column shell so Chat can flex-1; scroll stays inside Chat.Body, composer stays visible. */
@@ -43,6 +54,52 @@ const inteChatFillStyle: CSSProperties = {
   flex: '1 1 0%',
   minHeight: 0,
   minWidth: 0,
+}
+
+function getMcpSandboxProxyUrl(): URL {
+  const base = import.meta.env.BASE_URL || '/'
+  const normalized = base.endsWith('/') ? base : `${base}/`
+  return new URL(`${normalized}mcp-sandbox-proxy.html`, window.location.origin)
+}
+
+function McpAppAttachmentCard(props: {
+  resourceUri: string
+  html: string
+  title?: string
+}) {
+  const title = props.title?.trim() ? props.title.trim() : 'Interactive app'
+
+  return (
+    <div className="mt-3 overflow-hidden rounded-[10px] border border-slate-200 bg-white">
+      <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-3 py-2">
+        <div className="min-w-0">
+          <Text variant="body3">{title}</Text>
+          <Text variant="caption2" color="color.text.subtle">
+            {props.resourceUri}
+          </Text>
+        </div>
+      </div>
+      <div className="h-[360px] w-full bg-white">
+        <AppRenderer
+          toolName="embedded-mcp-app"
+          toolResourceUri={props.resourceUri}
+          sandbox={{
+            url: getMcpSandboxProxyUrl(),
+            permissions:
+              'allow-scripts allow-same-origin allow-forms allow-popups allow-downloads',
+          }}
+          html={props.html}
+          onOpenLink={async ({ url }) => {
+            window.open(url, '_blank', 'noopener,noreferrer')
+            return {}
+          }}
+          onError={(e) => {
+            logError(e, 'InteleBit.McpAppAttachmentCard')
+          }}
+        />
+      </div>
+    </div>
+  )
 }
 
 function buildContextualPrompt(
@@ -80,7 +137,12 @@ function InteleBitPanel() {
       const durationMs = start != null ? Math.max(0, Date.now() - start) : 0
       setTurns((t) => [
         ...t,
-        { role: 'assistant', content: data.reply, durationMs },
+        {
+          role: 'assistant',
+          content: data.reply,
+          durationMs,
+          attachments: data.attachments,
+        },
       ])
     },
     onError: (e) => {
@@ -214,6 +276,73 @@ function InteleBitPanel() {
             ) : (
               <Chat.Response key={i} durationMs={turn.durationMs}>
                 <MarkdownPreview value={turn.content} />
+                {turn.attachments?.map((a, idx) =>
+                  a.kind === 'excalidraw' ? (
+                    <div
+                      key={`${i}-att-${idx}`}
+                      className="mt-3 rounded-[10px] border border-slate-200 bg-white p-3"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <Text variant="body3">Excalidraw diagram</Text>
+                          <Text variant="caption2" color="color.text.subtle">
+                            checkpoint: {a.checkpointId}
+                          </Text>
+                        </div>
+                        <div className="flex gap-2">
+                          {a.shareUrl ? (
+                            <Button
+                              variant="glass"
+                              size="small"
+                              onClick={() =>
+                                window.open(
+                                  a.shareUrl,
+                                  '_blank',
+                                  'noopener,noreferrer'
+                                )
+                              }
+                            >
+                              Open
+                            </Button>
+                          ) : null}
+                          {a.excalidrawJson ? (
+                            <Button
+                              variant="primary"
+                              size="small"
+                              onClick={() => {
+                                const json = a.excalidrawJson
+                                if (!json) return
+                                const blob = new Blob([json], {
+                                  type: 'application/json',
+                                })
+                                const url = URL.createObjectURL(blob)
+                                const el = document.createElement('a')
+                                el.href = url
+                                el.download = `diagram-${a.checkpointId}.excalidraw.json`
+                                document.body.appendChild(el)
+                                el.click()
+                                el.remove()
+                                URL.revokeObjectURL(url)
+                              }}
+                            >
+                              Download
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null
+                )}
+                {turn.attachments?.map((a, idx) =>
+                  a.kind === 'mcp_app' ? (
+                    <McpAppAttachmentCard
+                      key={`${i}-app-${idx}`}
+                      title={a.title}
+                      resourceUri={a.resourceUri}
+                      html={a.html}
+                    />
+                  ) : null
+                )}
               </Chat.Response>
             )
           )}

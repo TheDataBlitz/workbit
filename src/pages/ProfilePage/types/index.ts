@@ -1,1 +1,1 @@
-export type TabId = 'profile' | 'api-keys' | 'usage'
+export type TabId = 'profile' | 'api-keys' | 'usage' | 'integrationbits'

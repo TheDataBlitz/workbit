@@ -220,6 +220,69 @@ export async function createWorkspace(body: {
   }) as Promise<ApiWorkspace>
 }
 
+// --- Workspace MCP tools (IntegrationBits) ---
+
+export type ApiWorkspaceMcpToolCatalogItem = {
+  toolKey: string
+  name: string
+  description: string
+  enabled: boolean
+  baseUrl: string | null
+  hasToken: boolean
+}
+
+export async function fetchWorkspaceMcpTools(
+  workspaceId: string
+): Promise<{ tools: ApiWorkspaceMcpToolCatalogItem[] }> {
+  return authFetch(
+    `/workspaces/${encodeURIComponent(workspaceId)}/mcp-tools`
+  ) as Promise<{ tools: ApiWorkspaceMcpToolCatalogItem[] }>
+}
+
+export async function setWorkspaceMcpTool(
+  workspaceId: string,
+  toolKey: string,
+  body: { enabled: boolean; baseUrl?: string; token?: string }
+): Promise<{
+  toolKey: string
+  enabled: boolean
+  baseUrl: string | null
+  hasToken: boolean
+}> {
+  return authFetch(
+    `/workspaces/${encodeURIComponent(workspaceId)}/mcp-tools/${encodeURIComponent(toolKey)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }
+  ) as Promise<{
+    toolKey: string
+    enabled: boolean
+    baseUrl: string | null
+    hasToken: boolean
+  }>
+}
+
+export async function testWorkspaceMcpTool(
+  workspaceId: string,
+  toolKey: string,
+  body: { baseUrl: string; token?: string }
+): Promise<{
+  ok: boolean
+  tools: Array<{ name: string; description: string }>
+}> {
+  return authFetch(
+    `/workspaces/${encodeURIComponent(workspaceId)}/mcp-tools/${encodeURIComponent(toolKey)}/test`,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }
+  ) as Promise<{
+    ok: boolean
+    tools: Array<{ name: string; description: string }>
+  }>
+}
+
 // --- Workspace (singular: current workspace scope) ---
 
 export async function fetchMembers(): Promise<ApiMember[]> {
@@ -362,6 +425,13 @@ export interface ApiTeamMember {
   name: string
   username: string
   avatarSrc?: string
+}
+
+export type ApiTeam = {
+  id: string
+  name: string
+  memberCount: number
+  project: { id: string; name: string } | null
 }
 
 export async function fetchTeamMembers(

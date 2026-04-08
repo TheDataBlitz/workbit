@@ -9,7 +9,11 @@ import { Stack } from '@thedatablitz/stack'
 import { Text } from '@thedatablitz/text'
 import { TextInput } from '@thedatablitz/text-input'
 import { Toggle } from '@thedatablitz/toggle'
-import { ApiKeysTab, ProfileUsageTab } from '../../components'
+import {
+  ApiKeysTab,
+  ProfileUsageTab,
+  IntegrationBitsTab,
+} from '../../components'
 import { useAuth } from '../auth/AuthContext'
 import type { TabId } from './types'
 
@@ -22,7 +26,9 @@ export function ProfilePage() {
       ? 'profile'
       : tabParam === 'usage'
         ? 'usage'
-        : 'api-keys'
+        : tabParam === 'integrationbits'
+          ? 'integrationbits'
+          : 'api-keys'
   const user = state.status === 'authenticated' ? state.session.user : null
   const fullNameRaw =
     (user?.user_metadata?.full_name as string | undefined) ??
@@ -62,15 +68,19 @@ export function ProfilePage() {
   const headerTitle =
     activeTab === 'usage'
       ? 'Usage & Analytics'
-      : activeTab === 'api-keys'
-        ? 'API keys'
-        : 'Profile settings'
+      : activeTab === 'integrationbits'
+        ? 'IntegrationBits'
+        : activeTab === 'api-keys'
+          ? 'API keys'
+          : 'Profile settings'
   const headerSubtitle =
     activeTab === 'usage'
       ? 'Track token usage, interactions, and estimated cost across projects.'
-      : activeTab === 'api-keys'
-        ? 'Manage developer access keys for integrations and automation.'
-        : 'Manage your personal account and developer access from the sidebar.'
+      : activeTab === 'integrationbits'
+        ? 'Enable workspace MCP tools and integrations.'
+        : activeTab === 'api-keys'
+          ? 'Manage developer access keys for integrations and automation.'
+          : 'Manage your personal account and developer access from the sidebar.'
 
   return (
     <Box fullWidth>
@@ -306,6 +316,7 @@ export function ProfilePage() {
 
         {activeTab === 'api-keys' && <ApiKeysTab />}
         {activeTab === 'usage' && <ProfileUsageTab />}
+        {activeTab === 'integrationbits' && <IntegrationBitsTab />}
       </Stack>
     </Box>
   )

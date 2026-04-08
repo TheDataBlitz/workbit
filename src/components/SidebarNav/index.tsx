@@ -7,6 +7,7 @@ import {
   KeyRound,
   User,
   BarChart3,
+  Settings2,
   Users,
   UsersRound,
 } from 'lucide-react'
@@ -364,6 +365,15 @@ export function SidebarNav({
             <BarChart3 size={15} className="shrink-0" />
             <Text as="span" variant="body3" truncate>
               Usage
+            </Text>
+          </NavItem>
+          <NavItem
+            to={`${base}/profile?tab=integrationbits`}
+            active={activeProfileTab === 'integrationbits'}
+          >
+            <Settings2 size={15} className="shrink-0" />
+            <Text as="span" variant="body3" truncate>
+              IntegrationBits
             </Text>
           </NavItem>
         </Stack>

@@ -2,10 +2,11 @@ import type { Team } from '../../../constants'
 
 export function getActiveProfileTab(
   search: string
-): 'profile' | 'api-keys' | 'usage' {
+): 'profile' | 'api-keys' | 'usage' | 'integrationbits' {
   const tab = new URLSearchParams(search).get('tab')
   if (tab === 'profile') return 'profile'
   if (tab === 'usage') return 'usage'
+  if (tab === 'integrationbits') return 'integrationbits'
   return 'api-keys'
 }
 

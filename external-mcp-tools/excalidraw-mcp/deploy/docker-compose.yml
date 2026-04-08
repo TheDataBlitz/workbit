@@ -1,0 +1,11 @@
+services:
+  excalidraw-mcp:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      - PORT=3001
+    ports:
+      - "3005:3001"
+    restart: unless-stopped
+
