@@ -22,7 +22,6 @@ export async function withWorkspaceMcpClient<T>(input: {
     const enabled = await workspaceMcpToolsModel.listEnabledWorkspaceMcpTools(
       input.workspaceId
     )
-    console.log('enabled', enabled)
     const externalClients: Array<{
       key: string
       client: McpClientLike
@@ -32,7 +31,7 @@ export async function withWorkspaceMcpClient<T>(input: {
     for (const t of enabled) {
       const baseUrl =
         t.toolKey === 'excalidraw_mcp'
-          ? DEFAULT_EXCALIDRAW_MCP_BASE_URL
+          ? t.baseUrl?.trim() || DEFAULT_EXCALIDRAW_MCP_BASE_URL
           : t.baseUrl?.trim()
       if (!baseUrl) continue
       const headers: Record<string, string> = {}

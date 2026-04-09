@@ -79,6 +79,11 @@ export function createCompositeMcpClient(input: {
   }): Promise<unknown> {
     const toolName = req.toolNameHint
     if (toolName) {
+      // Ensure routing table is populated (some callers may read resources
+      // without having called listTools first).
+      if (!cachedTools) {
+        await listTools()
+      }
       const hit = toolToClient.get(toolName)
       if (hit?.client.readResource) {
         return await hit.client.readResource({ uri: req.uri })

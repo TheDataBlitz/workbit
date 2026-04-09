@@ -6,7 +6,7 @@ import {
   type CSSProperties,
   type FC,
 } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 
 import { Alert } from '@thedatablitz/alert'
@@ -16,12 +16,15 @@ import { Popup } from '@thedatablitz/popup'
 import { Chat } from '@thedatablitz/chat'
 import { Text } from '@thedatablitz/text'
 import {
+  callMcpAppTool,
+  getMcpAppResource,
   postAiPrompt,
   type AiChatTurn,
   type PostAiAttachment,
 } from '../../api/aiClient'
 import { logError } from '../../utils/errorHandling'
 import { AppRenderer } from '@mcp-ui/client'
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types'
 import {
   emitInteleBitClose,
   emitInteleBitOpen,
@@ -63,11 +66,49 @@ function getMcpSandboxProxyUrl(): URL {
 }
 
 function McpAppAttachmentCard(props: {
+  shopId?: string
+  projectId: string
+  toolName: string
   resourceUri: string
-  html: string
   title?: string
 }) {
   const title = props.title?.trim() ? props.title.trim() : 'Interactive app'
+
+  type UiCallToolParams = {
+    name: string
+    arguments?: Record<string, unknown>
+  }
+
+  async function handleCallTool(
+    params: UiCallToolParams
+  ): Promise<CallToolResult> {
+    // Proxy to our API; return as MCP CallToolResult shape expected by AppRenderer.
+    const result = await callMcpAppTool({
+      shopId: props.shopId,
+      projectId: props.projectId,
+      toolName: props.toolName,
+      name: params.name,
+      arguments: params.arguments ?? {},
+    })
+    return result as CallToolResult
+  }
+  const q = useQuery({
+    queryKey: [
+      'mcp-app-resource',
+      props.shopId ?? null,
+      props.projectId,
+      props.toolName,
+      props.resourceUri,
+    ],
+    queryFn: () =>
+      getMcpAppResource({
+        shopId: props.shopId,
+        projectId: props.projectId,
+        toolName: props.toolName,
+        resourceUri: props.resourceUri,
+      }),
+    staleTime: 60_000,
+  })
 
   return (
     <div className="mt-3 overflow-hidden rounded-[10px] border border-slate-200 bg-white">
@@ -80,23 +121,58 @@ function McpAppAttachmentCard(props: {
         </div>
       </div>
       <div className="h-[360px] w-full bg-white">
-        <AppRenderer
-          toolName="embedded-mcp-app"
-          toolResourceUri={props.resourceUri}
-          sandbox={{
-            url: getMcpSandboxProxyUrl(),
-            permissions:
-              'allow-scripts allow-same-origin allow-forms allow-popups allow-downloads',
-          }}
-          html={props.html}
-          onOpenLink={async ({ url }) => {
-            window.open(url, '_blank', 'noopener,noreferrer')
-            return {}
-          }}
-          onError={(e) => {
-            logError(e, 'InteleBit.McpAppAttachmentCard')
-          }}
-        />
+        {q.isPending ? (
+          <div className="p-3">
+            <Text variant="caption2" color="color.text.subtle">
+              Loading app…
+            </Text>
+          </div>
+        ) : q.error ? (
+          <div className="p-3">
+            <Alert
+              variant="error"
+              placement="inline"
+              description={
+                q.error instanceof Error ? q.error.message : String(q.error)
+              }
+            />
+          </div>
+        ) : (
+          <AppRenderer
+            toolName="embedded-mcp-app"
+            toolResourceUri={props.resourceUri}
+            sandbox={{
+              url: getMcpSandboxProxyUrl(),
+              permissions:
+                'allow-scripts allow-forms allow-popups allow-downloads',
+            }}
+            html={q.data?.html ?? ''}
+            onMessage={async () => {
+              // Some MCP App SDKs send misc notifications; ignore by default.
+              return {}
+            }}
+            onCallTool={handleCallTool}
+            onFallbackRequest={async (req: unknown) => {
+              const r = req as { method?: unknown }
+              // The embedded app may call additional MCP host methods (resources/list, prompts/list, etc).
+              // Log them so we can implement the minimal required proxy surface.
+              logError(
+                new Error(
+                  `Unhandled MCP App request: ${typeof r.method === 'string' ? r.method : ''}`
+                ),
+                'InteleBit.McpAppAttachmentCard.onFallbackRequest'
+              )
+              return {}
+            }}
+            onOpenLink={async ({ url }) => {
+              window.open(url, '_blank', 'noopener,noreferrer')
+              return {}
+            }}
+            onError={(e) => {
+              logError(e, 'InteleBit.McpAppAttachmentCard')
+            }}
+          />
+        )}
       </div>
     </div>
   )
@@ -277,69 +353,14 @@ function InteleBitPanel() {
               <Chat.Response key={i} durationMs={turn.durationMs}>
                 <MarkdownPreview value={turn.content} />
                 {turn.attachments?.map((a, idx) =>
-                  a.kind === 'excalidraw' ? (
-                    <div
-                      key={`${i}-att-${idx}`}
-                      className="mt-3 rounded-[10px] border border-slate-200 bg-white p-3"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <Text variant="body3">Excalidraw diagram</Text>
-                          <Text variant="caption2" color="color.text.subtle">
-                            checkpoint: {a.checkpointId}
-                          </Text>
-                        </div>
-                        <div className="flex gap-2">
-                          {a.shareUrl ? (
-                            <Button
-                              variant="glass"
-                              size="small"
-                              onClick={() =>
-                                window.open(
-                                  a.shareUrl,
-                                  '_blank',
-                                  'noopener,noreferrer'
-                                )
-                              }
-                            >
-                              Open
-                            </Button>
-                          ) : null}
-                          {a.excalidrawJson ? (
-                            <Button
-                              variant="primary"
-                              size="small"
-                              onClick={() => {
-                                const json = a.excalidrawJson
-                                if (!json) return
-                                const blob = new Blob([json], {
-                                  type: 'application/json',
-                                })
-                                const url = URL.createObjectURL(blob)
-                                const el = document.createElement('a')
-                                el.href = url
-                                el.download = `diagram-${a.checkpointId}.excalidraw.json`
-                                document.body.appendChild(el)
-                                el.click()
-                                el.remove()
-                                URL.revokeObjectURL(url)
-                              }}
-                            >
-                              Download
-                            </Button>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  ) : null
-                )}
-                {turn.attachments?.map((a, idx) =>
                   a.kind === 'mcp_app' ? (
                     <McpAppAttachmentCard
                       key={`${i}-app-${idx}`}
                       title={a.title}
+                      shopId={project.shopId}
+                      projectId={project.projectId}
+                      toolName={a.toolName}
                       resourceUri={a.resourceUri}
-                      html={a.html}
                     />
                   ) : null
                 )}
