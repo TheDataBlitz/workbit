@@ -1,75 +1,7 @@
-import { convertToLexicalJson } from '@thedatablitz/text-editor';
 import { z } from 'zod';
+import { mcpContentToStoredLexical } from '../utils/mcpLexicalContent.js';
 import { makeWorkbitPostRequest } from '../utils/workbitClient.js';
 import { logMcpError } from '../logging.js';
-function lexicalJsonHasBlockContent(serialized) {
-    try {
-        const parsed = JSON.parse(serialized);
-        const children = parsed?.root?.children;
-        return Array.isArray(children) && children.length > 0;
-    }
-    catch {
-        return false;
-    }
-}
-function plainTextToLexicalEditorState(raw) {
-    const lines = raw.split(/\r?\n/);
-    const text = lines.join('\n');
-    return JSON.stringify({
-        root: {
-            type: 'root',
-            format: '',
-            indent: 0,
-            version: 1,
-            children: [
-                {
-                    type: 'paragraph',
-                    format: '',
-                    indent: 0,
-                    version: 1,
-                    direction: 'ltr',
-                    textFormat: 0,
-                    textStyle: '',
-                    children: [
-                        {
-                            type: 'text',
-                            detail: 0,
-                            format: 0,
-                            mode: 'normal',
-                            style: '',
-                            text,
-                            version: 1,
-                        },
-                    ],
-                },
-            ],
-        },
-    });
-}
-function stringToLexicalEditorState(raw) {
-    const s = raw ?? '';
-    if (!s.trim()) {
-        return '';
-    }
-    try {
-        const parsed = JSON.parse(s);
-        if (parsed && typeof parsed === 'object' && parsed.root != null) {
-            return lexicalJsonHasBlockContent(s) ? s : '';
-        }
-    }
-    catch {
-        // not JSON; treat as markdown
-    }
-    try {
-        const converted = convertToLexicalJson(s, 'markdown');
-        if (lexicalJsonHasBlockContent(converted))
-            return converted;
-    }
-    catch {
-        // fallback to plain text lexical JSON
-    }
-    return plainTextToLexicalEditorState(s);
-}
 function countWords(input) {
     return input.trim().split(/\s+/).filter(Boolean).length;
 }
@@ -106,7 +38,7 @@ export function registerCreateIssueTool(server) {
             description: z
                 .string()
                 .optional()
-                .describe('Optional issue description.'),
+                .describe('Optional issue description as Markdown or Lexical JSON string. Markdown is converted to Lexical before save; `![alt](https://...)` or `![alt](data:...)` becomes inline wb-image nodes.'),
             projectId: z
                 .string()
                 .optional()
@@ -123,7 +55,7 @@ export function registerCreateIssueTool(server) {
     }, async ({ title, description, projectId, teamId, parentIssueId }) => {
         try {
             const descriptionWithSource = buildElaborateDescription(title, description);
-            const lexicalDescription = stringToLexicalEditorState(descriptionWithSource);
+            const lexicalDescription = mcpContentToStoredLexical(descriptionWithSource);
             const payload = { title, description: lexicalDescription };
             if (projectId != null && projectId !== '') {
                 payload.projectId = projectId;
@@ -166,7 +98,7 @@ export function registerCreateIssueTool(server) {
             description: z
                 .string()
                 .optional()
-                .describe('Optional sub-issue description.'),
+                .describe('Optional description (Markdown or Lexical JSON); images in Markdown become wb-image nodes.'),
             projectId: z
                 .string()
                 .optional()
@@ -179,7 +111,7 @@ export function registerCreateIssueTool(server) {
     }, async ({ title, description, projectId, parentIssueId }) => {
         try {
             const descriptionWithSource = buildElaborateDescription(title, description);
-            const lexicalDescription = stringToLexicalEditorState(descriptionWithSource);
+            const lexicalDescription = mcpContentToStoredLexical(descriptionWithSource);
             const payload = {
                 title,
                 description: lexicalDescription,

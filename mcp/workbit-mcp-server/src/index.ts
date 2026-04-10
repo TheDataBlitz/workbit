@@ -14,6 +14,7 @@ import {
   registerUpdateProjectStatusTool,
 } from './tools/updateProject.js'
 import { registerUpdateProjectDecisionTool } from './tools/updateDecision.js'
+import { registerProjectDocumentTools } from './tools/projectDocuments.js'
 import { initLogging, logMcpError } from './logging.js'
 
 const server = new McpServer({
@@ -33,6 +34,7 @@ registerUpdateIssueTool(server)
 registerUpdateProjectTool(server)
 registerUpdateProjectStatusTool(server)
 registerUpdateProjectDecisionTool(server)
+registerProjectDocumentTools(server)
 
 async function main() {
   initLogging()

@@ -445,6 +445,14 @@ Hooks live in `src/hooks/` and use the services above. They expose loading/error
 | **useMyIssues** | Issues assigned to current user | GraphQL `MyIssues` |
 | **useUpdateIssue** | Update issue (e.g. status) | REST `PATCH .../issues/:id` |
 
+**Issue `description` (REST create / patch):**
+
+- Persisted as a **Lexical JSON string** (same shape the `TextEditor` uses).
+- The API **coerces** non-Lexical input: Markdown or plain text is converted to Lexical; valid Lexical is kept.
+- Markdown or Lexical text that contains `![alt](https://…)` or `![alt](data:…)` is normalized to inline **`wb-image`** nodes (`type: "wb-image"`, `src`, `alt`, `version`).
+- Prefer **HTTPS URLs** for images after upload; `data:` URIs are supported but enlarge payloads (watch JSON body size limits on the API).
+- Implementation: `api/src/utils/issueDescriptionLexical.ts` (`coerceAndNormalizeIssueDescription`), applied in `api/src/models/issues.ts` on create and update.
+
 ### 5.4 Inbox & nav
 
 | Hook | Purpose | Query / mutation |

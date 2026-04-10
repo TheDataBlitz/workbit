@@ -38,19 +38,23 @@ export function registerUpdateProjectTool(server) {
         },
     }, async ({ teamId, status, priority, leadId, startDate, endDate, memberIds, teamIds, labelIds, }) => {
         try {
-            const payload = Object.fromEntries(
-                Object.entries({
-                    status,
-                    priority,
-                    leadId,
-                    startDate,
-                    endDate,
-                    memberIds,
-                    teamIds,
-                    labelIds,
-                }).filter(([, value]) => value !== undefined)
-            )
-
+            const payload = {};
+            if (status !== undefined)
+                payload.status = status;
+            if (priority !== undefined)
+                payload.priority = priority;
+            if (leadId !== undefined)
+                payload.leadId = leadId;
+            if (startDate !== undefined)
+                payload.startDate = startDate;
+            if (endDate !== undefined)
+                payload.endDate = endDate;
+            if (memberIds !== undefined)
+                payload.memberIds = memberIds;
+            if (teamIds !== undefined)
+                payload.teamIds = teamIds;
+            if (labelIds !== undefined)
+                payload.labelIds = labelIds;
             if (Object.keys(payload).length === 0) {
                 return {
                     content: [
@@ -59,7 +63,7 @@ export function registerUpdateProjectTool(server) {
                             text: 'No fields to update. Provide at least one of: status, priority, leadId, startDate, endDate, memberIds, teamIds, labelIds.',
                         },
                     ],
-                }
+                };
             }
             const result = await makeWorkbitPatchRequest(`/teams/${encodeURIComponent(teamId)}/project`, payload);
             return {

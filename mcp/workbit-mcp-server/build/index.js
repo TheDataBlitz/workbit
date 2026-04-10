@@ -11,6 +11,7 @@ import { registerProjectUpdateTools } from './tools/projectUpdates.js';
 import { registerUpdateIssueTool } from './tools/updateIssue.js';
 import { registerUpdateProjectTool, registerUpdateProjectStatusTool, } from './tools/updateProject.js';
 import { registerUpdateProjectDecisionTool } from './tools/updateDecision.js';
+import { registerProjectDocumentTools } from './tools/projectDocuments.js';
 import { initLogging, logMcpError } from './logging.js';
 const server = new McpServer({
     name: 'workbit',
@@ -28,6 +29,7 @@ registerUpdateIssueTool(server);
 registerUpdateProjectTool(server);
 registerUpdateProjectStatusTool(server);
 registerUpdateProjectDecisionTool(server);
+registerProjectDocumentTools(server);
 async function main() {
     initLogging();
     const transport = new StdioServerTransport();

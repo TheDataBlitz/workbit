@@ -34,7 +34,10 @@ const API_PREFIX = '/api/v1'
 
 const app = express()
 app.use(cors())
-app.use(express.json())
+// Lexical editor content (and occasional embedded assets) can exceed the default
+// body-parser limit (~100kb). Keep this modest to avoid abuse but large enough
+// for typical editor payloads.
+app.use(express.json({ limit: '5mb' }))
 
 app.use(API_PREFIX, optionalAuth)
 app.use(API_PREFIX, requireAuth)

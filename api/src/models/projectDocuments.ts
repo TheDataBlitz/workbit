@@ -1,5 +1,6 @@
 import * as db from '../db/projectDocuments.js'
 import { getProjectById } from '../db/projects.js'
+import { coerceAndNormalizeIssueDescription } from '../utils/issueDescriptionLexical.js'
 
 export type ProjectDocumentSummaryApi = {
   id: string
@@ -74,7 +75,9 @@ export async function createProjectDocumentForApi(input: {
 }): Promise<ProjectDocumentApi> {
   const project = await getProjectById(input.projectId)
   if (!project) throw new Error('Project not found')
-  const created = await db.insertProjectDocument(input)
+  const content =
+    coerceAndNormalizeIssueDescription(input.content) ?? input.content
+  const created = await db.insertProjectDocument({ ...input, content })
   return fullToApi(created)
 }
 
@@ -87,7 +90,11 @@ export async function updateProjectDocumentForApi(input: {
 }): Promise<ProjectDocumentApi> {
   const project = await getProjectById(input.projectId)
   if (!project) throw new Error('Project not found')
-  const updated = await db.updateProjectDocument(input)
+  const content =
+    input.content !== undefined
+      ? (coerceAndNormalizeIssueDescription(input.content) ?? input.content)
+      : undefined
+  const updated = await db.updateProjectDocument({ ...input, content })
   if (!updated) throw new Error('Document not found')
   return fullToApi(updated)
 }

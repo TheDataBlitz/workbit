@@ -14,6 +14,7 @@ Workbit is a full-stack app: React frontend and Express API, with Supabase for a
 | Topic | Location |
 |-------|----------|
 | API contract & screens | `.cursor/docs/API_AND_SERVICES_SPEC.md` |
+| Issue `description` (Lexical coercion, images) | `api/README.md` — *Issue descriptions (Lexical)*; `api/src/utils/issueDescriptionLexical.ts` |
 | Design system | `.cursor/docs/DESIGN_SYSTEM.md`, `src/design-system/` |
 | Logging & errors | `.cursor/docs/LOGBIT_SDK.md`, `.cursor/skills/use-logbit/SKILL.md` |
 | Project layout & naming | Root `CLAUDE.md`, `.cursor/skills/project-structure/SKILL.md` |

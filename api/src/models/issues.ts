@@ -6,6 +6,7 @@ import * as dbIssueComments from '../db/issueComments.js'
 import { getTeamById } from '../db/teams.js'
 import { getMemberById } from '../db/members.js'
 import { getProjectById } from '../db/projects.js'
+import { coerceAndNormalizeIssueDescription } from '../utils/issueDescriptionLexical.js'
 
 export type IssueListItemApi = {
   id: string
@@ -461,7 +462,7 @@ export async function createIssueForApi(input: {
     teamId: input.teamId,
     projectId,
     title: input.title.trim(),
-    description: input.description,
+    description: coerceAndNormalizeIssueDescription(input.description),
     status: input.status,
     parentIssueId: input.parentIssueId,
   })
@@ -511,7 +512,9 @@ export async function updateIssueForApi(
       assigneeName: patch.assigneeName,
     }),
     ...(projectId !== undefined && { projectId: projectId ?? undefined }),
-    ...(patch.description !== undefined && { description: patch.description }),
+    ...(patch.description !== undefined && {
+      description: coerceAndNormalizeIssueDescription(patch.description),
+    }),
     ...(patch.parentIssueId !== undefined && {
       parentIssueId: patch.parentIssueId ?? undefined,
     }),
