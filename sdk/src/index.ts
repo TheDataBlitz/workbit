@@ -558,3 +558,9 @@ export const workbit = {
     )
   },
 }
+
+export {
+  isLexicalEditorStateJson,
+  normalizeIssueDescriptionLexical,
+  promoteMarkdownImagesInLexicalJsonString,
+} from './lexicalMarkdownImages.js'
