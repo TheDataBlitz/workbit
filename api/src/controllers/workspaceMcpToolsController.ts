@@ -1,6 +1,5 @@
 import type { Request, Response } from 'express'
 import * as model from '../models/workspaceMcpTools.js'
-import { withRemoteMcpClient } from '../ai/mcp/remote-mcp-client.js'
 import { logApiError } from '../utils/log.js'
 
 function sendError(res: Response, err: unknown, status = 500) {
@@ -95,31 +94,5 @@ export async function setTool(req: Request, res: Response) {
   } catch (e) {
     logApiError(e, 'workspaceMcpTools.setTool')
     sendError(res, e)
-  }
-}
-
-export async function testTool(req: Request, res: Response) {
-  try {
-    const { baseUrl, token } = req.body as { baseUrl?: string; token?: string }
-    const base = typeof baseUrl === 'string' ? baseUrl.trim() : ''
-    if (!base) {
-      sendError(res, 'baseUrl is required', 400)
-      return
-    }
-    const tools = await withRemoteMcpClient({
-      baseUrl: base,
-      bearerToken: typeof token === 'string' ? token : undefined,
-      fn: async (client) => {
-        const r = await client.listTools()
-        return r.tools?.map((t) => ({
-          name: t.name,
-          description: t.description ?? '',
-        }))
-      },
-    })
-    res.json({ ok: true, tools: tools ?? [] })
-  } catch (e) {
-    logApiError(e, 'workspaceMcpTools.testTool')
-    sendError(res, e, 400)
   }
 }

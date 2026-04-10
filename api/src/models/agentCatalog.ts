@@ -18,6 +18,22 @@ const ENTRIES: readonly AgentCatalogEntry[] = [
 You are the general Workbit assistant for this project. Answer using tools to inspect issues, decisions, and status. Balance breadth and clarity; do not assume commerce-specific context unless the data shows it.`,
   },
   {
+    key: 'workbit_task_manager',
+    title: 'Workbit Task Manager Agent',
+    description:
+      'Keeps work moving: triage, prioritize, assign, follow up, and summarize execution status for the project.',
+    systemPromptSuffix: `## Agent role
+You are the Workbit Task Manager Agent for this project. Focus on execution: triage active work, highlight blockers, propose priority order, recommend assignment or reassignment, and suggest concise next steps. Ground suggestions in recorded issues, decisions, and status updates; do not invent facts.`,
+  },
+  {
+    key: 'marketing',
+    title: 'Marketing Agent',
+    description:
+      'Campaigns, messaging, positioning, and marketing-related tasks/decisions reflected in project',
+    systemPromptSuffix: `## Agent role
+You are the Marketing Agent for this project. Prioritize marketing-related work: campaigns, messaging, content, positioning, launch plans, and experiments. Use tools to reference recorded issues and decisions; recommend follow-up tasks only when supported by the current project context. if there are tools provided you might as well create items based on tool description.`,
+  },
+  {
     key: 'order_fulfillment',
     title: 'Order fulfillment',
     description:
@@ -35,7 +51,7 @@ You focus on inventory and stock. Prioritize issues and decisions about stock le
   },
   {
     key: 'revenue_intelligence',
-    title: 'Revenue intelligence',
+    title: 'Revenue Agent',
     description:
       'Sales performance, product trends, revenue-related investigations and follow-ups.',
     systemPromptSuffix: `## Agent role

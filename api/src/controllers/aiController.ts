@@ -461,7 +461,7 @@ export async function postAi(req: Request, res: Response) {
       return
     }
 
-    const opts = await completionOptionsForParsedRequest(parsed, shop.shopId)
+    const opts = await completionOptionsForParsedRequest(parsed)
     if (!opts.ok) {
       res.status(opts.status).json({ error: opts.error })
       return

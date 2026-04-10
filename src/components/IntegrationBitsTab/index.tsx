@@ -1,56 +1,47 @@
 import { useParams } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@thedatablitz/card'
 import { Inline } from '@thedatablitz/inline'
 import { Stack } from '@thedatablitz/stack'
 import { Text } from '@thedatablitz/text'
 import { Button } from '@thedatablitz/button'
 import { Alert } from '@thedatablitz/alert'
-import {
-  fetchWorkspaceMcpTools,
-  setWorkspaceMcpTool,
-  testWorkspaceMcpTool,
-  type ApiWorkspaceMcpToolCatalogItem,
-} from '../../api/client'
+import { Dropdown } from '@thedatablitz/dropdown'
+import { Box } from '@thedatablitz/box'
+import { PageHeader } from '@thedatablitz/page-header'
+import type { ApiWorkspaceMcpToolCatalogItem } from '../../api/client'
+import { useIntegrationBitsTabData } from './hook'
 
 export function IntegrationBitsTab() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
   const wid = workspaceId ?? ''
-  const queryClient = useQueryClient()
-
-  const toolsQuery = useQuery({
-    queryKey: ['workspace', wid, 'mcp-tools'],
-    queryFn: () => fetchWorkspaceMcpTools(wid),
-    enabled: Boolean(wid),
-  })
-
-  const setMutation = useMutation({
-    mutationFn: (input: { toolKey: string; enabled: boolean }) =>
-      setWorkspaceMcpTool(wid, input.toolKey, {
-        enabled: input.enabled,
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ['workspace', wid, 'mcp-tools'],
-      })
-    },
-  })
-
-  const testMutation = useMutation({
-    mutationFn: (input: { toolKey: string; baseUrl: string }) =>
-      testWorkspaceMcpTool(wid, input.toolKey, {
-        baseUrl: input.baseUrl,
-      }),
-  })
-
-  const items = toolsQuery.data?.tools ?? []
+  const {
+    selectedProjectId,
+    setSelectedProjectId,
+    toolsQuery,
+    items,
+    setMutation,
+    testMutation,
+    projectsQuery,
+    projectOptions,
+    agentCatalogQuery,
+    catalogAgents,
+    enabledAgentsQuery,
+    enabledSet,
+    enableAgentMutation,
+    disableAgentMutation,
+  } = useIntegrationBitsTabData(wid)
 
   const renderToolCard = (t: ApiWorkspaceMcpToolCatalogItem) => {
     const baseUrl = t.baseUrl?.trim() ?? ''
     const canEnable = Boolean(baseUrl)
 
     return (
-      <Card key={t.toolKey} size="large" variant="default" fullWidth>
+      <Card
+        key={t.toolKey}
+        size="large"
+        variant="default"
+        className="max-w-[300px]"
+      >
         <CardContent>
           <Stack gap="150">
             <Inline
@@ -67,9 +58,6 @@ export function IntegrationBitsTab() {
                 </Text>
               </Stack>
               <Inline align="center" gap="100" wrap={false}>
-                <Text variant="caption2" color="color.text.subtle">
-                  {t.enabled ? 'Enabled' : 'Disabled'}
-                </Text>
                 <Button
                   size="small"
                   variant={t.enabled ? 'success' : 'danger'}
@@ -89,24 +77,6 @@ export function IntegrationBitsTab() {
                   {t.enabled ? 'ON' : 'OFF'}
                 </Button>
               </Inline>
-            </Inline>
-
-            <Inline gap="150" wrap={false} fullWidth>
-              <Button
-                variant="glass"
-                disabled={!baseUrl || testMutation.isPending}
-                onClick={() =>
-                  testMutation.mutate({
-                    toolKey: t.toolKey,
-                    baseUrl,
-                  })
-                }
-              >
-                Test connection
-              </Button>
-              <Text variant="caption2" color="color.text.subtle">
-                Base URL: {baseUrl || '—'}
-              </Text>
             </Inline>
 
             {testMutation.data?.ok ? (
@@ -139,6 +109,59 @@ export function IntegrationBitsTab() {
     )
   }
 
+  const renderAgentCard = (a: {
+    agentKey: string
+    title: string
+    description: string
+  }) => {
+    const enabled = enabledSet.has(a.agentKey)
+    const busy = enableAgentMutation.isPending || disableAgentMutation.isPending
+    return (
+      <Card
+        key={a.agentKey}
+        size="large"
+        variant="ai"
+        className="max-w-[300px]"
+      >
+        <CardContent>
+          <Stack gap="150">
+            <Inline justify="between" align="center" gap="150">
+              <Stack gap="025">
+                <Text variant="heading5">{a.title}</Text>
+                <Text variant="body3" color="color.text.subtle">
+                  {a.description}
+                </Text>
+              </Stack>
+              <Inline align="center" gap="100" wrap={false}>
+                <Button
+                  size="small"
+                  variant={enabled ? 'success' : 'danger'}
+                  disabled={!selectedProjectId || busy}
+                  onClick={() => {
+                    if (!selectedProjectId) return
+                    if (enabled) {
+                      disableAgentMutation.mutate({
+                        projectId: selectedProjectId,
+                        agentKey: a.agentKey,
+                      })
+                      return
+                    }
+                    enableAgentMutation.mutate({
+                      projectId: selectedProjectId,
+                      agentKey: a.agentKey,
+                    })
+                  }}
+                >
+                  {enabled ? 'ON' : 'OFF'}
+                </Button>
+              </Inline>
+            </Inline>
+          </Stack>
+        </CardContent>
+      </Card>
+    )
+  }
+
   if (!wid) {
     return (
       <Text variant="body3" color="color.text.subtle">
@@ -149,13 +172,11 @@ export function IntegrationBitsTab() {
 
   return (
     <Stack gap="200" fullWidth>
-      <Stack gap="050">
-        <Text variant="heading4">IntegrationBits</Text>
-        <Text variant="body3" color="color.text.subtle">
-          Enable MCP tools for this workspace. Enabled tools become available to
-          the backend AI tool loop.
-        </Text>
-      </Stack>
+      <PageHeader
+        avatar={{ name: 'IntegrationBits' }}
+        title="IntegrationBits"
+        subtitle="Enable MCP tools for this workspace. Enabled tools become available to the backend AI tool loop."
+      />
 
       {toolsQuery.error ? (
         <Alert
@@ -174,7 +195,74 @@ export function IntegrationBitsTab() {
           Loading tools…
         </Text>
       ) : (
-        <Stack gap="200">{items.map(renderToolCard)}</Stack>
+        <Box className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {items.map(renderToolCard)}
+        </Box>
+      )}
+
+      <Stack gap="050" className="pt-2">
+        <Text variant="heading4">Agents</Text>
+        <Text variant="body3" color="color.text.subtle">
+          Enable specialized InteleBit agents per project. When multiple agents
+          are enabled, InteleBit will route your message to the best-fit agent.
+        </Text>
+      </Stack>
+
+      {projectsQuery.error ? (
+        <Alert
+          variant="danger"
+          title="Failed to load projects"
+          description={
+            projectsQuery.error instanceof Error
+              ? projectsQuery.error.message
+              : String(projectsQuery.error)
+          }
+        />
+      ) : null}
+
+      <Inline align="flex-start">
+        <Dropdown
+          value={selectedProjectId}
+          onChange={setSelectedProjectId}
+          options={projectOptions}
+          selectionType="single"
+          placeholder={
+            projectsQuery.isPending ? 'Loading projects…' : 'Select a project'
+          }
+          size="small"
+        />
+      </Inline>
+
+      {agentCatalogQuery.error ? (
+        <Alert
+          variant="danger"
+          title="Failed to load agent catalog"
+          description={
+            agentCatalogQuery.error instanceof Error
+              ? agentCatalogQuery.error.message
+              : String(agentCatalogQuery.error)
+          }
+        />
+      ) : null}
+
+      {selectedProjectId && enabledAgentsQuery.error ? (
+        <Alert
+          variant="danger"
+          title="Failed to load enabled agents"
+          description={
+            enabledAgentsQuery.error instanceof Error
+              ? enabledAgentsQuery.error.message
+              : String(enabledAgentsQuery.error)
+          }
+        />
+      ) : null}
+
+      {agentCatalogQuery.isPending ? (
+        <Text variant="body3" color="color.text.subtle">
+          Loading agents…
+        </Text>
+      ) : (
+        <Inline>{catalogAgents.map(renderAgentCard)}</Inline>
       )}
     </Stack>
   )
