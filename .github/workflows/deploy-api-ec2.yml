@@ -1,0 +1,150 @@
+name: Deploy API to EC2
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+      - ".npmrc"
+      - "api/.npmrc"
+      - ".github/workflows/deploy-api-ec2.yml"
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: deploy-api-ec2
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22.17"
+  WORK_BIT_GH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    environment: TEST
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install API dependencies
+        working-directory: api
+        run: npm ci
+
+      - name: Build API
+        working-directory: api
+        run: npm run build
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: TEST
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Create deployment package (API only)
+        run: |
+          mkdir -p temp_deploy
+          rsync -av \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='node_modules' \
+            --exclude='*.log' \
+            --exclude='temp_deploy' \
+            ./api ./temp_deploy/
+          cp .npmrc temp_deploy/.npmrc || true
+          tar -czf deployment-api.tar.gz -C temp_deploy .
+          rm -rf temp_deploy
+
+      - name: Verify GitHub secrets are loaded
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_PORT: ${{ secrets.EC2_PORT }}
+          EC2_APP_DIR: ${{ secrets.EC2_APP_DIR }}
+          API_PM2_NAME: ${{ secrets.API_PM2_NAME }}
+          API_ENV_FILE: ${{ secrets.API_ENV_FILE }}
+          WORK_BIT_GH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "Checking required secrets..."
+          if [ -z "$EC2_HOST" ] || [ -z "$EC2_USERNAME" ] || [ -z "$EC2_SSH_KEY" ] || [ -z "$EC2_PORT" ] || [ -z "$EC2_APP_DIR" ] || [ -z "$WORK_BIT_GH_TOKEN" ]; then
+            echo "Required secrets are missing."
+            exit 1
+          fi
+          echo "Secrets look present."
+
+      - name: Upload deployment package
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_PORT }}
+          source: "deployment-api.tar.gz"
+          target: "/tmp"
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_PORT }}
+          envs: WORK_BIT_GH_TOKEN
+          script: |
+            set -euo pipefail
+
+            APP_DIR="${{ secrets.EC2_APP_DIR }}"
+            API_PM2_NAME="${{ secrets.API_PM2_NAME }}"
+            API_ENV_FILE="${{ secrets.API_ENV_FILE }}"
+
+            API_PM2_NAME="${API_PM2_NAME:-workbit-api}"
+
+            mkdir -p "${APP_DIR}"
+            cd "${APP_DIR}"
+
+            rm -rf ./*
+            tar -xzf /tmp/deployment-api.tar.gz
+
+            cd api
+
+            if [ -n "${API_ENV_FILE}" ]; then
+              printf "%s" "${API_ENV_FILE}" > .env
+            fi
+
+            if ! command -v pm2 >/dev/null 2>&1; then
+              npm i -g pm2
+            fi
+
+            npm ci
+            npm run build
+
+            if pm2 describe "${API_PM2_NAME}" >/dev/null 2>&1; then
+              pm2 restart "${API_PM2_NAME}"
+            else
+              pm2 start dist/index.js --name "${API_PM2_NAME}" --env production
+            fi
+
+            pm2 save

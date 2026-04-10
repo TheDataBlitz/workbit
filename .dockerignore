@@ -1,0 +1,6 @@
+# Used when: docker build -f deploy/Dockerfile -t workbit-api .
+.git
+.cursor
+node_modules
+api/node_modules
+api/dist
