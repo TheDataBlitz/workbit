@@ -26,6 +26,8 @@
 
 name: Deploy web UI to S3 (Vite dist)
 
+# Path filters are independent of deploy-api-ec2 except shared files (e.g. root package.json):
+# a push that changes both api/** and src/** still runs both workflows — that is intentional.
 on:
   workflow_dispatch:
   push:
