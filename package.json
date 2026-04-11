@@ -85,6 +85,7 @@
     "mermaid": "^11.13.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-is": "^19.0.0",
     "react-router-dom": "^6.28.0",
     "styled-components": "^6.1.13",
     "tailwind-merge": "^3.5.0",
