@@ -33,6 +33,10 @@ export async function optionalAuth(
   _res: Response,
   next: NextFunction
 ): Promise<void> {
+  if (req.method === 'OPTIONS') {
+    next()
+    return
+  }
   if (!isSupabaseConfigured() || !supabaseAdmin) {
     next()
     return
@@ -88,8 +92,12 @@ export function requireAuth(
   res: Response,
   next: NextFunction
 ): void {
-  const apiPrefix = process.env.API_PREFIX ?? '/api/v1'
-  if (req.path.startsWith(`${apiPrefix}/auth`)) {
+  // Mounted at /api/v1 — req.path is e.g. /auth/login or /workspace/members, not /api/v1/...
+  if (req.method === 'OPTIONS') {
+    next()
+    return
+  }
+  if (req.path === '/auth' || req.path.startsWith('/auth/')) {
     next()
     return
   }

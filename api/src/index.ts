@@ -14,6 +14,22 @@ initLogbit({
   }),
 })
 import cors from 'cors'
+
+function parseCorsOrigins(): string[] {
+  const raw = process.env.CORS_ORIGINS
+  const fromEnv = raw
+    ? raw
+        .split(/[\s,]+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : []
+  const defaults = [
+    'https://workbit.thedatablitz.com',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+  ]
+  return [...new Set([...defaults, ...fromEnv])]
+}
 import { optionalAuth, requireAuth } from './middleware/auth.js'
 import { workspaceRoutes } from './routes/workspace.js'
 import { workspacesRoutes } from './routes/workspaces.js'
@@ -33,7 +49,14 @@ const DEFAULT_PORT = 3001
 const API_PREFIX = '/api/v1'
 
 const app = express()
-app.use(cors())
+app.use(
+  cors({
+    origin: parseCorsOrigins(),
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'x-api-key'],
+    maxAge: 86_400,
+  })
+)
 // Lexical editor content (and occasional embedded assets) can exceed the default
 // body-parser limit (~100kb). Keep this modest to avoid abuse but large enough
 // for typical editor payloads.
