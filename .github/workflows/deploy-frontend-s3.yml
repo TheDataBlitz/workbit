@@ -1,0 +1,127 @@
+# Deploy static frontend to S3 (+ optional CloudFront invalidation).
+#
+# Custom domain (e.g. workbit.thedatablitz.com) requires:
+# 1. S3 bucket (private is fine) as the CloudFront origin (OAC recommended).
+# 2. ACM certificate in us-east-1 for the hostname, attached to CloudFront.
+# 3. CloudFront alternate domain name (CNAME) = workbit.thedatablitz.com.
+# 4. DNS: CNAME or ALIAS from workbit.thedatablitz.com → CloudFront distribution domain.
+# 5. SPA routing: CloudFront custom error responses — 403 and 404 → /index.html with HTTP 200
+#    (S3 returns 403 for missing "folder" paths; both must map to index.html for React Router.)
+#
+# GitHub Environment: TEST (same layout as API deploy):
+#   API_ENV_FILE — multiline .env; bash-sourceable (KEY=value; quote values with spaces).
+#     Put AWS + S3 + VITE_* (and optional CLOUDFRONT_DISTRIBUTION_ID) here. Example keys:
+#     AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION,
+#     S3_HOST_BUCKET,
+#     VITE_API_URL, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, other VITE_* as needed.
+#   NPM_TOKEN — separate environment secret for @thedatablitz/.npmrc (same as API workflow).
+#     If API_ENV_FILE also defines NPM_TOKEN, that value wins after `source`.
+#   EC2_* secrets — API only; not used by this workflow.
+#
+# Supabase: add https://workbit.thedatablitz.com to Auth → URL Configuration (site URL + redirect URLs).
+
+name: Deploy frontend to S3
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "index.html"
+      - "vite.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "tsconfig.node.json"
+      - "tailwind.config.*"
+      - ".npmrc"
+      - ".github/workflows/deploy-frontend-s3.yml"
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: deploy-frontend-s3
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22.17"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: TEST
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Write env file from API_ENV_FILE
+        env:
+          API_ENV_FILE: ${{ secrets.API_ENV_FILE }}
+        run: |
+          if [ -z "${API_ENV_FILE}" ]; then
+            echo "API_ENV_FILE secret is not set for environment TEST."
+            exit 1
+          fi
+          printf '%s' "$API_ENV_FILE" > .env.deploy
+
+      - name: Install dependencies
+        env:
+          # TEST environment secret; available even when not duplicated inside API_ENV_FILE
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -a
+          # shellcheck disable=SC1091
+          source .env.deploy
+          set +a
+          export WORK_BIT_GH_TOKEN="${WORK_BIT_GH_TOKEN:-${NPM_TOKEN:-}}"
+          if [ -z "${WORK_BIT_GH_TOKEN}" ]; then
+            echo "Add NPM_TOKEN to the TEST environment or set WORK_BIT_GH_TOKEN / NPM_TOKEN in API_ENV_FILE."
+            exit 1
+          fi
+          npm ci
+
+      - name: Build
+        run: |
+          set -a
+          # shellcheck disable=SC1091
+          source .env.deploy
+          set +a
+          npm run build
+
+      - name: Sync to S3
+        run: |
+          set -a
+          # shellcheck disable=SC1091
+          source .env.deploy
+          set +a
+          if [ -z "${S3_HOST_BUCKET:-}" ]; then
+            echo "Set S3_HOST_BUCKET in API_ENV_FILE."
+            exit 1
+          fi
+          aws s3 sync dist/ "s3://${S3_HOST_BUCKET}/" --delete
+
+      - name: Invalidate CloudFront
+        run: |
+          set -a
+          # shellcheck disable=SC1091
+          source .env.deploy
+          set +a
+          if [ -z "${CLOUDFRONT_DISTRIBUTION_ID:-}" ]; then
+            echo "CLOUDFRONT_DISTRIBUTION_ID not set; skipping invalidation."
+            exit 0
+          fi
+          aws cloudfront create-invalidation \
+            --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+            --paths "/*"
