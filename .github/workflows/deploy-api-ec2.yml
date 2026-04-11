@@ -98,7 +98,7 @@ jobs:
           echo "Secrets look present."
 
       - name: Upload deployment package
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
@@ -106,6 +106,8 @@ jobs:
           port: ${{ secrets.EC2_PORT }}
           source: "deployment-api.tar.gz"
           target: "/tmp"
+          timeout: 2m
+          command_timeout: 15m
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
@@ -114,6 +116,8 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: ${{ secrets.EC2_PORT }}
+          timeout: 2m
+          command_timeout: 15m
           envs: WORK_BIT_GH_TOKEN
           script: |
             set -euo pipefail
