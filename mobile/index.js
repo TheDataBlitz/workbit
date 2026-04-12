@@ -2,6 +2,7 @@
  * @format
  */
 
+import 'react-native-gesture-handler';
 import 'react-native-url-polyfill/auto';
 import 'react-native-nitro-modules';
 import { AppRegistry } from 'react-native';

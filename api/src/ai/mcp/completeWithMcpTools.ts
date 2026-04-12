@@ -98,25 +98,6 @@ export type CompleteWithMcpToolsResult = {
   reply: string
   /** Sum of provider-reported total_tokens across all NIM rounds in this request. */
   totalTokens: number
-  attachments?: Array<{
-    kind: 'mcp_app'
-    toolName: string
-    resourceUri: string
-    title?: string
-  }>
-}
-
-function getToolUiResourceUri(tool: McpTool): string | null {
-  const t = tool as unknown as { _meta?: { ui?: { resourceUri?: unknown } } }
-  const uri = t?._meta?.ui?.resourceUri
-  return typeof uri === 'string' && uri.trim() ? uri.trim() : null
-}
-
-function guessToolTitle(tool: McpTool): string | undefined {
-  const name = tool.name?.trim()
-  if (!name) return undefined
-  const short = name.includes('.') ? name.split('.').slice(1).join('.') : name
-  return short || name
 }
 
 /**
@@ -143,7 +124,6 @@ export async function completePromptWithMcpTools(
   ]
 
   let totalTokens = 0
-  const attachments: CompleteWithMcpToolsResult['attachments'] = []
 
   const tools = await listAllTools(client)
   if (tools.length === 0) {
@@ -154,13 +134,11 @@ export async function completePromptWithMcpTools(
     return {
       reply: typeof m.content === 'string' ? m.content.trim() : '',
       totalTokens,
-      attachments: attachments?.length ? attachments : undefined,
     }
   }
 
   const aiTools = mcpTools(tools)
   const messages: NvidiaChatRequestMessage[] = [...baseMessages]
-  const toolByName = new Map<string, McpTool>(tools.map((t) => [t.name, t]))
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const {
@@ -178,7 +156,6 @@ export async function completePromptWithMcpTools(
       return {
         reply: typeof content === 'string' ? content.trim() : '',
         totalTokens,
-        attachments: attachments?.length ? attachments : undefined,
       }
     }
 
@@ -198,17 +175,6 @@ export async function completePromptWithMcpTools(
         const args = parseToolArguments(tc.function?.arguments)
         const result = await client.callTool({ name, arguments: args })
         toolText = formatMcpToolResult(result)
-
-        const toolDef = toolByName.get(name)
-        const uiUri = toolDef ? getToolUiResourceUri(toolDef) : null
-        if (uiUri) {
-          attachments?.push({
-            kind: 'mcp_app',
-            toolName: name,
-            resourceUri: uiUri,
-            ...(toolDef ? { title: guessToolTitle(toolDef) } : {}),
-          })
-        }
       } catch (e) {
         toolText =
           e instanceof Error
@@ -229,6 +195,5 @@ export async function completePromptWithMcpTools(
   return {
     reply: typeof final.content === 'string' ? final.content.trim() : '',
     totalTokens,
-    attachments: attachments?.length ? attachments : undefined,
   }
 }

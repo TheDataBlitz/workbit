@@ -263,26 +263,6 @@ export async function setWorkspaceMcpTool(
   }>
 }
 
-export async function testWorkspaceMcpTool(
-  workspaceId: string,
-  toolKey: string,
-  body: { baseUrl: string; token?: string }
-): Promise<{
-  ok: boolean
-  tools: Array<{ name: string; description: string }>
-}> {
-  return authFetch(
-    `/workspaces/${encodeURIComponent(workspaceId)}/mcp-tools/${encodeURIComponent(toolKey)}/test`,
-    {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }
-  ) as Promise<{
-    ok: boolean
-    tools: Array<{ name: string; description: string }>
-  }>
-}
-
 // --- Workspace (singular: current workspace scope) ---
 
 export async function fetchMembers(): Promise<ApiMember[]> {

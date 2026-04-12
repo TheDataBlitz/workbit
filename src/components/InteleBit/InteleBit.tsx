@@ -6,7 +6,7 @@ import {
   type CSSProperties,
   type FC,
 } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 
 import { Alert } from '@thedatablitz/alert'
@@ -14,17 +14,8 @@ import { Button } from '@thedatablitz/button'
 import { Popup } from '@thedatablitz/popup'
 
 import { Chat } from '@thedatablitz/chat'
-import { Text } from '@thedatablitz/text'
-import {
-  callMcpAppTool,
-  getMcpAppResource,
-  postAiPrompt,
-  type AiChatTurn,
-  type PostAiAttachment,
-} from '../../api/aiClient'
+import { postAiPrompt, type AiChatTurn } from '../../api/aiClient'
 import { logError } from '../../utils/errorHandling'
-import { AppRenderer } from '@mcp-ui/client'
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types'
 import {
   emitInteleBitClose,
   emitInteleBitOpen,
@@ -39,7 +30,6 @@ type AssistantTurn = {
   role: 'assistant'
   content: string
   durationMs: number
-  attachments?: PostAiAttachment[]
 }
 type ChatTurn = UserTurn | AssistantTurn
 
@@ -57,125 +47,6 @@ const inteChatFillStyle: CSSProperties = {
   flex: '1 1 0%',
   minHeight: 0,
   minWidth: 0,
-}
-
-function getMcpSandboxProxyUrl(): URL {
-  const base = import.meta.env.BASE_URL || '/'
-  const normalized = base.endsWith('/') ? base : `${base}/`
-  return new URL(`${normalized}mcp-sandbox-proxy.html`, window.location.origin)
-}
-
-function McpAppAttachmentCard(props: {
-  shopId?: string
-  projectId: string
-  toolName: string
-  resourceUri: string
-  title?: string
-}) {
-  const title = props.title?.trim() ? props.title.trim() : 'Interactive app'
-
-  type UiCallToolParams = {
-    name: string
-    arguments?: Record<string, unknown>
-  }
-
-  async function handleCallTool(
-    params: UiCallToolParams
-  ): Promise<CallToolResult> {
-    // Proxy to our API; return as MCP CallToolResult shape expected by AppRenderer.
-    const result = await callMcpAppTool({
-      shopId: props.shopId,
-      projectId: props.projectId,
-      toolName: props.toolName,
-      name: params.name,
-      arguments: params.arguments ?? {},
-    })
-    return result as CallToolResult
-  }
-  const q = useQuery({
-    queryKey: [
-      'mcp-app-resource',
-      props.shopId ?? null,
-      props.projectId,
-      props.toolName,
-      props.resourceUri,
-    ],
-    queryFn: () =>
-      getMcpAppResource({
-        shopId: props.shopId,
-        projectId: props.projectId,
-        toolName: props.toolName,
-        resourceUri: props.resourceUri,
-      }),
-    staleTime: 60_000,
-  })
-
-  return (
-    <div className="mt-3 overflow-hidden rounded-[10px] border border-slate-200 bg-white">
-      <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-3 py-2">
-        <div className="min-w-0">
-          <Text variant="body3">{title}</Text>
-          <Text variant="caption2" color="color.text.subtle">
-            {props.resourceUri}
-          </Text>
-        </div>
-      </div>
-      <div className="h-[360px] w-full bg-white">
-        {q.isPending ? (
-          <div className="p-3">
-            <Text variant="caption2" color="color.text.subtle">
-              Loading app…
-            </Text>
-          </div>
-        ) : q.error ? (
-          <div className="p-3">
-            <Alert
-              variant="error"
-              placement="inline"
-              description={
-                q.error instanceof Error ? q.error.message : String(q.error)
-              }
-            />
-          </div>
-        ) : (
-          <AppRenderer
-            toolName="embedded-mcp-app"
-            toolResourceUri={props.resourceUri}
-            sandbox={{
-              url: getMcpSandboxProxyUrl(),
-              permissions:
-                'allow-scripts allow-forms allow-popups allow-downloads',
-            }}
-            html={q.data?.html ?? ''}
-            onMessage={async () => {
-              // Some MCP App SDKs send misc notifications; ignore by default.
-              return {}
-            }}
-            onCallTool={handleCallTool}
-            onFallbackRequest={async (req: unknown) => {
-              const r = req as { method?: unknown }
-              // The embedded app may call additional MCP host methods (resources/list, prompts/list, etc).
-              // Log them so we can implement the minimal required proxy surface.
-              logError(
-                new Error(
-                  `Unhandled MCP App request: ${typeof r.method === 'string' ? r.method : ''}`
-                ),
-                'InteleBit.McpAppAttachmentCard.onFallbackRequest'
-              )
-              return {}
-            }}
-            onOpenLink={async ({ url }) => {
-              window.open(url, '_blank', 'noopener,noreferrer')
-              return {}
-            }}
-            onError={(e) => {
-              logError(e, 'InteleBit.McpAppAttachmentCard')
-            }}
-          />
-        )}
-      </div>
-    </div>
-  )
 }
 
 function buildContextualPrompt(
@@ -217,7 +88,6 @@ function InteleBitPanel() {
           role: 'assistant',
           content: data.reply,
           durationMs,
-          attachments: data.attachments,
         },
       ])
     },
@@ -352,18 +222,6 @@ function InteleBitPanel() {
             ) : (
               <Chat.Response key={i} durationMs={turn.durationMs}>
                 <MarkdownPreview value={turn.content} />
-                {turn.attachments?.map((a, idx) =>
-                  a.kind === 'mcp_app' ? (
-                    <McpAppAttachmentCard
-                      key={`${i}-app-${idx}`}
-                      title={a.title}
-                      shopId={project.shopId}
-                      projectId={project.projectId}
-                      toolName={a.toolName}
-                      resourceUri={a.resourceUri}
-                    />
-                  ) : null
-                )}
               </Chat.Response>
             )
           )}

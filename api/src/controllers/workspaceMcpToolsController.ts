@@ -7,18 +7,16 @@ function sendError(res: Response, err: unknown, status = 500) {
   res.status(status).json({ error: message })
 }
 
-const DEFAULT_EXCALIDRAW_MCP_BASE_URL =
-  process.env.EXCALIDRAW_MCP_BASE_URL?.trim() || 'http://localhost:3005/mcp'
+/** Built-in catalog entries (metadata + optional default base URL). Add tools here; DB-only rows still appear in list. */
+type CatalogTool = {
+  toolKey: string
+  name: string
+  description: string
+  defaultBaseUrl: string | null
+}
 
-function toolCatalog() {
-  return [
-    {
-      toolKey: 'excalidraw_mcp',
-      name: 'Excalidraw',
-      description: 'Streamable Excalidraw MCP app server (HTTP /mcp).',
-      defaultBaseUrl: DEFAULT_EXCALIDRAW_MCP_BASE_URL,
-    },
-  ] as const
+function toolCatalog(): readonly CatalogTool[] {
+  return []
 }
 
 export async function listTools(req: Request, res: Response) {
@@ -30,18 +28,37 @@ export async function listTools(req: Request, res: Response) {
     }
     const rows = await model.listWorkspaceMcpTools(workspaceId)
     const byKey = new Map(rows.map((r) => [r.toolKey, r]))
-    const out = toolCatalog().map((t) => {
+    const catalog = toolCatalog()
+    const catalogKeys = new Set(catalog.map((c) => c.toolKey))
+
+    const fromCatalog = catalog.map((t) => {
       const row = byKey.get(t.toolKey)
       return {
         toolKey: t.toolKey,
         name: t.name,
         description: t.description,
         enabled: row?.enabled ?? false,
-        baseUrl: row?.baseUrl ?? t.defaultBaseUrl ?? null,
+        baseUrl: row?.baseUrl ?? t.defaultBaseUrl,
         hasToken: Boolean(row?.accessToken),
       }
     })
-    res.json({ tools: out })
+
+    const fromDbOnly = rows
+      .filter((r) => !catalogKeys.has(r.toolKey))
+      .map((r) => ({
+        toolKey: r.toolKey,
+        name: r.toolKey,
+        description:
+          'External MCP server at the configured base URL (streamable HTTP MCP).',
+        enabled: r.enabled,
+        baseUrl: r.baseUrl,
+        hasToken: Boolean(r.accessToken),
+      }))
+
+    const tools = [...fromCatalog, ...fromDbOnly].sort((a, b) =>
+      a.toolKey.localeCompare(b.toolKey)
+    )
+    res.json({ tools })
   } catch (e) {
     logApiError(e, 'workspaceMcpTools.listTools')
     sendError(res, e)
@@ -51,7 +68,7 @@ export async function listTools(req: Request, res: Response) {
 export async function setTool(req: Request, res: Response) {
   try {
     const workspaceId = req.params.workspaceId
-    const toolKey = req.params.toolKey
+    const toolKey = req.params.toolKey?.trim()
     const { enabled, baseUrl, token } = req.body as {
       enabled?: boolean
       baseUrl?: string

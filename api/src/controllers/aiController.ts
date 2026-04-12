@@ -183,221 +183,10 @@ async function completionOptionsForParsedRequest(
     systemPromptSuffix = resolved.systemPromptSuffix
   }
 
-  // Note: Excalidraw-specific AI hinting intentionally removed; MCP Apps are rendered via ui:// resources.
-
   if (!systemPromptSuffix?.trim()) return { ok: true, options: undefined }
   return {
     ok: true,
     options: { systemPromptSuffix: systemPromptSuffix.trim() },
-  }
-}
-
-function parseHtmlFromMcpResource(result: unknown): { html: string } | null {
-  if (!result || typeof result !== 'object') return null
-  const r = result as {
-    contents?: Array<{
-      // resources/read (SDK) shape: { uri, mimeType, text, _meta? }
-      uri?: string
-      mimeType?: string
-      text?: string
-      // some hosts/tools use content blocks with { type: "text", text, mimeType }
-      type?: string
-    }>
-    content?: Array<{
-      uri?: string
-      mimeType?: string
-      text?: string
-      type?: string
-    }>
-  }
-  const blocks = (
-    Array.isArray(r.contents)
-      ? r.contents
-      : Array.isArray(r.content)
-        ? r.content
-        : []
-  ) as Array<{ type?: string; text?: string; mimeType?: string }>
-
-  const htmlBlock =
-    blocks.find(
-      (b) => typeof b.mimeType === 'string' && b.mimeType.includes('text/html')
-    ) ??
-    blocks.find(
-      (b) => typeof b.text === 'string' && b.text.trim().startsWith('<')
-    )
-
-  const html = typeof htmlBlock?.text === 'string' ? htmlBlock.text : ''
-  if (!html.trim()) return null
-  return { html }
-}
-
-function getQueryString(v: unknown): string | null {
-  return typeof v === 'string' && v.trim() ? v.trim() : null
-}
-
-async function resolveShopIdForMcpResourceQuery(input: {
-  shopId?: string | null
-  projectId?: string | null
-}): Promise<
-  { ok: true; shopId: string } | { ok: false; status: number; error: string }
-> {
-  if (input.shopId?.trim()) return { ok: true, shopId: input.shopId.trim() }
-  if (input.projectId?.trim()) {
-    const wid = await workspaceModel.getWorkspaceIdForProject(input.projectId)
-    if (!wid) {
-      return {
-        ok: false,
-        status: 400,
-        error:
-          'Could not resolve shop for this project; send shopId or fix team workspace.',
-      }
-    }
-    return { ok: true, shopId: wid }
-  }
-  return { ok: false, status: 400, error: 'shopId or projectId is required.' }
-}
-
-/**
- * GET /api/v1/ai/mcp-app-resource?shopId=...&toolName=...&resourceUri=ui://...
- * Returns HTML for rendering an MCP App View in the browser.
- */
-export async function getMcpAppResource(req: Request, res: Response) {
-  const auth = req.workbitUpstreamAuth
-  if (!auth) {
-    logApiError(
-      new Error('getMcpAppResource: missing workbitUpstreamAuth'),
-      'ai.getMcpAppResource'
-    )
-    res.status(500).json({ error: 'Invalid auth state for MCP resource.' })
-    return
-  }
-
-  try {
-    const shopId = getQueryString(req.query.shopId)
-    const projectId = getQueryString(req.query.projectId)
-    const toolName = getQueryString(req.query.toolName)
-    const resourceUri = getQueryString(req.query.resourceUri)
-
-    if (!toolName) {
-      res.status(400).json({ error: 'toolName is required.' })
-      return
-    }
-    if (!resourceUri || !resourceUri.startsWith('ui://')) {
-      res.status(400).json({ error: 'resourceUri must start with ui://.' })
-      return
-    }
-
-    const resolved = await resolveShopIdForMcpResourceQuery({
-      shopId,
-      projectId,
-    })
-    if (!resolved.ok) {
-      res.status(resolved.status).json({ error: resolved.error })
-      return
-    }
-
-    const html = await withWorkspaceMcpClient({
-      auth,
-      workspaceId: resolved.shopId,
-      fn: async (client) => {
-        if (!client.readResource) {
-          throw new Error(
-            'MCP resources are not supported by connected clients.'
-          )
-        }
-        const resource = await client.readResource({
-          uri: resourceUri,
-          toolNameHint: toolName,
-        })
-        const parsed = parseHtmlFromMcpResource(resource)
-        if (!parsed) {
-          throw new Error('No HTML content found in MCP resource.')
-        }
-        return parsed.html
-      },
-    })
-
-    res.setHeader('Cache-Control', 'private, no-store')
-    res.json({ html })
-  } catch (e) {
-    logApiError(e, 'ai.getMcpAppResource')
-    res.status(400).json({ error: e instanceof Error ? e.message : String(e) })
-  }
-}
-
-/**
- * POST /api/v1/ai/mcp-app-call-tool
- * Proxies MCP `tools/call` for an embedded MCP App iframe.
- */
-export async function postMcpAppCallTool(req: Request, res: Response) {
-  const auth = req.workbitUpstreamAuth
-  if (!auth) {
-    logApiError(
-      new Error('postMcpAppCallTool: missing workbitUpstreamAuth'),
-      'ai.postMcpAppCallTool'
-    )
-    res.status(500).json({ error: 'Invalid auth state for MCP tool call.' })
-    return
-  }
-
-  try {
-    const body = (req.body ?? {}) as {
-      shopId?: string
-      projectId?: string
-      toolName?: string
-      /** Tool name inside the embedded app (usually unprefixed) */
-      name?: string
-      arguments?: Record<string, unknown>
-    }
-
-    const shopId = typeof body.shopId === 'string' ? body.shopId.trim() : ''
-    const projectId =
-      typeof body.projectId === 'string' ? body.projectId.trim() : ''
-    const toolNameHint =
-      typeof body.toolName === 'string' ? body.toolName.trim() : ''
-    const name = typeof body.name === 'string' ? body.name.trim() : ''
-    const args =
-      body.arguments && typeof body.arguments === 'object' ? body.arguments : {}
-
-    if (!toolNameHint) {
-      res.status(400).json({ error: 'toolName is required.' })
-      return
-    }
-    if (!name) {
-      res.status(400).json({ error: 'name is required.' })
-      return
-    }
-
-    const resolved = await resolveShopIdForMcpResourceQuery({
-      shopId: shopId || null,
-      projectId: projectId || null,
-    })
-    if (!resolved.ok) {
-      res.status(resolved.status).json({ error: resolved.error })
-      return
-    }
-
-    const prefix = toolNameHint.includes('.')
-      ? toolNameHint.split('.')[0]
-      : toolNameHint
-    const compositeToolName = prefix ? `${prefix}.${name}` : name
-
-    const result = await withWorkspaceMcpClient({
-      auth,
-      workspaceId: resolved.shopId,
-      fn: async (client) => {
-        return await client.callTool({
-          name: compositeToolName,
-          arguments: args,
-        })
-      },
-    })
-
-    res.setHeader('Cache-Control', 'private, no-store')
-    res.json(result)
-  } catch (e) {
-    logApiError(e, 'ai.postMcpAppCallTool')
-    res.status(400).json({ error: e instanceof Error ? e.message : String(e) })
   }
 }
 
@@ -470,7 +259,7 @@ export async function postAi(req: Request, res: Response) {
     await aiUsageModel.assertShopMonthlyIntelebitCap(shop.shopId)
     await aiUsageModel.assertShopTokenBudget(shop.shopId)
 
-    const { reply, totalTokens, attachments } = await withWorkspaceMcpClient({
+    const { reply, totalTokens } = await withWorkspaceMcpClient({
       auth,
       workspaceId: shop.shopId,
       fn: (c) => completePromptWithMcpTools(c, parsed.turns, opts.options),
@@ -497,7 +286,6 @@ export async function postAi(req: Request, res: Response) {
 
     res.json({
       reply,
-      attachments,
       usage: {
         tokens: totalTokens,
         intelebits: aiUsageModel.tokensToIntelebits(totalTokens),
