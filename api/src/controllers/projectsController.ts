@@ -18,6 +18,24 @@ export async function getProject(req: Request, res: Response) {
   }
 }
 
+/** GET /api/v1/projects/:projectId/properties */
+export async function getProjectProperties(req: Request, res: Response) {
+  try {
+    const { projectId } = req.params
+    const props = await workspaceModel.getProjectPropertiesForApi(projectId)
+    if (!props) {
+      res.status(404).json({ error: 'Project not found' })
+      return
+    }
+    res.json({ properties: props })
+  } catch (e) {
+    logApiError(e, 'projects.getProjectProperties', {
+      projectId: req.params.projectId,
+    })
+    res.status(500).json({ error: (e as Error).message })
+  }
+}
+
 /** GET /api/v1/projects/:projectId/status-updates */
 export async function getProjectStatusUpdates(req: Request, res: Response) {
   try {

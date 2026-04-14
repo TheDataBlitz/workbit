@@ -10,6 +10,7 @@ import { Text } from '@thedatablitz/text'
 import { Sidebar } from '../../components/Sidebar'
 import {
   useMeMember,
+  useProjectProperties,
   useProjectSummary,
   useSidebarWorkspaces,
   useTeamMembers,
@@ -96,11 +97,15 @@ const ProjectHeader = ({
   titleOverride,
   descriptionOverride,
   badgeLabelsOverride,
+  members,
+  leadId,
 }: {
   d: typeof projectDetailMock
   titleOverride?: string
   descriptionOverride?: string
   badgeLabelsOverride?: { team?: string; status?: string; priority?: string }
+  members: Array<{ id: string; name: string }>
+  leadId?: string
 }) => {
   const badges =
     badgeLabelsOverride &&
@@ -171,21 +176,38 @@ const ProjectHeader = ({
             </Stack>
           </div>
           <Inline gap="100" align="center" wrap={false}>
-            {d.collaborators.map((c) => (
-              <Avatar
-                key={c.name}
-                variant="initials"
-                name={c.name}
-                size="medium"
-                shape="circle"
-              />
-            ))}
-            <Badge
-              variant="neutral"
-              size="small"
-              label={`+${d.extraCollaborators}`}
-              style={{ marginLeft: 4 }}
-            />
+            {(() => {
+              const lead = leadId
+                ? (members.find((m) => m.id === leadId) ?? null)
+                : null
+              const rest = lead
+                ? members.filter((m) => m.id !== lead.id)
+                : members
+              const ordered = lead ? [lead, ...rest] : rest
+              const visible = ordered.slice(0, 5)
+              const remaining = Math.max(0, ordered.length - visible.length)
+              return (
+                <>
+                  {visible.map((m, idx) => (
+                    <Avatar
+                      key={m.id}
+                      variant="initials"
+                      name={m.name}
+                      size="medium"
+                      shape={idx === 0 && lead ? 'square' : 'circle'}
+                    />
+                  ))}
+                  {remaining > 0 ? (
+                    <Badge
+                      variant="neutral"
+                      size="small"
+                      label={`+${remaining}`}
+                      style={{ marginLeft: 4 }}
+                    />
+                  ) : null}
+                </>
+              )
+            })()}
           </Inline>
         </Inline>
       </Stack>
@@ -203,7 +225,16 @@ export function ProjectDetail() {
     useSidebarWorkspaces()
   const { sidebarProjects } = useWorkspaceProjects(selectedWorkspaceId)
   const project = useProjectSummary(projectId)
+  const projectProperties = useProjectProperties(projectId)
   const teamMembers = useTeamMembers(project.data?.team?.id)
+
+  const projectMemberList = useMemo(() => {
+    const all = teamMembers.data ?? []
+    const memberIds = projectProperties.data?.memberIds ?? []
+    const scoped =
+      memberIds.length > 0 ? all.filter((m) => memberIds.includes(m.id)) : all
+    return scoped.map((m) => ({ id: m.id, name: m.name }))
+  }, [projectProperties.data?.memberIds, teamMembers.data])
 
   const workspaceProjectIds = useMemo(
     () => new Set(sidebarProjects.map((p) => p.id)),
@@ -287,6 +318,8 @@ export function ProjectDetail() {
                   // API doesn't expose priority yet; keep a clear placeholder.
                   priority: 'PRIORITY: —',
                 }}
+                members={projectMemberList}
+                leadId={projectProperties.data?.leadId}
               />
               <Box fullWidth>
                 <ProjectDetailTabs

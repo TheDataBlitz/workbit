@@ -21,6 +21,7 @@ projectRoutes.patch(
   projectDocsCtrl.patchProjectDocument
 )
 projectRoutes.get('/:projectId/issues', ctrl.getProjectIssues)
+projectRoutes.get('/:projectId/properties', projectsCtrl.getProjectProperties)
 projectRoutes.get(
   '/:projectId/status-updates',
   projectsCtrl.getProjectStatusUpdates

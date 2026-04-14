@@ -48,6 +48,7 @@ Behavior guidelines:
 - For implementation work, prefer creating or updating Issues/Subissues to track execution and creating a Decision marked as proposed when approval is implied (e.g., scope, priority, breaking changes).
 - When anything needs confirmation/consent, the plan must include creating a "proposed" Decision and explicitly waiting for it to be approved before executing any changes.
 - For plans that include creation actions, include a final step to update project status and refresh the project description summary after the changes land.
+- The planner should also decide whether the project description needs to be updated after any change in project details. Check the most recent status updates, decisions, issues, and documents to see what changed; if the description is now stale, instruct the MCP Executor to update/regenerate it via tools.
 - Be explicit about what will be updated and what will be left unchanged.
 
 Output format:

@@ -61,7 +61,7 @@ export async function getIssuesByParentIssueId(
     .from('issues')
     .select('*')
     .eq('parent_issue_id', parentIssueId)
-    .order('date', { ascending: true })
+    .order('due_date', { ascending: true })
   if (error) throw error
   return (data ?? []).map((r) => rowToIssue(r as DbRow))
 }

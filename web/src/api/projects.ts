@@ -8,6 +8,17 @@ export type ApiProjectSummary = {
   status: string
 }
 
+export type ApiProjectProperties = {
+  status: string
+  priority: string
+  leadId?: string
+  startDate?: string
+  endDate?: string
+  memberIds: string[]
+  teamIds: string[]
+  labelIds: string[]
+}
+
 export type ApiAgentCatalogItem = {
   agentKey: string
   title: string
@@ -76,6 +87,15 @@ export async function fetchProject(
   return authFetch<ApiProjectSummary>(
     `/projects/${encodeURIComponent(projectId)}`
   )
+}
+
+export async function fetchProjectProperties(
+  projectId: string
+): Promise<ApiProjectProperties> {
+  const res = await authFetch<{ properties: ApiProjectProperties }>(
+    `/projects/${encodeURIComponent(projectId)}/properties`
+  )
+  return res.properties
 }
 
 export async function fetchAgentCatalog(): Promise<ApiAgentCatalogItem[]> {

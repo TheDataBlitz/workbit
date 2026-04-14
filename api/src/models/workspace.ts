@@ -100,6 +100,17 @@ export async function getProjectByIdForApi(
   }
 }
 
+/** Project properties for GET /api/v1/projects/:projectId/properties. */
+export async function getProjectPropertiesForApi(
+  projectId: string
+): Promise<ProjectProperties | null> {
+  const project = await dbProjects.getProjectById(projectId)
+  if (!project) return null
+  const team = await dbTeams.getTeamById(project.teamId)
+  if (!team) return null
+  return await dbProjectProperties.getProjectPropertiesByTeamId(team.id)
+}
+
 /** Workspace id for a project (tenant key for AI usage / shop_id). */
 export async function getWorkspaceIdForProject(
   projectId: string

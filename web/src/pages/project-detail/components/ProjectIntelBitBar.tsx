@@ -37,13 +37,15 @@ const ResponsesHost = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${pdT.space200};
-  pointer-events: auto;
+  /* Don't block the rest of the UI behind this floating stack. */
+  pointer-events: none;
   max-height: min(52vh, 520px);
   overflow-y: auto;
   padding: ${pdT.space200} 0;
 `
 
 const ResponseCard = styled.div`
+  pointer-events: auto;
   padding: ${pdT.space300} ${pdT.space400};
   background: ${pdT.surfaceRaised};
   border: 1px solid color-mix(in srgb, ${pdT.border} 35%, transparent);
