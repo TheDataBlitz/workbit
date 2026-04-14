@@ -384,7 +384,7 @@ export function LoginPage() {
                     color="color.text.DEFAULT"
                     style={{ marginTop: '0.5rem', fontWeight: 900 }}
                   >
-                    4.0.2
+                    1.0.0
                   </Text>
                 </div>
               </BaseCard>
