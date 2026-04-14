@@ -2,29 +2,47 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { makeWorkbitRequest } from '../utils/workbitClient.js'
 import { logMcpError } from '../logging.js'
+import { ProjectId } from './schema.js'
 
 export function registerGetProjectTool(server: McpServer): void {
   server.registerTool(
     'getProject',
     {
-      description:
-        'Get a Workbit project by ID, or list all projects when no ID is provided.',
+      description: 'Get project(s).',
       inputSchema: {
-        projectId: z
+        projectId: ProjectId.optional(),
+        name: z
           .string()
+          .min(1)
           .optional()
-          .describe(
-            'Optional project ID. When omitted, all projects are returned.'
-          ),
+          .describe('Optional name filter (case-insensitive).'),
       },
     },
-    async ({ projectId }) => {
+    async ({ projectId, name }) => {
       try {
         const projects = await makeWorkbitRequest<unknown[]>(
           '/workspace/projects'
         )
 
         let result: unknown = projects
+
+        const trimmedName = (name ?? '').trim()
+        if (trimmedName) {
+          if (Array.isArray(projects)) {
+            const q = trimmedName.toLowerCase()
+            result = projects.filter((p) => {
+              if (!p || typeof p !== 'object') return false
+              const raw = (p as { name?: unknown })?.name
+              const projectName = typeof raw === 'string' ? raw : ''
+              return projectName.toLowerCase().includes(q)
+            })
+          } else {
+            result = {
+              error:
+                'Unexpected projects payload; expected an array from /workspace/projects.',
+            }
+          }
+        }
 
         if (projectId) {
           if (Array.isArray(projects)) {
@@ -54,7 +72,7 @@ export function registerGetProjectTool(server: McpServer): void {
           ],
         }
       } catch (error) {
-        logMcpError(error, 'tools.getProject', { projectId })
+        logMcpError(error, 'tools.getProject', { projectId, name })
         return {
           content: [
             {

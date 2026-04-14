@@ -10,15 +10,15 @@ import {
   makeWorkbitRequest,
 } from '../utils/workbitClient.js'
 import { logMcpError } from '../logging.js'
+import { DocumentId, ProjectId } from './schema.js'
 
 export function registerProjectDocumentTools(server: McpServer): void {
   server.registerTool(
     'getProjectDocuments',
     {
-      description:
-        'List documentation pages for a project (project documents).',
+      description: 'List project docs.',
       inputSchema: {
-        projectId: z.string().min(1).describe('The project ID.'),
+        projectId: ProjectId,
       },
     },
     async ({ projectId }) => {
@@ -53,10 +53,10 @@ export function registerProjectDocumentTools(server: McpServer): void {
   server.registerTool(
     'getProjectDocument',
     {
-      description: 'Fetch a single documentation page for a project.',
+      description: 'Get project doc.',
       inputSchema: {
-        projectId: z.string().min(1).describe('The project ID.'),
-        documentId: z.string().min(1).describe('The document ID.'),
+        projectId: ProjectId,
+        documentId: DocumentId,
       },
     },
     async ({ projectId, documentId }) => {
@@ -92,16 +92,11 @@ export function registerProjectDocumentTools(server: McpServer): void {
   server.registerTool(
     'createProjectDocument',
     {
-      description: 'Create a new documentation page for a project.',
+      description: 'Create project doc.',
       inputSchema: {
-        projectId: z.string().min(1).describe('The project ID.'),
-        title: z.string().min(1).describe('Document title.'),
-        content: z
-          .string()
-          .min(1)
-          .describe(
-            'Document body as Markdown, plain text, or Lexical JSON; stored as Lexical with `![alt](url)` promoted to wb-image nodes.'
-          ),
+        projectId: ProjectId,
+        title: z.string().min(1),
+        content: z.string().min(1),
       },
     },
     async ({ projectId, title, content }) => {
@@ -132,18 +127,12 @@ export function registerProjectDocumentTools(server: McpServer): void {
   server.registerTool(
     'updateProjectDocument',
     {
-      description:
-        'Update (patch) an existing documentation page for a project.',
+      description: 'Update project doc.',
       inputSchema: {
-        projectId: z.string().min(1).describe('The project ID.'),
-        documentId: z.string().min(1).describe('The document ID.'),
-        title: z.string().optional().describe('New document title (optional).'),
-        content: z
-          .string()
-          .optional()
-          .describe(
-            'New body (Markdown, plain text, or Lexical JSON); normalized like createProjectDocument.'
-          ),
+        projectId: ProjectId,
+        documentId: DocumentId,
+        title: z.string().optional(),
+        content: z.string().optional(),
       },
     },
     async ({ projectId, documentId, title, content }) => {

@@ -44,6 +44,7 @@ import { projectRoutes } from './routes/project.js'
 import { aiRoutes } from './routes/ai.js'
 import { agentsRoutes } from './routes/agents.js'
 import { workspaceMcpToolsRoutes } from './routes/workspaceMcpTools.js'
+import { usageRoutes } from './routes/usage.js'
 
 const DEFAULT_PORT = 3001
 const API_PREFIX = '/api/v1'
@@ -84,6 +85,7 @@ app.use(`${API_PREFIX}/me`, meRoutes)
 app.use(`${API_PREFIX}/keys`, apiKeysRoutes)
 app.use(`${API_PREFIX}/ai`, aiRoutes)
 app.use(`${API_PREFIX}/agents`, agentsRoutes)
+app.use(`${API_PREFIX}/usage`, usageRoutes)
 
 app.get('/health', (_req, res) => res.json({ ok: true }))
 

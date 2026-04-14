@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { makeWorkbitPostRequest } from '../utils/workbitClient.js'
 import { logMcpError } from '../logging.js'
+import { IssueId, ProjectId, TeamId } from './schema.js'
 
 function countWords(input: string): number {
   return input.trim().split(/\s+/).filter(Boolean).length
@@ -44,27 +45,13 @@ export function registerCreateIssueTool(server: McpServer): void {
     'createIssue',
     {
       description:
-        'Create a new Workbit issue. Optionally link it to a project and/or team. For bulk work (many parents + sub-issues): create all parent issues first without parentIssueId; only then use createSubIssue per parent. One create per turn is preferred.',
+        'Create issue. Use projectId for project-scoped tickets; teamId is optional.',
       inputSchema: {
-        title: z.string().min(1).describe('The issue title.'),
-        description: z
-          .string()
-          .optional()
-          .describe('Optional issue description as plain text or Markdown.'),
-        projectId: z
-          .string()
-          .optional()
-          .describe('Optional project ID to associate the issue with.'),
-        teamId: z
-          .string()
-          .optional()
-          .describe(
-            'Optional team ID. When provided, the issue is created under this team.'
-          ),
-        parentIssueId: z
-          .string()
-          .optional()
-          .describe('Optional parent issue ID to nest this as a sub-issue.'),
+        title: z.string().min(1),
+        description: z.string().optional(),
+        projectId: ProjectId.optional(),
+        teamId: TeamId.optional(),
+        parentIssueId: IssueId.optional(),
       },
     },
     async ({ title, description, projectId, teamId, parentIssueId }) => {
@@ -111,76 +98,6 @@ export function registerCreateIssueTool(server: McpServer): void {
             {
               type: 'text',
               text: `Failed to create issue in Workbit API: ${
-                (error as Error).message
-              }`,
-            },
-          ],
-        }
-      }
-    }
-  )
-  server.registerTool(
-    'createSubIssue',
-    {
-      description:
-        'Create a new sub-issue under an existing parent issue. Use this (not createIssue) when nesting work under a parent. The parent must already exist—use parentIssueId from a prior successful createIssue (or getIssue). After bulk parent creation, add all sub-issues for one parent before moving to the next parent.',
-      inputSchema: {
-        title: z.string().min(1).describe('The sub-issue title.'),
-        description: z
-          .string()
-          .optional()
-          .describe('Optional description as plain text or Markdown.'),
-        projectId: z
-          .string()
-          .optional()
-          .describe(
-            'Optional project ID. If provided, it should match the parent issue project.'
-          ),
-        parentIssueId: z
-          .string()
-          .min(1)
-          .describe('Required parent issue ID to attach this sub-issue to.'),
-      },
-    },
-    async ({ title, description, projectId, parentIssueId }) => {
-      try {
-        const descriptionWithSource = buildElaborateDescription(
-          title,
-          description
-        )
-
-        const payload: {
-          title: string
-          description?: string
-          projectId?: string
-          parentIssueId: string
-        } = {
-          title,
-          description: descriptionWithSource,
-          parentIssueId,
-        }
-        if (projectId != null && projectId !== '') {
-          payload.projectId = projectId
-        }
-
-        const path = '/issues'
-        const issue = await makeWorkbitPostRequest<unknown>(path, payload)
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(issue, null, 2),
-            },
-          ],
-        }
-      } catch (error) {
-        logMcpError(error, 'tools.createSubIssue', { title, parentIssueId })
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Failed to create sub-issue in Workbit API: ${
                 (error as Error).message
               }`,
             },

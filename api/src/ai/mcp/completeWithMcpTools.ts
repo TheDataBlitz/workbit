@@ -6,9 +6,10 @@ import {
 } from '../nvidia-client.js'
 
 const MAX_TOOL_ROUNDS = 8
+const MAX_TOOLSET_EXPANSIONS = 2
 
 export const WORKBIT_AI_SYSTEM_PROMPT =
-  'You are a Workbit assistant. Use the provided tools to read or update projects, issues, decisions, and status when the user asks about their workspace. Prefer calling tools over guessing. Security: never output internal IDs (UUIDs), database row ids, workspace/team/project/member ids, access tokens, API keys, or secrets. If a user asks for an ID/token, explain you cannot share it and instead provide safe identifiers (names, titles) or take an action via tools. Format answers in clear Markdown: use `##` / `###` headings for sections, bullet or numbered lists for items, and Markdown tables when comparing rows of data (e.g. orders, line items). Keep paragraphs short.'
+  'You are a Workbit assistant. Use the provided tools to read or update projects, issues, decisions, and status when the user asks about their workspace. Prefer calling tools over guessing.\n\nSecurity: never output internal IDs (UUIDs), database row ids, workspace/team/project/member ids, access tokens, API keys, or secrets. IMPORTANT: you MAY fetch IDs via tools and use them internally in tool calls; you MUST NOT reveal them in your final response.\n\nWhen the user asks to update issues (e.g., mark complete), do NOT ask for UUIDs. Instead:\n- Use tools to find the right project/team (e.g. getProject) and issues (e.g. getIssuesByProject / getIssue)\n- Match issues by safe identifiers like title, status, or order; if ambiguous, ask the user to choose by title\n- Then call updateIssue using the ID internally, and report results using titles (not IDs)\n\nFormat answers in clear Markdown: use `##` / `###` headings for sections, bullet or numbered lists for items, and Markdown tables when comparing rows of data (e.g. orders, line items). Keep paragraphs short.'
 
 const SYSTEM_PROMPT = WORKBIT_AI_SYSTEM_PROMPT
 
@@ -38,6 +39,145 @@ function mcpTools(tools: McpTool[]): unknown[] {
       parameters: t.inputSchema,
     },
   }))
+}
+
+type ToolMeta = { name: string; description?: string | null }
+
+const ALWAYS_INCLUDE_TOOLS = [
+  // Baseline “discovery” + core issue workflow.
+  'getProject',
+  'getIssue',
+  'getIssuesByProject',
+  'createIssue',
+  'updateIssue',
+] as const
+
+function safeJsonParseObject(raw: string): Record<string, unknown> | null {
+  const s = raw.trim()
+  const tryParse = (x: string): Record<string, unknown> | null => {
+    try {
+      const v = JSON.parse(x) as unknown
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        return v as Record<string, unknown>
+      }
+    } catch {
+      /* ignore */
+    }
+    return null
+  }
+  const direct = tryParse(s)
+  if (direct) return direct
+  const start = s.indexOf('{')
+  const end = s.lastIndexOf('}')
+  if (start >= 0 && end > start) return tryParse(s.slice(start, end + 1))
+  return null
+}
+
+function toolMetasFromTools(tools: McpTool[]): ToolMeta[] {
+  return tools.map((t) => ({ name: t.name, description: t.description }))
+}
+
+function toolBuckets(): Record<
+  'projects' | 'issues' | 'decisions' | 'docs' | 'members' | 'updates',
+  readonly string[]
+> {
+  // Keep this list tight; it’s used to expand a selected set to reduce re-selection churn.
+  return {
+    projects: [
+      'getProject',
+      'createProject',
+      'updateProject',
+      'updateProjectStatus',
+    ],
+    issues: ['getIssue', 'getIssuesByProject', 'createIssue', 'updateIssue'],
+    decisions: ['getDecision', 'createDecision', 'updateProjectDecision'],
+    docs: [
+      'getProjectDocuments',
+      'getProjectDocument',
+      'createProjectDocument',
+      'updateProjectDocument',
+    ],
+    members: [
+      'addTeamMember',
+      'onboardMember',
+      'addTeamMembersToProject',
+      'assignProjectLead',
+    ],
+    updates: ['createProjectStatusUpdate', 'getProjectStatusUpdates'],
+  }
+}
+
+function expandToolNamesByBucket(names: string[]): string[] {
+  const buckets = toolBuckets()
+  const byTool = new Map<string, keyof typeof buckets>()
+  for (const [bucket, tools] of Object.entries(buckets) as Array<
+    [keyof typeof buckets, readonly string[]]
+  >) {
+    for (const t of tools) byTool.set(t, bucket)
+  }
+  const wantBuckets = new Set<keyof typeof buckets>()
+  for (const n of names) {
+    const b = byTool.get(n)
+    if (b) wantBuckets.add(b)
+  }
+  const out = new Set<string>(names)
+  for (const b of wantBuckets) {
+    for (const t of buckets[b]) out.add(t)
+  }
+  return [...out]
+}
+
+function formatToolListForSelection(metas: ToolMeta[]): string {
+  // Keep descriptions minimal to avoid recreating the schema-token problem in selection.
+  const lines = metas
+    .map((t) => {
+      const d = (t.description ?? '').trim().replaceAll(/\s+/g, ' ')
+      const short = d.length > 80 ? `${d.slice(0, 80)}…` : d
+      return short ? `- ${t.name}: ${short}` : `- ${t.name}`
+    })
+    .join('\n')
+  return lines
+}
+
+async function selectToolNames(input: {
+  baseMessages: NvidiaChatRequestMessage[]
+  toolMetas: ToolMeta[]
+}): Promise<{ toolNames: string[]; selectionTokens: number }> {
+  const SELECTOR_SYSTEM = `You select the minimum set of tool names needed to satisfy the user's request.
+
+You MUST respond with a single JSON object and no other text, in this exact shape:
+{"tool_names":["toolA","toolB"]}
+
+Rules:
+- Choose as few tools as possible.
+- If no tools are needed, return {"tool_names":[]} .`
+
+  const toolList = formatToolListForSelection(input.toolMetas)
+  const lastUser = [...input.baseMessages]
+    .reverse()
+    .find((m) => m.role === 'user')?.content
+  const userBlock = `Available tools:\n${toolList}\n\nUser message:\n${
+    typeof lastUser === 'string' ? lastUser : ''
+  }`
+
+  const res = await runNimChatCompletion({
+    messages: [
+      { role: 'system', content: SELECTOR_SYSTEM },
+      { role: 'user', content: userBlock },
+    ],
+    tool_choice: 'none',
+  })
+
+  const text = typeof res.content === 'string' ? res.content : ''
+  const parsed = safeJsonParseObject(text)
+  const rawNames = Array.isArray(parsed?.tool_names)
+    ? (parsed?.tool_names as unknown[])
+    : []
+  const toolNames = rawNames
+    .filter((n): n is string => typeof n === 'string' && n.trim().length > 0)
+    .map((n) => n.trim())
+
+  return { toolNames, selectionTokens: res.usage.totalTokens }
 }
 
 async function listAllTools(client: McpClientLike): Promise<McpTool[]> {
@@ -150,6 +290,24 @@ export type CompleteWithMcpToolsResult = {
   promptTokens: number
   /** Sum of provider-reported completion tokens across all rounds. */
   completionTokens: number
+
+  tooling: {
+    selectionMode: 'none' | 'selected' | 'bucketed' | 'fallback_all'
+    selectionTokens: number
+    toolsTotalCount: number
+    toolsSelectedCount: number
+    toolsPayloadBytes: number
+    toolRounds: number
+    rounds: Array<{
+      roundIndex: number
+      toolsSelectedCount: number
+      toolsPayloadBytes: number
+      toolCallsCount: number
+      totalTokens: number
+      promptTokens: number
+      completionTokens: number
+    }>
+  }
 }
 
 /**
@@ -178,6 +336,7 @@ export async function completePromptWithMcpTools(
   let totalTokens = 0
   let promptTokens = 0
   let completionTokens = 0
+  const roundStats: CompleteWithMcpToolsResult['tooling']['rounds'] = []
 
   const tools = await listAllTools(client)
   if (tools.length === 0) {
@@ -192,11 +351,64 @@ export async function completePromptWithMcpTools(
       totalTokens,
       promptTokens,
       completionTokens,
+      tooling: {
+        selectionMode: 'none',
+        selectionTokens: 0,
+        toolsTotalCount: 0,
+        toolsSelectedCount: 0,
+        toolsPayloadBytes: 0,
+        toolRounds: 0,
+        rounds: [],
+      },
     }
   }
 
-  const aiTools = mcpTools(tools)
+  const toolByName = new Map(tools.map((t) => [t.name, t]))
+  const allMetas = toolMetasFromTools(tools)
+
+  // Tool-selection step: pick a minimal subset of tools to send as schemas.
+  let selectionTokens = 0
+  let selectedToolNames: string[] = []
+  let selectionMode: CompleteWithMcpToolsResult['tooling']['selectionMode'] =
+    'fallback_all'
+  try {
+    const sel = await selectToolNames({
+      baseMessages,
+      toolMetas: allMetas,
+    })
+    selectionTokens = sel.selectionTokens
+    selectedToolNames = sel.toolNames
+    selectionMode = 'selected'
+  } catch {
+    selectedToolNames = []
+    selectionMode = 'fallback_all'
+  }
+
+  if (selectedToolNames.length === 0) {
+    // If selector fails, keep token savings but ensure we can still fetch context.
+    selectedToolNames = [...ALWAYS_INCLUDE_TOOLS]
+    selectionMode = 'fallback_all'
+  } else {
+    // Expand selection by bucket to avoid repeated re-selection.
+    selectedToolNames = expandToolNamesByBucket(selectedToolNames)
+    selectionMode = 'bucketed'
+  }
+
+  // Always include baseline tools so the model can fetch IDs/context without asking the user.
+  selectedToolNames = [
+    ...new Set([...ALWAYS_INCLUDE_TOOLS, ...selectedToolNames]),
+  ]
+
+  // Filter to tools that actually exist.
+  let selectedTools: McpTool[] = selectedToolNames
+    .map((n) => toolByName.get(n))
+    .filter((t): t is McpTool => Boolean(t))
+
+  let aiTools = mcpTools(selectedTools)
+  let toolsPayloadBytes = JSON.stringify(aiTools).length
   const messages: NvidiaChatRequestMessage[] = [...baseMessages]
+
+  let expansions = 0
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const {
@@ -211,6 +423,15 @@ export async function completePromptWithMcpTools(
     totalTokens += usage.totalTokens
     promptTokens += usage.promptTokens
     completionTokens += usage.completionTokens
+    roundStats.push({
+      roundIndex: round,
+      toolsSelectedCount: selectedTools.length,
+      toolsPayloadBytes,
+      toolCallsCount: toolCalls?.length ?? 0,
+      totalTokens: usage.totalTokens,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+    })
 
     if (!toolCalls?.length) {
       return {
@@ -218,7 +439,43 @@ export async function completePromptWithMcpTools(
         totalTokens,
         promptTokens,
         completionTokens,
+        tooling: {
+          selectionMode,
+          selectionTokens,
+          toolsTotalCount: tools.length,
+          toolsSelectedCount: selectedTools.length,
+          toolsPayloadBytes,
+          toolRounds: round + 1,
+          rounds: roundStats,
+        },
       }
+    }
+
+    // Progressive expansion: if the model asks for a tool we didn't include,
+    // expand the toolset and retry the same round (without appending tool_calls).
+    const missing: string[] = []
+    for (const tc of toolCalls) {
+      const name = tc.function?.name
+      if (!name) continue
+      const exists = toolByName.has(name)
+      const included =
+        selectedToolNames.length === 0 ||
+        selectedToolNames.includes(name) ||
+        selectedTools.some((t) => t.name === name)
+      if (exists && !included) missing.push(name)
+    }
+    if (missing.length > 0 && expansions < MAX_TOOLSET_EXPANSIONS) {
+      expansions++
+      const expanded = expandToolNamesByBucket([
+        ...selectedTools.map((t) => t.name),
+        ...missing,
+      ])
+      selectedTools = expanded
+        .map((n) => toolByName.get(n))
+        .filter((t): t is McpTool => Boolean(t))
+      aiTools = mcpTools(selectedTools)
+      toolsPayloadBytes = JSON.stringify(aiTools).length
+      continue
     }
 
     messages.push({
@@ -261,5 +518,14 @@ export async function completePromptWithMcpTools(
     totalTokens,
     promptTokens,
     completionTokens,
+    tooling: {
+      selectionMode,
+      selectionTokens,
+      toolsTotalCount: tools.length,
+      toolsSelectedCount: selectedTools.length,
+      toolsPayloadBytes,
+      toolRounds: roundStats.length,
+      rounds: roundStats,
+    },
   }
 }

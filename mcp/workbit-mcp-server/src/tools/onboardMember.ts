@@ -5,6 +5,7 @@ import {
   makeWorkbitRequest,
 } from '../utils/workbitClient.js'
 import { logMcpError } from '../logging.js'
+import { TeamId } from './schema.js'
 
 type ApiMemberListItem = {
   id: string
@@ -20,20 +21,13 @@ export function registerOnboardMemberTool(server: McpServer): void {
   server.registerTool(
     'onboardMember',
     {
-      description:
-        'Onboard a new team member. If the member does not already exist, this tool creates the member and creates an invitation in the same flow. Use this to onboard a new member when they are not yet available.',
+      description: 'Onboard member.',
       inputSchema: {
-        email: z.string().min(1).describe('Email address for the invite.'),
-        name: z.string().min(1).describe('Full name.'),
-        username: z.string().min(1).describe('Unique username/handle.'),
-        status: z
-          .string()
-          .optional()
-          .describe('Optional member status/title (defaults to Member).'),
-        teamIds: z
-          .array(z.string())
-          .optional()
-          .describe('Optional list of team IDs to add the member to.'),
+        email: z.string().min(1),
+        name: z.string().min(1),
+        username: z.string().min(1),
+        status: z.string().optional(),
+        teamIds: z.array(TeamId).optional(),
       },
     },
     async ({ email, name, username, status, teamIds }) => {

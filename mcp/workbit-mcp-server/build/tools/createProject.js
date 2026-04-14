@@ -1,23 +1,15 @@
 import { z } from 'zod';
 import { makeWorkbitPostRequest } from '../utils/workbitClient.js';
 import { logMcpError } from '../logging.js';
+import { TeamId } from './schema.js';
 export function registerCreateProjectTool(server) {
     server.registerTool('createProject', {
-        description: 'Create a new Workbit project. Requires a team ID; the project will be linked to that team.',
+        description: 'Create project.',
         inputSchema: {
-            name: z.string().min(1).describe('The project name.'),
-            description: z
-                .string()
-                .optional()
-                .describe('Optional project description.'),
-            teamId: z
-                .string()
-                .min(1)
-                .describe('The team ID to associate the project with. Required.'),
-            status: z
-                .string()
-                .optional()
-                .describe("Optional project status (e.g. 'Active'). Defaults to 'Active' if omitted."),
+            name: z.string().min(1),
+            description: z.string().optional(),
+            teamId: TeamId,
+            status: z.string().optional(),
         },
     }, async ({ name, description, teamId, status }) => {
         try {

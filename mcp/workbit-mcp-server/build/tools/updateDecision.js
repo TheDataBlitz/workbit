@@ -1,38 +1,21 @@
 import { z } from 'zod';
 import { makeWorkbitPatchRequest } from '../utils/workbitClient.js';
 import { logMcpError } from '../logging.js';
+import { DecisionId, DecisionStatus, DecisionType, ProjectId, } from './schema.js';
 export function registerUpdateProjectDecisionTool(server) {
     server.registerTool('updateProjectDecision', {
-        description: 'Update an existing decision in a project with one or more fields.',
+        description: 'Update decision.',
         inputSchema: {
-            projectId: z
-                .string()
-                .min(1)
-                .describe('The project ID that contains the decision.'),
-            decisionId: z.string().min(1).describe('The decision ID to update.'),
-            title: z.string().optional().describe('Optional updated title.'),
-            type: z
-                .enum(['major', 'minor'])
-                .optional()
-                .describe('Optional updated decision type.'),
-            rationale: z
-                .string()
-                .optional()
-                .describe('Optional updated rationale.'),
-            impact: z.string().optional().describe('Optional updated impact.'),
-            decisionDate: z
-                .string()
-                .optional()
-                .describe('Optional updated ISO decision date.'),
-            status: z
-                .enum(['proposed', 'approved', 'rejected', 'superseded'])
-                .optional()
-                .describe('Optional updated status.'),
-            tags: z.array(z.string()).optional().describe('Optional tags list.'),
-            linkedIssueIds: z
-                .array(z.string())
-                .optional()
-                .describe('Optional linked issue IDs.'),
+            projectId: ProjectId,
+            decisionId: DecisionId,
+            title: z.string().optional(),
+            type: DecisionType.optional(),
+            rationale: z.string().optional(),
+            impact: z.string().optional(),
+            decisionDate: z.string().optional(),
+            status: DecisionStatus.optional(),
+            tags: z.array(z.string()).optional(),
+            linkedIssueIds: z.array(z.string()).optional(),
         },
     }, async ({ projectId, decisionId, title, type, rationale, impact, decisionDate, status, tags, linkedIssueIds, }) => {
         try {

@@ -1,24 +1,19 @@
 import { z } from 'zod';
 import { makeWorkbitPostRequest, makeWorkbitRequest, } from '../utils/workbitClient.js';
 import { logMcpError } from '../logging.js';
+import { TeamId } from './schema.js';
 function normalizeEmail(email) {
     return email.trim().toLowerCase();
 }
 export function registerOnboardMemberTool(server) {
     server.registerTool('onboardMember', {
-        description: 'Onboard a new team member. If the member does not already exist, this tool creates the member and creates an invitation in the same flow. Use this to onboard a new member when they are not yet available.',
+        description: 'Onboard member.',
         inputSchema: {
-            email: z.string().min(1).describe('Email address for the invite.'),
-            name: z.string().min(1).describe('Full name.'),
-            username: z.string().min(1).describe('Unique username/handle.'),
-            status: z
-                .string()
-                .optional()
-                .describe('Optional member status/title (defaults to Member).'),
-            teamIds: z
-                .array(z.string())
-                .optional()
-                .describe('Optional list of team IDs to add the member to.'),
+            email: z.string().min(1),
+            name: z.string().min(1),
+            username: z.string().min(1),
+            status: z.string().optional(),
+            teamIds: z.array(TeamId).optional(),
         },
     }, async ({ email, name, username, status, teamIds }) => {
         const emailNorm = normalizeEmail(email);
@@ -28,7 +23,8 @@ export function registerOnboardMemberTool(server) {
             const members = await makeWorkbitRequest('/workspace/members');
             const existingByUsername = Array.isArray(members)
                 ? members.find((m) => typeof m?.username === 'string' &&
-                    m.username.trim().toLowerCase() === username.trim().toLowerCase())
+                    m.username.trim().toLowerCase() ===
+                        username.trim().toLowerCase())
                 : undefined;
             if (existingByUsername) {
                 return {
@@ -63,7 +59,10 @@ export function registerOnboardMemberTool(server) {
             };
         }
         catch (error) {
-            logMcpError(error, 'tools.onboardMember', { email: emailNorm, username });
+            logMcpError(error, 'tools.onboardMember', {
+                email: emailNorm,
+                username,
+            });
             return {
                 content: [
                     {

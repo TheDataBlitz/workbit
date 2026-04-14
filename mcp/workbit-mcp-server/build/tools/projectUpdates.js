@@ -1,18 +1,13 @@
 import { z } from 'zod';
 import { makeWorkbitPostRequest, makeWorkbitRequest, } from '../utils/workbitClient.js';
 import { logMcpError } from '../logging.js';
+import { TeamId } from './schema.js';
 export function registerProjectUpdateTools(server) {
     server.registerTool('getProjectStatusUpdates', {
-        description: 'Read project status updates for a team, optionally scoped to a projectId.',
+        description: 'List status updates.',
         inputSchema: {
-            teamId: z
-                .string()
-                .min(1)
-                .describe('The team ID that owns the project.'),
-            projectId: z
-                .string()
-                .optional()
-                .describe('Optional project ID filter for updates.'),
+            teamId: TeamId,
+            projectId: z.string().optional(),
         },
     }, async ({ teamId, projectId }) => {
         try {
@@ -44,11 +39,11 @@ export function registerProjectUpdateTools(server) {
         }
     });
     server.registerTool('getProjectStatusComment', {
-        description: 'Read a single comment from a project status update.',
+        description: 'Get status comment.',
         inputSchema: {
-            teamId: z.string().min(1).describe('The team ID that owns the update.'),
-            updateId: z.string().min(1).describe('The status update ID.'),
-            commentId: z.string().min(1).describe('The status comment ID.'),
+            teamId: TeamId,
+            updateId: z.string().min(1),
+            commentId: z.string().min(1),
         },
     }, async ({ teamId, updateId, commentId }) => {
         try {
@@ -82,10 +77,10 @@ export function registerProjectUpdateTools(server) {
         }
     });
     server.registerTool('getProjectStatusUpdateComments', {
-        description: 'Read comments for a project status update.',
+        description: 'List status comments.',
         inputSchema: {
-            teamId: z.string().min(1).describe('The team ID that owns the update.'),
-            updateId: z.string().min(1).describe('The status update ID.'),
+            teamId: TeamId,
+            updateId: z.string().min(1),
         },
     }, async ({ teamId, updateId }) => {
         try {
@@ -110,11 +105,11 @@ export function registerProjectUpdateTools(server) {
         }
     });
     server.registerTool('createProjectStatusUpdateComment', {
-        description: 'Create a comment on a project status update.',
+        description: 'Create status comment.',
         inputSchema: {
-            teamId: z.string().min(1).describe('The team ID that owns the update.'),
-            updateId: z.string().min(1).describe('The status update ID.'),
-            content: z.string().min(1).describe('Comment text.'),
+            teamId: TeamId,
+            updateId: z.string().min(1),
+            content: z.string().min(1),
         },
     }, async ({ teamId, updateId, content }) => {
         try {

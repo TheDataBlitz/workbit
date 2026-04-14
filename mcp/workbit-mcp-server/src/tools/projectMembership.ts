@@ -1,16 +1,15 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { z } from 'zod'
 import { makeWorkbitPostRequest } from '../utils/workbitClient.js'
 import { logMcpError } from '../logging.js'
+import { MemberId, ProjectId } from './schema.js'
 
 export function registerAddTeamMembersToProjectTool(server: McpServer): void {
   server.registerTool(
     'addTeamMembersToProject',
     {
-      description:
-        "Add all users in the project's team to the project's member list (project properties).",
+      description: 'Sync project members.',
       inputSchema: {
-        projectId: z.string().min(1).describe('Project ID.'),
+        projectId: ProjectId,
       },
     },
     async ({ projectId }) => {
@@ -43,16 +42,10 @@ export function registerAssignProjectLeadTool(server: McpServer): void {
   server.registerTool(
     'assignProjectLead',
     {
-      description:
-        'Assign (or clear) the lead for a project in project properties.',
+      description: 'Set project lead.',
       inputSchema: {
-        projectId: z.string().min(1).describe('Project ID.'),
-        leadId: z
-          .string()
-          .optional()
-          .describe(
-            'Member ID to set as project lead. Omit or pass empty to clear.'
-          ),
+        projectId: ProjectId,
+        leadId: MemberId.optional(),
       },
     },
     async ({ projectId, leadId }) => {

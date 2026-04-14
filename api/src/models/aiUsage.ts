@@ -4,7 +4,7 @@ import * as dbAiUsage from '../db/aiTokenUsage.js'
 export const TOKENS_PER_INTELEBIT = 100
 
 /** Default monthly AI budget per shop (workspace), in Intelebits. */
-export const DEFAULT_MAX_INTELEBITS_PER_SHOP_PER_MONTH = 10_000
+export const DEFAULT_MAX_INTELEBITS_PER_SHOP_PER_MONTH = 10_000_000_000
 
 export function tokensToIntelebits(tokens: number): number {
   return tokens / TOKENS_PER_INTELEBIT

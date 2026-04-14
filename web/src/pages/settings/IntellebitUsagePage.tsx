@@ -9,7 +9,8 @@ import styled from 'styled-components'
 import { Stack } from '@thedatablitz/stack'
 import { Text } from '@thedatablitz/text'
 import { SettingsSubpageMain } from './settingsSubpageChrome'
-import { useAiUsage } from './hooks'
+import { useAiToolingRounds, useAiUsage } from './hooks'
+import { AiToolingRoundsRechart } from './components/AiToolingRoundsRechart'
 
 function formatCompactNumber(n: number): { value: string; suffix: string } {
   const abs = Math.abs(n)
@@ -76,6 +77,7 @@ const MetricGrid = styled.div`
 export function IntellebitUsagePage() {
   const [granularity, setGranularity] = useState('weekly')
   const usage = useAiUsage({ days: 30 })
+  const toolingRounds = useAiToolingRounds({ days: 7 })
 
   const totalsTokens = usage.data?.totals.tokens ?? 0
   const totalsPromptTokens = usage.data?.totals.promptTokens ?? 0
@@ -262,6 +264,42 @@ export function IntellebitUsagePage() {
           sectionTitle="Workspace Breakdown"
           sectionBadge={usage.isLoading ? 'Loading' : 'Live Data'}
         />
+
+        <div style={{ marginTop: '3rem' }}>
+          <Text
+            as="h2"
+            variant="heading5"
+            color="color.text.DEFAULT"
+            style={{ margin: 0, marginBottom: '0.75rem' }}
+          >
+            Tooling Rounds (Debug)
+          </Text>
+          <Text
+            as="p"
+            variant="body3"
+            color="color.text.subtle"
+            style={{ margin: 0, marginBottom: '1.5rem' }}
+          >
+            Charts built directly from the `ai_tooling_rounds` table (last 7
+            days).
+          </Text>
+
+          {toolingRounds.isError ? (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <Stack gap="150" fullWidth>
+                <Text as="div" variant="body3" color="color.text.DEFAULT">
+                  Unable to load tooling rounds. Please try again.
+                </Text>
+              </Stack>
+            </div>
+          ) : null}
+
+          <AiToolingRoundsRechart
+            rows={toolingRounds.data?.rows ?? []}
+            loading={toolingRounds.isLoading}
+            height={380}
+          />
+        </div>
       </SettingsSubpageMain>
     </>
   )

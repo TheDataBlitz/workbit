@@ -1,16 +1,16 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { z } from 'zod'
 import { makeWorkbitPostRequest } from '../utils/workbitClient.js'
 import { logMcpError } from '../logging.js'
+import { MemberId, TeamId } from './schema.js'
 
 export function registerAddTeamMemberTool(server: McpServer): void {
   server.registerTool(
     'addTeamMember',
     {
-      description: 'Add an existing member to a team by memberId.',
+      description: 'Add member to team.',
       inputSchema: {
-        teamId: z.string().min(1).describe('Team ID.'),
-        memberId: z.string().min(1).describe('Member ID to add to the team.'),
+        teamId: TeamId,
+        memberId: MemberId,
       },
     },
     async ({ teamId, memberId }) => {

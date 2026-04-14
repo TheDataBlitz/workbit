@@ -57,10 +57,9 @@ const ColumnHeader = styled.div`
 
   @media (min-width: 768px) {
     display: grid;
-    grid-template-columns: minmax(5.5rem, 7rem) minmax(0, 1fr) minmax(
-        7rem,
-        9rem
-      ) minmax(5.5rem, 7rem);
+    grid-template-columns:
+      minmax(5.5rem, 7rem) minmax(0, 1fr) minmax(7rem, 9rem)
+      minmax(5.5rem, 7rem);
     align-items: end;
     gap: ${pdT.space200};
   }
@@ -303,7 +302,7 @@ function formatDueLabel(dateIso: string): string {
 function toUiIssue(
   row: ApiProjectIssueListItem,
   idx: number
-): ProjectIssueItem {
+): ProjectIssueItem & { _parentIssueId: string | null } {
   const status = mapApiStatus(row.status)
   return {
     id: row.id,
@@ -318,16 +317,36 @@ function toUiIssue(
     },
     linkedAssets: [],
     subIssues: [],
+    _parentIssueId: row.parentIssueId ?? null,
   }
 }
 
 export function ProjectIssuesTab() {
   const { projectId } = useParams<{ projectId: string }>()
   const issuesQuery = useProjectIssues(projectId, 'all')
-  const apiUiIssues = useMemo(
-    () => (issuesQuery.data ?? []).map((row, idx) => toUiIssue(row, idx)),
-    [issuesQuery.data]
-  )
+  const apiUiIssues = useMemo(() => {
+    const rows = issuesQuery.data ?? []
+    const all = rows.map((row, idx) => toUiIssue(row, idx))
+
+    const byId = new Map<
+      string,
+      ProjectIssueItem & { _parentIssueId: string | null }
+    >()
+    for (const it of all) byId.set(it.id, it)
+
+    for (const it of all) {
+      if (!it._parentIssueId) continue
+      const parent = byId.get(it._parentIssueId)
+      if (!parent) continue
+      parent.subIssues.push({ id: it.code, title: it.title })
+    }
+
+    return all.filter((it) => {
+      const pid = it._parentIssueId
+      if (!pid) return true
+      return !byId.has(pid)
+    })
+  }, [issuesQuery.data])
 
   const summary = useMemo(() => {
     const critical = apiUiIssues.filter(

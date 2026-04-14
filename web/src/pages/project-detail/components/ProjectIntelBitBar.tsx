@@ -1,4 +1,4 @@
-import styled from 'styled-components'
+import styled, { css, keyframes } from 'styled-components'
 import { Button } from '@thedatablitz/button'
 import { Inline } from '@thedatablitz/inline'
 import { Stack } from '@thedatablitz/stack'
@@ -13,7 +13,19 @@ type ChatTurn =
   | { role: 'user'; content: string }
   | { role: 'assistant'; content: string }
 
-const Bar = styled.div`
+const barGradientShift = keyframes`
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+`
+
+const Bar = styled.div<{ $loading: boolean }>`
   position: fixed;
   z-index: 50;
   bottom: 1.5rem;
@@ -24,7 +36,58 @@ const Bar = styled.div`
   padding: ${pdT.space300} ${pdT.space400};
   background: ${pdT.surfaceOverlay};
   border: 1px solid ${pdT.border};
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    0 -10px 28px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: -1px;
+    right: -1px;
+    top: -14px;
+    height: 14px;
+    pointer-events: none;
+    background: linear-gradient(
+      to top,
+      color-mix(in srgb, ${pdT.surfaceOverlay} 70%, transparent),
+      transparent
+    );
+  }
+
+  /* Animated gradient sheen overlay. */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: ${(p) => (p.$loading ? 0.55 : 0)};
+    background: linear-gradient(
+      120deg,
+      transparent 0%,
+      color-mix(in srgb, ${pdT.brandBold} 28%, transparent) 18%,
+      color-mix(in srgb, ${pdT.brandBold} 10%, transparent) 42%,
+      transparent 65%,
+      color-mix(in srgb, ${pdT.brandBold} 18%, transparent) 86%,
+      transparent 100%
+    );
+    background-size: 220% 220%;
+    animation: ${(p) =>
+      p.$loading
+        ? css`
+            ${barGradientShift} 7.5s ease-in-out infinite
+          `
+        : 'none'};
+    mix-blend-mode: screen;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::after {
+      animation: none;
+      opacity: ${(p) => (p.$loading ? 0.32 : 0)};
+    }
+  }
 `
 
 const ResponsesHost = styled.div`
@@ -42,6 +105,16 @@ const ResponsesHost = styled.div`
   max-height: min(52vh, 520px);
   overflow-y: auto;
   padding: ${pdT.space200} 0;
+  padding-bottom: calc(${pdT.space200} + 6.5rem);
+
+  /* Subtle fade so the stack feels like it blends away. */
+  mask-image: linear-gradient(
+    to top,
+    transparent 0px,
+    rgba(0, 0, 0, 1) 44px,
+    rgba(0, 0, 0, 1) calc(100% - 24px),
+    transparent 100%
+  );
 `
 
 const ResponseCard = styled.div<{ $role: 'user' | 'assistant' }>`
@@ -63,6 +136,16 @@ const ResponseBody = styled.div<{ $expanded: boolean }>`
   max-height: ${(p) => (p.$expanded ? '60vh' : '180px')};
   overflow: auto;
   padding-right: ${pdT.space100};
+`
+
+const AssistantMarkdown = styled.div`
+  /* Ensure the assistant card gradient flows behind the markdown preview. */
+  .db-markdown-editor-preview {
+    background: transparent !important;
+  }
+  .db-markdown-editor-preview [data-md-chunk] {
+    background: transparent !important;
+  }
 `
 
 const IconTile = styled.div`
@@ -234,7 +317,9 @@ export function ProjectIntelBitBar({
                 </Inline>
                 <ResponseBody $expanded={isExpanded}>
                   {isAssistant ? (
-                    <MarkdownPreview value={t.content} />
+                    <AssistantMarkdown>
+                      <MarkdownPreview value={t.content} />
+                    </AssistantMarkdown>
                   ) : (
                     <Text
                       as="p"
@@ -256,7 +341,11 @@ export function ProjectIntelBitBar({
         </ResponsesHost>
       ) : null}
 
-      <Bar role="region" aria-label="Intellebit assistant">
+      <Bar
+        role="region"
+        aria-label="Intellebit assistant"
+        $loading={sendPending}
+      >
         <Stack gap="300" fullWidth>
           <Inline
             justify="space-between"
@@ -306,7 +395,6 @@ export function ProjectIntelBitBar({
                     )
                   }
                   onClick={() => setCollapsed((v) => !v)}
-                  disabled={sendPending}
                   style={{ flexShrink: 0 }}
                   aria-label={collapsed ? 'Expand chat' : 'Collapse chat'}
                 >

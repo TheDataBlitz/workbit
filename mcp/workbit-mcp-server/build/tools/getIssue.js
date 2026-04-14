@@ -1,11 +1,11 @@
-import { z } from 'zod';
 import { makeWorkbitRequest } from '../utils/workbitClient.js';
 import { logMcpError } from '../logging.js';
+import { IssueId, ProjectId } from './schema.js';
 export function registerGetIssueTool(server) {
     server.registerTool('getIssue', {
-        description: 'Get a Workbit issue by ID.',
+        description: 'Get issue.',
         inputSchema: {
-            issueId: z.string().min(1).describe('The issue ID to fetch.'),
+            issueId: IssueId,
         },
     }, async ({ issueId }) => {
         try {
@@ -32,12 +32,9 @@ export function registerGetIssueTool(server) {
         }
     });
     server.registerTool('getIssuesByProject', {
-        description: 'Get all issues for a given project.',
+        description: 'List project issues.',
         inputSchema: {
-            projectId: z
-                .string()
-                .min(1)
-                .describe('The project ID to fetch issues for.'),
+            projectId: ProjectId,
         },
     }, async ({ projectId }) => {
         try {

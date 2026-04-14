@@ -1,44 +1,66 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { makeWorkbitPostRequest } from '../utils/workbitClient.js'
+import {
+  makeWorkbitPostRequest,
+  makeWorkbitRequest,
+} from '../utils/workbitClient.js'
 import { logMcpError } from '../logging.js'
+import { ProjectHealthStatus, ProjectId, TeamId } from './schema.js'
 
 export function registerCreateProjectStatusUpdateTool(server: McpServer): void {
   server.registerTool(
     'createProjectStatusUpdate',
     {
-      description:
-        'Create a project status update for a team. Use this at the end of an agent run to summarize overall changes made in the request.',
+      description: 'Create project update.',
       inputSchema: {
-        teamId: z
-          .string()
-          .min(1)
-          .describe('Team ID that owns the project update stream.'),
-        projectId: z
-          .string()
-          .min(1)
-          .describe('Project ID this update belongs to.'),
-        content: z
-          .string()
-          .min(1)
-          .describe(
-            'Status update body summarizing completed actions, current state after changes, and next steps.'
-          ),
-        status: z
-          .enum(['on-track', 'at-risk', 'off-track'])
-          .optional()
-          .describe('Optional project health status (defaults to on-track).'),
+        teamId: TeamId.optional(),
+        projectId: ProjectId,
+        content: z.string().min(1),
+        status: ProjectHealthStatus.optional(),
       },
     },
     async ({ teamId, projectId, content, status }) => {
       try {
+        let resolvedTeamId = (teamId ?? '').trim()
+        if (!resolvedTeamId) {
+          const projects = await makeWorkbitRequest<unknown[]>(
+            '/workspace/projects'
+          )
+          const match =
+            Array.isArray(projects) &&
+            projects.find(
+              (p) =>
+                p &&
+                typeof p === 'object' &&
+                (p as { id?: string })?.id === projectId
+            )
+
+          let teamIdFromProject = ''
+          if (match && typeof match === 'object') {
+            const raw = (match as { teamId?: unknown })?.teamId
+            teamIdFromProject = typeof raw === 'string' ? raw.trim() : ''
+          }
+          resolvedTeamId = teamIdFromProject
+
+          if (!resolvedTeamId) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: 'Unable to resolve team for this project. Please provide `teamId`, or ensure the project has a team.',
+                },
+              ],
+            }
+          }
+        }
+
         const payload: Record<string, unknown> = {
           content,
           projectId,
           status: status ?? 'on-track',
         }
         const update = await makeWorkbitPostRequest<unknown>(
-          `/teams/${encodeURIComponent(teamId)}/project/updates`,
+          `/teams/${encodeURIComponent(resolvedTeamId)}/project/updates`,
           payload
         )
         return {

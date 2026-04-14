@@ -1,37 +1,18 @@
 import { z } from 'zod';
 import { makeWorkbitPatchRequest } from '../utils/workbitClient.js';
 import { logMcpError } from '../logging.js';
+import { IssueId, ProjectId } from './schema.js';
 export function registerUpdateIssueTool(server) {
     server.registerTool('updateIssue', {
-        description: 'Update an existing Workbit issue. Provide the issue ID and any fields to update.',
+        description: 'Update issue.',
         inputSchema: {
-            issueId: z.string().min(1).describe('The issue ID to update.'),
-            status: z
-                .string()
-                .optional()
-                .describe('Optional new status for the issue.'),
-            assigneeId: z
-                .string()
-                .optional()
-                .describe('Optional assignee member ID.'),
-            assigneeName: z
-                .string()
-                .optional()
-                .describe('Optional assignee display name.'),
-            projectId: z
-                .string()
-                .nullable()
-                .optional()
-                .describe('Optional project ID to link the issue to, or null to unlink.'),
-            description: z
-                .string()
-                .optional()
-                .describe('Optional new description for the issue.'),
-            parentIssueId: z
-                .string()
-                .nullable()
-                .optional()
-                .describe('Optional parent issue ID to set or change the parent, or null to remove it.'),
+            issueId: IssueId,
+            status: z.string().optional(),
+            assigneeId: z.string().optional(),
+            assigneeName: z.string().optional(),
+            projectId: ProjectId.nullable().optional(),
+            description: z.string().optional(),
+            parentIssueId: IssueId.nullable().optional(),
         },
     }, async ({ issueId, status, assigneeId, assigneeName, projectId, description, parentIssueId, }) => {
         try {

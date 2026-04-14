@@ -2,46 +2,23 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { makeWorkbitPatchRequest } from '../utils/workbitClient.js'
 import { logMcpError } from '../logging.js'
+import { MemberId, TeamId } from './schema.js'
 
 export function registerUpdateProjectTool(server: McpServer): void {
   server.registerTool(
     'updateProject',
     {
-      description:
-        "Update a team's project properties. Provide the team ID and any properties to update (status, priority, dates, etc.).",
+      description: 'Update project.',
       inputSchema: {
-        teamId: z
-          .string()
-          .min(1)
-          .describe('The team ID that owns the project to update.'),
-        status: z
-          .string()
-          .optional()
-          .describe(
-            "Optional project status (e.g. 'on-track', 'at-risk', 'off-track')."
-          ),
-        priority: z.string().optional().describe('Optional priority.'),
-        leadId: z.string().optional().describe('Optional lead member ID.'),
-        startDate: z
-          .string()
-          .optional()
-          .describe('Optional start date (e.g. ISO date).'),
-        endDate: z
-          .string()
-          .optional()
-          .describe('Optional end date (e.g. ISO date).'),
-        memberIds: z
-          .array(z.string())
-          .optional()
-          .describe('Optional list of member IDs.'),
-        teamIds: z
-          .array(z.string())
-          .optional()
-          .describe('Optional list of team IDs.'),
-        labelIds: z
-          .array(z.string())
-          .optional()
-          .describe('Optional list of label IDs.'),
+        teamId: TeamId,
+        status: z.string().optional(),
+        priority: z.string().optional(),
+        leadId: MemberId.optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        memberIds: z.array(MemberId).optional(),
+        teamIds: z.array(TeamId).optional(),
+        labelIds: z.array(z.string()).optional(),
       },
     },
     async ({
@@ -110,19 +87,10 @@ export function registerUpdateProjectStatusTool(server: McpServer): void {
   server.registerTool(
     'updateProjectStatus',
     {
-      description:
-        "Update only a team's project status (e.g. 'on-track', 'at-risk', 'off-track').",
+      description: 'Update project status.',
       inputSchema: {
-        teamId: z
-          .string()
-          .min(1)
-          .describe('The team ID that owns the project to update.'),
-        status: z
-          .string()
-          .min(1)
-          .describe(
-            "Project status (e.g. 'on-track', 'at-risk', 'off-track')."
-          ),
+        teamId: TeamId,
+        status: z.string().min(1),
       },
     },
     async ({ teamId, status }) => {

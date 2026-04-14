@@ -38,6 +38,49 @@ export type NvidiaUsageTotals = {
   totalTokens: number
 }
 
+function shouldDebugPrompt(): boolean {
+  return true
+}
+
+function redactTextSecrets(raw: string): string {
+  let s = raw
+  s = s.replaceAll(
+    /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi,
+    '[REDACTED_ID]'
+  )
+  s = s.replaceAll(/\bBearer\s+[A-Za-z0-9\-._~+/]+=*\b/g, 'Bearer [REDACTED]')
+  s = s.replaceAll(
+    /\b(access[_-]?token|api[_-]?key|secret|service[_-]?role[_-]?key|password)\b\s*[:=]\s*([^\s"'`]+)/gi,
+    (_m, k) => `${String(k)}: [REDACTED]`
+  )
+  return s
+}
+
+function redactStructured(value: unknown): unknown {
+  if (value === null || value === undefined) return value
+  if (typeof value === 'string') return redactTextSecrets(value)
+  if (typeof value === 'number' || typeof value === 'boolean') return value
+  if (Array.isArray(value)) return value.map((v) => redactStructured(v))
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(obj)) {
+      const key = k.toLowerCase()
+      const isSensitiveKey =
+        key === 'authorization' ||
+        key.includes('token') ||
+        key.includes('secret') ||
+        key.includes('apikey') ||
+        key.includes('api_key') ||
+        key.includes('password') ||
+        key.includes('service_role')
+      out[k] = isSensitiveKey ? '[REDACTED]' : redactStructured(v)
+    }
+    return out
+  }
+  return value
+}
+
 function usageFromResponse(data: NvidiaChatApiResponse): NvidiaUsageTotals {
   const u = data.usage
   const prompt = u?.prompt_tokens
@@ -120,6 +163,16 @@ export async function runNimChatCompletion(input: {
   if (input.tools !== undefined && input.tools.length > 0) {
     body.tools = input.tools
     body.tool_choice = input.tool_choice ?? 'auto'
+  }
+
+  if (shouldDebugPrompt()) {
+    const redacted = redactStructured(body)
+    const json = JSON.stringify(redacted)
+    const max = 12_000
+    console.log(
+      '[ai.debug_prompt] NVIDIA /v1/chat/completions body:',
+      json.length > max ? `${json.slice(0, max)}…(truncated)` : json
+    )
   }
 
   const res = await fetch(CHAT_COMPLETIONS_URL, {

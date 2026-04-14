@@ -13,6 +13,7 @@ import {
 import * as projectAgentsModel from '../models/projectAgents.js'
 import * as workspaceModel from '../models/workspace.js'
 import * as aiUsageModel from '../models/aiUsage.js'
+import * as aiToolingTelemetryModel from '../models/aiToolingTelemetry.js'
 import { logApiError, logApiWarn } from '../utils/log.js'
 
 /** Cap how many turns we send to NIM to limit tokens (each turn is user or assistant). */
@@ -195,7 +196,12 @@ async function resolveSystemSuffixForProjectAgents(input: {
 }
 
 type CompletionOptionsResult =
-  | { ok: true; options?: { systemPromptSuffix: string } }
+  | {
+      ok: true
+      options?: { systemPromptSuffix: string }
+      agentKey?: string
+      routerFallback?: boolean
+    }
   | { ok: false; status: number; error: string }
 
 async function completionOptionsForParsedRequest(
@@ -205,6 +211,8 @@ async function completionOptionsForParsedRequest(
 
   // Start with any agent suffix (project-scoped).
   let systemPromptSuffix: string | undefined
+  let agentKey: string | undefined
+  let routerFallback: boolean | undefined
   if (projectId) {
     const project = await workspaceModel.getProjectByIdForApi(projectId)
     if (!project) {
@@ -223,13 +231,22 @@ async function completionOptionsForParsedRequest(
     }
 
     systemPromptSuffix = resolved.systemPromptSuffix
+    agentKey = resolved.agentKey
+    routerFallback = resolved.routerFallback
   }
 
-  if (!systemPromptSuffix?.trim()) return { ok: true, options: undefined }
+  if (!systemPromptSuffix?.trim())
+    return { ok: true, options: undefined, agentKey, routerFallback }
   return {
     ok: true,
     options: { systemPromptSuffix: systemPromptSuffix.trim() },
+    agentKey,
+    routerFallback,
   }
+}
+
+function nvidiaModelName(): string {
+  return process.env.NVIDIA_CHAT_MODEL ?? 'nvidia/nemotron-3-super-120b-a12b'
 }
 
 async function resolveShopIdForAi(
@@ -301,7 +318,7 @@ export async function postAi(req: Request, res: Response) {
     await aiUsageModel.assertShopMonthlyIntelebitCap(shop.shopId)
     await aiUsageModel.assertShopTokenBudget(shop.shopId)
 
-    const { reply, totalTokens, promptTokens, completionTokens } =
+    const { reply, totalTokens, promptTokens, completionTokens, tooling } =
       await withWorkspaceMcpClient({
         auth,
         workspaceId: shop.shopId,
@@ -325,6 +342,49 @@ export async function postAi(req: Request, res: Response) {
           message: err instanceof Error ? err.message : String(err),
         })
       }
+    }
+
+    // Internal telemetry for monitoring (best-effort).
+    try {
+      const ctx: aiToolingTelemetryModel.AiToolingTelemetryContext = {
+        shopId: shop.shopId,
+        userId: userId ?? null,
+        projectId: parsed.projectId ?? null,
+        provider: 'nvidia_nim',
+        model: nvidiaModelName(),
+        agentKey: opts.agentKey ?? null,
+        routerFallback: Boolean(opts.routerFallback),
+      }
+      const reqRow = await aiToolingTelemetryModel.recordAiToolingRequest({
+        ctx,
+        selectionMode: tooling.selectionMode,
+        selectionTokens: tooling.selectionTokens,
+        toolsTotalCount: tooling.toolsTotalCount,
+        toolsSelectedCount: tooling.toolsSelectedCount,
+        toolsPayloadBytes: tooling.toolsPayloadBytes,
+        toolRounds: tooling.toolRounds,
+        totalTokens,
+        promptTokens,
+        completionTokens,
+      })
+      for (const r of tooling.rounds) {
+        await aiToolingTelemetryModel.recordAiToolingRound({
+          requestId: reqRow.requestId,
+          roundIndex: r.roundIndex,
+          toolsSelectedCount: r.toolsSelectedCount,
+          toolsPayloadBytes: r.toolsPayloadBytes,
+          toolCallsCount: r.toolCallsCount,
+          totalTokens: r.totalTokens,
+          promptTokens: r.promptTokens,
+          completionTokens: r.completionTokens,
+        })
+      }
+    } catch (err) {
+      logApiWarn('ai.tooling_telemetry_failed', {
+        context: 'ai.postAi',
+        shopId: shop.shopId,
+        message: err instanceof Error ? err.message : String(err),
+      })
     }
 
     const monthlyBudget = await aiUsageModel.getShopMonthlyBudget(shop.shopId)
