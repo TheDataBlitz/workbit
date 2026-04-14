@@ -49,14 +49,20 @@ const DEFAULT_PORT = 3001
 const API_PREFIX = '/api/v1'
 
 const app = express()
-app.use(
-  cors({
-    origin: parseCorsOrigins(),
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'x-api-key'],
-    maxAge: 86_400,
-  })
-)
+const corsOrigins = parseCorsOrigins()
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, cb) => {
+    // Allow non-browser clients (no Origin header) and allowlisted browser origins.
+    if (!origin) return cb(null, true)
+    if (corsOrigins.includes(origin)) return cb(null, true)
+    return cb(null, false)
+  },
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'x-api-key'],
+  maxAge: 86_400,
+}
+app.use(cors(corsOptions))
+app.options('*', cors(corsOptions))
 // Lexical editor content (and occasional embedded assets) can exceed the default
 // body-parser limit (~100kb). Keep this modest to avoid abuse but large enough
 // for typical editor payloads.
