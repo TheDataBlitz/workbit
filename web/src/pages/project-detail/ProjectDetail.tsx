@@ -327,6 +327,8 @@ export function ProjectDetail() {
             title={d.intelBar.title}
             subtitle={d.intelBar.subtitle}
             ctaLabel={`${d.intelBar.cta} →`}
+            projectId={projectId}
+            projectName={project.data?.name}
           />
         </Page>
       </ContentHost>

@@ -5,12 +5,14 @@ import type {
   Member,
   Invitation,
   StatusUpdate,
+  ProjectProperties,
 } from './types.js'
 import * as dbProjects from '../db/projects.js'
 import * as dbTeams from '../db/teams.js'
 import * as dbStatusUpdates from '../db/statusUpdates.js'
 import * as dbMembers from '../db/members.js'
 import * as dbInvitations from '../db/invitations.js'
+import * as dbProjectProperties from '../db/projectProperties.js'
 import { insertTeam } from '../db/teams.js'
 
 export async function getProjects(): Promise<Project[]> {
@@ -122,6 +124,44 @@ export async function getProjectStatusUpdatesForApi(
   return {
     nodes: updates.map(statusUpdateToProjectApiNode),
   }
+}
+
+export async function addTeamMembersToProject(
+  projectId: string
+): Promise<ProjectProperties | null> {
+  const project = await dbProjects.getProjectById(projectId)
+  if (!project) return null
+  const team = await dbTeams.getTeamById(project.teamId)
+  if (!team) return null
+
+  const current = await dbProjectProperties.getProjectPropertiesByTeamId(
+    team.id
+  )
+  const teamMemberIds = team.memberIds ?? []
+  const mergedMemberIds = [
+    ...new Set([...(current.memberIds ?? []), ...teamMemberIds]),
+  ]
+
+  const next: ProjectProperties = { ...current, memberIds: mergedMemberIds }
+  await dbProjectProperties.upsertProjectProperties(team.id, next)
+  return next
+}
+
+export async function assignProjectLead(
+  projectId: string,
+  leadId: string | null
+): Promise<ProjectProperties | null> {
+  const project = await dbProjects.getProjectById(projectId)
+  if (!project) return null
+  const team = await dbTeams.getTeamById(project.teamId)
+  if (!team) return null
+
+  const current = await dbProjectProperties.getProjectPropertiesByTeamId(
+    team.id
+  )
+  const next: ProjectProperties = { ...current, leadId: leadId ?? undefined }
+  await dbProjectProperties.upsertProjectProperties(team.id, next)
+  return next
 }
 
 export type TeamListItemApi = {

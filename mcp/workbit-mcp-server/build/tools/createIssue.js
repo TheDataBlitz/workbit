@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { mcpContentToStoredLexical } from '../utils/mcpLexicalContent.js';
 import { makeWorkbitPostRequest } from '../utils/workbitClient.js';
 import { logMcpError } from '../logging.js';
 function countWords(input) {
@@ -38,7 +37,7 @@ export function registerCreateIssueTool(server) {
             description: z
                 .string()
                 .optional()
-                .describe('Optional issue description as Markdown or Lexical JSON string. Markdown is converted to Lexical before save; `![alt](https://...)` or `![alt](data:...)` becomes inline wb-image nodes.'),
+                .describe('Optional issue description as plain text or Markdown.'),
             projectId: z
                 .string()
                 .optional()
@@ -55,8 +54,7 @@ export function registerCreateIssueTool(server) {
     }, async ({ title, description, projectId, teamId, parentIssueId }) => {
         try {
             const descriptionWithSource = buildElaborateDescription(title, description);
-            const lexicalDescription = mcpContentToStoredLexical(descriptionWithSource);
-            const payload = { title, description: lexicalDescription };
+            const payload = { title, description: descriptionWithSource };
             if (projectId != null && projectId !== '') {
                 payload.projectId = projectId;
             }
@@ -98,7 +96,7 @@ export function registerCreateIssueTool(server) {
             description: z
                 .string()
                 .optional()
-                .describe('Optional description (Markdown or Lexical JSON); images in Markdown become wb-image nodes.'),
+                .describe('Optional description as plain text or Markdown.'),
             projectId: z
                 .string()
                 .optional()
@@ -111,10 +109,9 @@ export function registerCreateIssueTool(server) {
     }, async ({ title, description, projectId, parentIssueId }) => {
         try {
             const descriptionWithSource = buildElaborateDescription(title, description);
-            const lexicalDescription = mcpContentToStoredLexical(descriptionWithSource);
             const payload = {
                 title,
-                description: lexicalDescription,
+                description: descriptionWithSource,
                 parentIssueId,
             };
             if (projectId != null && projectId !== '') {

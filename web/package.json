@@ -20,6 +20,7 @@
     "@thedatablitz/chart": "^0.12.0",
     "@thedatablitz/dropdown": "^0.5.0",
     "@thedatablitz/inline": "^0.1.5",
+    "@thedatablitz/markdown-editor": "^0.6.0",
     "@thedatablitz/stack": "^0.1.5",
     "@thedatablitz/tags": "^0.4.1",
     "@thedatablitz/text": "^0.7.1",

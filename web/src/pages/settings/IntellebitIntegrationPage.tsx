@@ -1,18 +1,20 @@
 import { Badge } from '@thedatablitz/badge'
 import { Card } from '@thedatablitz/card'
-import { Button } from '@thedatablitz/button'
+import { Dropdown, type DropdownOption } from '@thedatablitz/dropdown'
 import { Inline } from '@thedatablitz/inline'
 import { Stack } from '@thedatablitz/stack'
 import { Text } from '@thedatablitz/text'
-import { Toggle } from '@thedatablitz/toggle'
-import { BookOpen, Brain, Building2, Calculator } from 'lucide-react'
+import { Brain, Wrench } from 'lucide-react'
 import {
   useId,
+  useMemo,
   useState,
   type ComponentType,
   type PropsWithChildren,
 } from 'react'
 import styled from 'styled-components'
+import { IntegrationEnableRow } from '../../components'
+import { useIntellebitProjectAgentsAndTools } from './hooks'
 import { itT } from './integrationTokens'
 import { SettingsSubpageMain } from './settingsSubpageChrome'
 
@@ -26,10 +28,6 @@ const BaseSettingCard = Card as unknown as ComponentType<
 >
 
 const HERO_MAX = '64rem'
-
-/** `Inline` is flex; Toggle’s label defaults to shrink:1 and can collapse to 0× width inside cards. */
-const togglePreserveMd = { flexShrink: 0, minWidth: 48 } as const
-const togglePreserveLg = { flexShrink: 0, minWidth: 64 } as const
 
 const BentoGrid = styled.div`
   max-width: ${HERO_MAX};
@@ -59,32 +57,36 @@ const IconTile = styled.div`
   flex-shrink: 0;
 `
 
-const FooterRow = styled.footer`
-  max-width: ${HERO_MAX};
-  margin: ${itT('space.600')} auto 0;
-  padding-top: ${itT('space.600')};
-  border-top: 1px solid ${itT('color.border.DEFAULT')};
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: ${itT('space.400')};
-`
-
-type EngineKey = 'nexus' | 'semantic' | 'adaptive' | 'quantitative'
-
 export function IntellebitIntegrationPage() {
-  const baseId = useId()
-  const [engines, setEngines] = useState<Record<EngineKey, boolean>>({
-    nexus: true,
-    semantic: true,
-    adaptive: true,
-    quantitative: false,
-  })
+  useId()
+  const integration = useIntellebitProjectAgentsAndTools()
+  const projects = integration.projects.data ?? []
+  const tools = integration.workspaceTools.data ?? []
+  const agentCatalog = integration.agentCatalog.data ?? []
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null
+  )
 
-  const setEngine = (key: EngineKey, checked: boolean) => {
-    setEngines((prev) => ({ ...prev, [key]: checked }))
-  }
+  const projectOptions: DropdownOption[] = useMemo(
+    () =>
+      projects.map((p) => ({
+        value: p.id,
+        label: p.name,
+      })),
+    [projects]
+  )
+
+  const effectiveSelectedProjectId = useMemo(() => {
+    if (selectedProjectId && projects.some((p) => p.id === selectedProjectId)) {
+      return selectedProjectId
+    }
+    return projects[0]?.id ?? null
+  }, [projects, selectedProjectId])
+
+  const selectedProject = useMemo(
+    () => projects.find((p) => p.id === effectiveSelectedProjectId) ?? null,
+    [effectiveSelectedProjectId, projects]
+  )
 
   return (
     <>
@@ -119,301 +121,259 @@ export function IntellebitIntegrationPage() {
             automation engines. Optimize the synergy between academic precision
             and AI execution.
           </Text>
+
+          <div style={{ marginTop: '1.5rem' }}>
+            <Stack gap="200" fullWidth>
+              <Inline gap="200" align="center" wrap fullWidth>
+                <Badge
+                  label={integration.isLoading ? 'LOADING' : 'READY'}
+                  variant={integration.isLoading ? 'neutral' : 'secondary'}
+                  size="small"
+                />
+                <Badge
+                  label={`Projects: ${projects.length}`}
+                  variant="neutral"
+                  size="small"
+                />
+                <Badge
+                  label={`Agents: ${agentCatalog.length}`}
+                  variant="neutral"
+                  size="small"
+                />
+                {integration.selectedWorkspaceId ? (
+                  <Badge
+                    label={`Workspace: ${integration.selectedWorkspaceId}`}
+                    variant="neutral"
+                    size="small"
+                  />
+                ) : (
+                  <Badge
+                    label="Workspace: (not selected)"
+                    variant="neutral"
+                    size="small"
+                  />
+                )}
+                <Badge
+                  label={`Tools: ${tools.length}`}
+                  variant="neutral"
+                  size="small"
+                />
+              </Inline>
+
+              {projectOptions.length ? (
+                <div style={{ maxWidth: 520 }}>
+                  <Dropdown
+                    options={projectOptions}
+                    value={effectiveSelectedProjectId ?? undefined}
+                    onChange={(value) => setSelectedProjectId(value)}
+                    size="large"
+                    surface="mobile"
+                    chevronMode="split"
+                  />
+                </div>
+              ) : null}
+            </Stack>
+
+            {integration.error ? (
+              <Text
+                as="p"
+                variant="body3"
+                color="color.text.subtle"
+                style={{ margin: '0.75rem 0 0', lineHeight: 1.6 }}
+              >
+                Error loading integration data:{' '}
+                {integration.error instanceof Error
+                  ? integration.error.message
+                  : String(integration.error)}
+              </Text>
+            ) : null}
+          </div>
         </div>
 
         <BentoGrid>
-          <BaseSettingCard variant="base" borderTone="none">
-            <Stack gap="400" fullWidth>
-              <Inline
-                justify="space-between"
-                align="flex-start"
-                wrap={false}
-                fullWidth
-              >
-                <IconTile aria-hidden>
-                  <Building2 size={28} color="#000" strokeWidth={1.75} />
-                </IconTile>
-                <Toggle
-                  id={`${baseId}-nexus`}
-                  checked={engines.nexus}
-                  onChange={(e) => setEngine('nexus', e.target.checked)}
-                  variant="primary"
-                  size="medium"
-                  aria-label="Enable Nexus Structural Engine"
-                  style={togglePreserveMd}
-                />
-              </Inline>
-              <div>
-                <Text
-                  as="h3"
-                  variant="heading4"
-                  color="color.text.DEFAULT"
-                  style={{
-                    margin: '0 0 0.75rem',
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontWeight: 800,
-                  }}
-                >
-                  Nexus Structural Engine
-                </Text>
-                <Text
-                  as="p"
-                  variant="body3"
-                  color="color.text.subtle"
-                  style={{ margin: 0, lineHeight: 1.6 }}
-                >
-                  Orchestrates hierarchical curriculum mapping and automated
-                  taxonomy alignment across multi-disciplinary datasets.
-                </Text>
-              </div>
-              <Inline gap="100" wrap>
-                <Badge label="MCP V4" variant="neutral" size="small" />
-                <Badge label="STABLE" variant="secondary" size="small" />
-              </Inline>
-            </Stack>
-          </BaseSettingCard>
-
-          <BaseSettingCard variant="base" borderTone="none">
-            <Stack gap="400" fullWidth>
-              <Inline
-                justify="space-between"
-                align="flex-start"
-                wrap={false}
-                fullWidth
-              >
-                <IconTile aria-hidden>
-                  <BookOpen size={28} color="#000" strokeWidth={1.75} />
-                </IconTile>
-                <Toggle
-                  id={`${baseId}-semantic`}
-                  checked={engines.semantic}
-                  onChange={(e) => setEngine('semantic', e.target.checked)}
-                  variant="primary"
-                  size="medium"
-                  aria-label="Enable Semantic Curator"
-                  style={togglePreserveMd}
-                />
-              </Inline>
-              <div>
-                <Text
-                  as="h3"
-                  variant="heading4"
-                  color="color.text.DEFAULT"
-                  style={{
-                    margin: '0 0 0.75rem',
-                    fontWeight: 800,
-                  }}
-                >
-                  Semantic Curator
-                </Text>
-                <Text
-                  as="p"
-                  variant="body3"
-                  color="color.text.subtle"
-                  style={{ margin: 0, lineHeight: 1.6 }}
-                >
-                  Applies advanced linguistic analysis to maintain consistent
-                  academic tone and editorial rigor across all generated
-                  content.
-                </Text>
-              </div>
-              <Inline gap="100" wrap>
-                <Badge label="ML-MODEL X" variant="neutral" size="small" />
-                <Badge label="CORE" variant="secondary" size="small" />
-              </Inline>
-            </Stack>
-          </BaseSettingCard>
-
           <SpanTwo>
             <BaseSettingCard variant="base" borderTone="none">
               <Stack gap="400" fullWidth>
-                <Inline
-                  justify="space-between"
-                  align="flex-start"
-                  wrap
-                  fullWidth
-                  gap="400"
-                >
-                  <div style={{ flex: '1 1 280px', minWidth: 0 }}>
-                    <Stack gap="300" fullWidth>
-                      <Inline gap="300" align="center" wrap={false}>
-                        <IconTile aria-hidden>
-                          <Brain size={28} strokeWidth={1.75} />
-                        </IconTile>
-                        <Text
-                          as="h3"
-                          variant="heading4"
-                          color="color.text.DEFAULT"
-                          style={{
-                            margin: 0,
-                            fontWeight: 800,
-                          }}
-                        >
-                          Adaptive Assessment UI
-                        </Text>
-                      </Inline>
-                      <Text
-                        as="p"
-                        variant="body3"
-                        color="color.text.subtle"
-                        style={{
-                          margin: 0,
-                          lineHeight: 1.6,
-                          maxWidth: '36rem',
-                        }}
-                      >
-                        Real-time cognitive tracking module that dynamically
-                        adjusts questioning complexity based on user performance
-                        metrics and retention velocity.
-                      </Text>
-                      <Inline gap="100" wrap>
-                        <Badge
-                          label="BETA 0.9"
-                          variant="neutral"
-                          size="small"
-                        />
-                        <Badge label="ACTIVE" variant="primary" size="small" />
-                      </Inline>
-                    </Stack>
-                  </div>
-                  <div
-                    style={{
-                      flex: '0 0 auto',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-end',
-                      gap: itT('space.150'),
-                    }}
-                  >
-                    <Toggle
-                      id={`${baseId}-adaptive`}
-                      checked={engines.adaptive}
-                      onChange={(e) => setEngine('adaptive', e.target.checked)}
-                      variant="primary"
-                      size="large"
-                      aria-label="Enable Adaptive Assessment UI"
-                      style={togglePreserveLg}
-                    />
+                <Inline gap="300" align="center" wrap={false}>
+                  <IconTile aria-hidden>
+                    <Wrench size={28} strokeWidth={1.75} />
+                  </IconTile>
+                  <div style={{ minWidth: 0 }}>
                     <Text
-                      as="span"
-                      variant="caption2"
-                      color="color.text.subtle"
-                      style={{
-                        fontWeight: 700,
-                        letterSpacing: '0.2em',
-                        textTransform: 'uppercase',
-                      }}
+                      as="h3"
+                      variant="heading4"
+                      color="color.text.DEFAULT"
+                      style={{ margin: 0, fontWeight: 800 }}
                     >
-                      {engines.adaptive ? 'Enabled' : 'Disabled'}
+                      Workspace tools (MCP servers)
+                    </Text>
+                    <Text
+                      as="p"
+                      variant="body3"
+                      color="color.text.subtle"
+                      style={{ margin: '0.5rem 0 0', lineHeight: 1.6 }}
+                    >
+                      Enable/disable external tool servers available to agents
+                      in this workspace.
                     </Text>
                   </div>
                 </Inline>
+
+                {!integration.selectedWorkspaceId ? (
+                  <Text
+                    as="p"
+                    variant="body3"
+                    color="color.text.subtle"
+                    style={{ margin: 0, lineHeight: 1.6 }}
+                  >
+                    Select a workspace in the sidebar first to configure tools.
+                  </Text>
+                ) : tools.length === 0 ? (
+                  <Text
+                    as="p"
+                    variant="body3"
+                    color="color.text.subtle"
+                    style={{ margin: 0, lineHeight: 1.6 }}
+                  >
+                    No tools configured for this workspace yet.
+                  </Text>
+                ) : (
+                  <Stack gap="200" fullWidth>
+                    {tools.map((t) => (
+                      <IntegrationEnableRow
+                        key={t.toolKey}
+                        title={t.name}
+                        description={t.description}
+                        enabled={t.enabled}
+                        titleVariant="body2"
+                        extraBadges={
+                          t.hasToken ? (
+                            <Badge
+                              label="TOKEN"
+                              variant="secondary"
+                              size="small"
+                            />
+                          ) : null
+                        }
+                        ariaLabel={`${t.enabled ? 'Disable' : 'Enable'} tool ${t.toolKey}`}
+                        onToggle={() => {
+                          if (!integration.selectedWorkspaceId) return
+                          integration.actions.setToolEnabled({
+                            workspaceId: integration.selectedWorkspaceId,
+                            toolKey: t.toolKey,
+                            enabled: !t.enabled,
+                          })
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                )}
               </Stack>
             </BaseSettingCard>
           </SpanTwo>
 
-          <BaseSettingCard variant="base" borderTone="none">
-            <Stack gap="400" fullWidth>
-              <Inline
-                justify="space-between"
-                align="flex-start"
-                wrap={false}
-                fullWidth
-              >
-                <IconTile aria-hidden>
-                  <Calculator size={28} strokeWidth={1.75} />
-                </IconTile>
-                <Toggle
-                  id={`${baseId}-quant`}
-                  checked={engines.quantitative}
-                  onChange={(e) => setEngine('quantitative', e.target.checked)}
-                  variant="primary"
-                  size="medium"
-                  aria-label="Enable Quantitative Validator"
-                  style={togglePreserveMd}
-                />
-              </Inline>
-              <div>
-                <Text
-                  as="h3"
-                  variant="heading4"
-                  color="color.text.DEFAULT"
-                  style={{
-                    margin: '0 0 0.75rem',
-                    fontWeight: 800,
-                  }}
-                >
-                  Quantitative Validator
-                </Text>
-                <Text
-                  as="p"
-                  variant="body3"
-                  color="color.text.subtle"
-                  style={{ margin: 0, lineHeight: 1.6 }}
-                >
-                  Ensures mathematical integrity and data-driven accuracy within
-                  technical curriculum modules and simulated environments.
-                </Text>
-              </div>
-              <Inline gap="100" wrap>
-                <Badge label="ENG_REV_2" variant="neutral" size="small" />
-                <Badge label="PAUSED" variant="danger" size="small" />
-              </Inline>
-            </Stack>
-          </BaseSettingCard>
-        </BentoGrid>
+          <SpanTwo>
+            <BaseSettingCard variant="base" borderTone="none">
+              <Stack gap="400" fullWidth>
+                <Inline gap="300" align="center" wrap={false}>
+                  <IconTile aria-hidden>
+                    <Brain size={28} strokeWidth={1.75} />
+                  </IconTile>
+                  <div style={{ minWidth: 0 }}>
+                    <Text
+                      as="h3"
+                      variant="heading4"
+                      color="color.text.DEFAULT"
+                      style={{ margin: 0, fontWeight: 800 }}
+                    >
+                      Project agents
+                    </Text>
+                    <Text
+                      as="p"
+                      variant="body3"
+                      color="color.text.subtle"
+                      style={{ margin: '0.5rem 0 0', lineHeight: 1.6 }}
+                    >
+                      Toggle which specialist agents are enabled per project.
+                    </Text>
+                  </div>
+                </Inline>
 
-        <FooterRow>
-          <Inline gap="400" wrap>
-            <Stack gap="050">
-              <Text
-                as="span"
-                variant="caption2"
-                color="color.text.DEFAULT"
-                style={{
-                  fontWeight: 700,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                API Version
-              </Text>
-              <Text
-                as="span"
-                variant="body3"
-                color="color.text.subtle"
-                style={{ fontFamily: 'ui-monospace, monospace' }}
-              >
-                v4.12.8-nexus
-              </Text>
-            </Stack>
-            <Stack gap="050">
-              <Text
-                as="span"
-                variant="caption2"
-                color="color.text.DEFAULT"
-                style={{
-                  fontWeight: 700,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Last Sync
-              </Text>
-              <Text
-                as="span"
-                variant="body3"
-                color="color.text.subtle"
-                style={{ fontFamily: 'ui-monospace, monospace' }}
-              >
-                2023-10-24 14:02:11 UTC
-              </Text>
-            </Stack>
-          </Inline>
-          <Button variant="primary" size="medium">
-            Save integration config
-          </Button>
-        </FooterRow>
+                {projects.length === 0 ? (
+                  <Text
+                    as="p"
+                    variant="body3"
+                    color="color.text.subtle"
+                    style={{ margin: 0, lineHeight: 1.6 }}
+                  >
+                    No projects found.
+                  </Text>
+                ) : agentCatalog.length === 0 ? (
+                  <Text
+                    as="p"
+                    variant="body3"
+                    color="color.text.subtle"
+                    style={{ margin: 0, lineHeight: 1.6 }}
+                  >
+                    No agent catalog entries returned from the API, so there’s
+                    nothing to toggle yet.
+                  </Text>
+                ) : !selectedProject ? (
+                  <Text
+                    as="p"
+                    variant="body3"
+                    color="color.text.subtle"
+                    style={{ margin: 0, lineHeight: 1.6 }}
+                  >
+                    Select a project above to manage its agents.
+                  </Text>
+                ) : (
+                  <Stack gap="300" fullWidth>
+                    <Inline
+                      justify="space-between"
+                      align="center"
+                      wrap={false}
+                      fullWidth
+                    >
+                      <Text
+                        as="div"
+                        variant="body2"
+                        color="color.text.DEFAULT"
+                        truncate
+                        style={{ fontWeight: 900 }}
+                      >
+                        {selectedProject.name}
+                      </Text>
+                    </Inline>
+
+                    <Stack gap="200" fullWidth>
+                      {(
+                        integration.agentTogglesByProjectId.get(
+                          selectedProject.id
+                        ) ?? []
+                      ).map((a) => (
+                        <IntegrationEnableRow
+                          key={a.agentKey}
+                          title={a.title}
+                          description={a.description}
+                          enabled={a.enabled}
+                          ariaLabel={`${a.enabled ? 'Disable' : 'Enable'} agent ${a.agentKey} for project ${selectedProject.name}`}
+                          onToggle={() => {
+                            integration.actions.setAgentEnabled({
+                              projectId: selectedProject.id,
+                              agentKey: a.agentKey,
+                              enabled: !a.enabled,
+                            })
+                          }}
+                        />
+                      ))}
+                    </Stack>
+                  </Stack>
+                )}
+              </Stack>
+            </BaseSettingCard>
+          </SpanTwo>
+        </BentoGrid>
       </SettingsSubpageMain>
     </>
   )

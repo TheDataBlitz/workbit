@@ -38,6 +38,35 @@ export async function getTeamMembersForApi(
   }))
 }
 
+export async function addMemberToTeam(
+  teamId: string,
+  memberId: string
+): Promise<
+  { ok: true } | { ok: false; error: 'team_not_found' | 'member_not_found' }
+> {
+  const [team, member] = await Promise.all([
+    dbTeams.getTeamById(teamId),
+    dbMembers.getMemberById(memberId),
+  ])
+  if (!team) return { ok: false, error: 'team_not_found' }
+  if (!member) return { ok: false, error: 'member_not_found' }
+
+  const nextTeamMemberIds = team.memberIds?.includes(memberId)
+    ? team.memberIds
+    : [...(team.memberIds ?? []), memberId]
+
+  const nextMemberTeamIds = member.teamIds?.includes(teamId)
+    ? member.teamIds
+    : [...(member.teamIds ?? []), teamId]
+
+  await Promise.all([
+    dbTeams.updateTeam(teamId, { memberIds: nextTeamMemberIds }),
+    dbMembers.updateMemberTeamIds(memberId, nextMemberTeamIds),
+  ])
+
+  return { ok: true }
+}
+
 /** Returns the project if it exists and belongs to the given team. */
 export async function getProjectByIdIfBelongsToTeam(
   projectId: string,

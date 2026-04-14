@@ -8,6 +8,19 @@ export type ApiProjectSummary = {
   status: string
 }
 
+export type ApiAgentCatalogItem = {
+  agentKey: string
+  title: string
+  description: string
+}
+
+export type ApiProjectEnabledAgent = {
+  agentKey: string
+  title: string
+  description: string
+  createdAt: string
+}
+
 export type ApiProjectStatusUpdateNode = {
   id: string
   status: string
@@ -62,6 +75,41 @@ export async function fetchProject(
 ): Promise<ApiProjectSummary> {
   return authFetch<ApiProjectSummary>(
     `/projects/${encodeURIComponent(projectId)}`
+  )
+}
+
+export async function fetchAgentCatalog(): Promise<ApiAgentCatalogItem[]> {
+  const res = await authFetch<{ agents: ApiAgentCatalogItem[] }>(
+    `/agents/catalog`
+  )
+  return res.agents
+}
+
+export async function fetchProjectEnabledAgents(
+  projectId: string
+): Promise<ApiProjectEnabledAgent[]> {
+  const res = await authFetch<{ agents: ApiProjectEnabledAgent[] }>(
+    `/projects/${encodeURIComponent(projectId)}/agents`
+  )
+  return res.agents
+}
+
+export async function setProjectAgentEnabled(input: {
+  projectId: string
+  agentKey: string
+  enabled: boolean
+}): Promise<void> {
+  const { projectId, agentKey, enabled } = input
+  if (enabled) {
+    await authFetch(`/projects/${encodeURIComponent(projectId)}/agents`, {
+      method: 'POST',
+      body: JSON.stringify({ agentKey }),
+    })
+    return
+  }
+  await authFetch(
+    `/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentKey)}`,
+    { method: 'DELETE' }
   )
 }
 

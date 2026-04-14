@@ -36,3 +36,43 @@ export async function getProjectStatusUpdates(req: Request, res: Response) {
     res.status(500).json({ error: (e as Error).message })
   }
 }
+
+/** POST /api/v1/projects/:projectId/members/from-team — add team members to project properties. */
+export async function addTeamMembersToProject(req: Request, res: Response) {
+  try {
+    const { projectId } = req.params
+    const props = await workspaceModel.addTeamMembersToProject(projectId)
+    if (!props) {
+      res.status(404).json({ error: 'Project not found' })
+      return
+    }
+    res.status(200).json({ properties: props })
+  } catch (e) {
+    logApiError(e, 'projects.addTeamMembersToProject', {
+      projectId: req.params.projectId,
+    })
+    res.status(500).json({ error: (e as Error).message })
+  }
+}
+
+/** POST /api/v1/projects/:projectId/lead — set project lead in project properties. */
+export async function assignProjectLead(req: Request, res: Response) {
+  try {
+    const { projectId } = req.params
+    const body = req.body as { leadId?: unknown }
+    const leadIdRaw = typeof body.leadId === 'string' ? body.leadId.trim() : ''
+    const leadId = leadIdRaw ? leadIdRaw : null
+
+    const props = await workspaceModel.assignProjectLead(projectId, leadId)
+    if (!props) {
+      res.status(404).json({ error: 'Project not found' })
+      return
+    }
+    res.status(200).json({ properties: props })
+  } catch (e) {
+    logApiError(e, 'projects.assignProjectLead', {
+      projectId: req.params.projectId,
+    })
+    res.status(500).json({ error: (e as Error).message })
+  }
+}

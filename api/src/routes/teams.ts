@@ -7,6 +7,7 @@ export const teamsRoutes = Router()
 
 teamsRoutes.get('/:teamId', teamsCtrl.getTeam)
 teamsRoutes.get('/:teamId/members', teamsCtrl.getTeamMembers)
+teamsRoutes.post('/:teamId/members', teamsCtrl.addTeamMember)
 teamsRoutes.get('/:teamId/project', teamsCtrl.getTeamProject)
 teamsRoutes.get('/:teamId/project/issues', teamsCtrl.getTeamProjectIssues)
 teamsRoutes.get(

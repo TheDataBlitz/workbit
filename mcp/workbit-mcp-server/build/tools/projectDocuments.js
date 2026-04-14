@@ -15,7 +15,9 @@ export function registerProjectDocumentTools(server) {
                 ? docs.map((d) => finalizeDocumentContentField(d))
                 : docs;
             return {
-                content: [{ type: 'text', text: JSON.stringify(normalized, null, 2) }],
+                content: [
+                    { type: 'text', text: JSON.stringify(normalized, null, 2) },
+                ],
             };
         }
         catch (error) {
@@ -41,7 +43,9 @@ export function registerProjectDocumentTools(server) {
             const doc = await makeWorkbitRequest(`/projects/${encodeURIComponent(projectId)}/documents/${encodeURIComponent(documentId)}`);
             const normalized = finalizeDocumentContentField(doc);
             return {
-                content: [{ type: 'text', text: JSON.stringify(normalized, null, 2) }],
+                content: [
+                    { type: 'text', text: JSON.stringify(normalized, null, 2) },
+                ],
             };
         }
         catch (error) {

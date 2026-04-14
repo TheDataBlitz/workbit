@@ -12,6 +12,9 @@ import { registerUpdateIssueTool } from './tools/updateIssue.js';
 import { registerUpdateProjectTool, registerUpdateProjectStatusTool, } from './tools/updateProject.js';
 import { registerUpdateProjectDecisionTool } from './tools/updateDecision.js';
 import { registerProjectDocumentTools } from './tools/projectDocuments.js';
+import { registerAddTeamMemberTool } from './tools/teamMembers.js';
+import { registerAddTeamMembersToProjectTool, registerAssignProjectLeadTool, } from './tools/projectMembership.js';
+import { registerOnboardMemberTool } from './tools/onboardMember.js';
 import { initLogging, logMcpError } from './logging.js';
 const server = new McpServer({
     name: 'workbit',
@@ -30,6 +33,10 @@ registerUpdateProjectTool(server);
 registerUpdateProjectStatusTool(server);
 registerUpdateProjectDecisionTool(server);
 registerProjectDocumentTools(server);
+registerAddTeamMemberTool(server);
+registerAddTeamMembersToProjectTool(server);
+registerAssignProjectLeadTool(server);
+registerOnboardMemberTool(server);
 async function main() {
     initLogging();
     const transport = new StdioServerTransport();

@@ -41,3 +41,20 @@ export async function removeProjectAgent(
     .eq('agent_key', agentKey)
   if (error) throw error
 }
+
+export async function removeProjectAgentsNotInKeys(
+  projectId: string,
+  validAgentKeys: string[]
+): Promise<void> {
+  if (!projectId?.trim()) return
+  if (!validAgentKeys.length) return
+  const inList = `(${validAgentKeys
+    .map((k) => `"${k.replaceAll('"', '\\"')}"`)
+    .join(',')})`
+  const { error } = await getClient()
+    .from('project_agents')
+    .delete()
+    .eq('project_id', projectId)
+    .not('agent_key', 'in', inList)
+  if (error) throw error
+}

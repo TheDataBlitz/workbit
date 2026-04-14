@@ -80,3 +80,14 @@ export async function updateMember(
     .eq('id', memberId)
   if (error) throw error
 }
+
+export async function updateMemberTeamIds(
+  memberId: string,
+  teamIds: string[]
+): Promise<void> {
+  const { error } = await getClient()
+    .from('members')
+    .update({ team_ids: teamIds } as never)
+    .eq('id', memberId)
+  if (error) throw error
+}

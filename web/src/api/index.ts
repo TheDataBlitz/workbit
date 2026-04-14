@@ -1,5 +1,6 @@
 export * from './auth'
 export * from './authStore'
+export * from './ai'
 export * from './client'
 export * from './me'
 export * from './projects'

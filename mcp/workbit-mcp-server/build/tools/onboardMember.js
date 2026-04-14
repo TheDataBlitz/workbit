@@ -1,0 +1,77 @@
+import { z } from 'zod';
+import { makeWorkbitPostRequest, makeWorkbitRequest, } from '../utils/workbitClient.js';
+import { logMcpError } from '../logging.js';
+function normalizeEmail(email) {
+    return email.trim().toLowerCase();
+}
+export function registerOnboardMemberTool(server) {
+    server.registerTool('onboardMember', {
+        description: 'Onboard a new team member. If the member does not already exist, this tool creates the member and creates an invitation in the same flow. Use this to onboard a new member when they are not yet available.',
+        inputSchema: {
+            email: z.string().min(1).describe('Email address for the invite.'),
+            name: z.string().min(1).describe('Full name.'),
+            username: z.string().min(1).describe('Unique username/handle.'),
+            status: z
+                .string()
+                .optional()
+                .describe('Optional member status/title (defaults to Member).'),
+            teamIds: z
+                .array(z.string())
+                .optional()
+                .describe('Optional list of team IDs to add the member to.'),
+        },
+    }, async ({ email, name, username, status, teamIds }) => {
+        const emailNorm = normalizeEmail(email);
+        try {
+            // Best-effort: avoid duplicates by checking existing members by username.
+            // Note: API member list does not expose email.
+            const members = await makeWorkbitRequest('/workspace/members');
+            const existingByUsername = Array.isArray(members)
+                ? members.find((m) => typeof m?.username === 'string' &&
+                    m.username.trim().toLowerCase() === username.trim().toLowerCase())
+                : undefined;
+            if (existingByUsername) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: JSON.stringify({
+                                ok: true,
+                                alreadyExists: true,
+                                member: existingByUsername,
+                                note: 'Member already exists (matched by username); no create/invite performed.',
+                            }, null, 2),
+                        },
+                    ],
+                };
+            }
+            const member = await makeWorkbitPostRequest('/workspace/members', {
+                email: emailNorm,
+                name,
+                username,
+                status,
+                teamIds: teamIds ?? [],
+            });
+            const invitation = await makeWorkbitPostRequest('/workspace/members/invite', { email: emailNorm });
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: JSON.stringify({ ok: true, member, invitation }, null, 2),
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            logMcpError(error, 'tools.onboardMember', { email: emailNorm, username });
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Failed to onboard member in Workbit API: ${error.message}`,
+                    },
+                ],
+            };
+        }
+    });
+}

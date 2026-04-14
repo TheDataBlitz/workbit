@@ -20,6 +20,8 @@ export async function listProjectAgentsForApi(
   const project = await dbProjects.getProjectById(projectId)
   if (!project) return null
 
+  await cleanupInvalidProjectAgents(projectId)
+
   const rows = await dbProjectAgents.listProjectAgents(projectId)
   const out: ProjectAgentApiItem[] = []
   for (const row of rows) {
@@ -33,6 +35,13 @@ export async function listProjectAgentsForApi(
     })
   }
   return out
+}
+
+export async function cleanupInvalidProjectAgents(
+  projectId: string
+): Promise<void> {
+  const validKeys = listAgentCatalog().map((e) => e.key)
+  await dbProjectAgents.removeProjectAgentsNotInKeys(projectId, validKeys)
 }
 
 export async function enableProjectAgent(
@@ -68,6 +77,7 @@ export async function disableProjectAgent(
 export async function listEnabledAgentKeys(
   projectId: string
 ): Promise<string[]> {
+  await cleanupInvalidProjectAgents(projectId)
   const rows = await dbProjectAgents.listProjectAgents(projectId)
   const keys = rows.map((r) => r.agent_key).filter((k) => isValidAgentKey(k))
   return [...new Set(keys)].sort()

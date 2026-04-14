@@ -25,6 +25,11 @@ projectRoutes.get(
   '/:projectId/status-updates',
   projectsCtrl.getProjectStatusUpdates
 )
+projectRoutes.post(
+  '/:projectId/members/from-team',
+  projectsCtrl.addTeamMembersToProject
+)
+projectRoutes.post('/:projectId/lead', projectsCtrl.assignProjectLead)
 projectRoutes.get('/:projectId/decisions', decisionsCtrl.listProjectDecisions)
 projectRoutes.post('/:projectId/decisions', decisionsCtrl.createProjectDecision)
 projectRoutes.patch(

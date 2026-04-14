@@ -37,6 +37,36 @@ export async function getTeamMembers(req: Request, res: Response) {
   }
 }
 
+export async function addTeamMember(req: Request, res: Response) {
+  try {
+    const { teamId } = req.params
+    const body = req.body as { memberId?: unknown }
+    const memberId =
+      typeof body.memberId === 'string' ? body.memberId.trim() : ''
+    if (!memberId) {
+      res.status(400).json({ error: 'memberId is required' })
+      return
+    }
+
+    const result = await teamsModel.addMemberToTeam(teamId, memberId)
+    if (!result.ok) {
+      if (result.error === 'team_not_found') {
+        res.status(404).json({ error: 'Team not found' })
+        return
+      }
+      res.status(404).json({ error: 'Member not found' })
+      return
+    }
+
+    res.status(201).json({ ok: true, teamId, memberId })
+  } catch (e) {
+    logApiError(e, 'teams.addTeamMember', {
+      teamId: req.params.teamId,
+    })
+    res.status(500).json({ error: (e as Error).message })
+  }
+}
+
 export async function getTeamProject(req: Request, res: Response) {
   try {
     const { teamId } = req.params
