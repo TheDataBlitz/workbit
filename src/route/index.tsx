@@ -7,6 +7,7 @@ import {
   WorkspaceProjectsScreen,
   WorkspaceMemberScreen,
   WorkspaceTeamsScreen,
+  WorkspaceSelection,
   WorkspacesScreen,
   CreateTeamScreen,
   CreateMemberScreen,
@@ -42,6 +43,14 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginScreen />} />
       <Route
         path="/workspaces"
+        element={
+          <AuthGate>
+            <WorkspaceSelection />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/workspaces/new"
         element={
           <AuthGate>
             <WorkspacesScreen />

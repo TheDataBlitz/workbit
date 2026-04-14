@@ -1,6 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { mcpContentToStoredLexical } from '../utils/mcpLexicalContent.js'
 import { makeWorkbitPostRequest } from '../utils/workbitClient.js'
 import { logMcpError } from '../logging.js'
 
@@ -51,9 +50,7 @@ export function registerCreateIssueTool(server: McpServer): void {
         description: z
           .string()
           .optional()
-          .describe(
-            'Optional issue description as Markdown or Lexical JSON string. Markdown is converted to Lexical before save; `![alt](https://...)` or `![alt](data:...)` becomes inline wb-image nodes.'
-          ),
+          .describe('Optional issue description as plain text or Markdown.'),
         projectId: z
           .string()
           .optional()
@@ -76,9 +73,6 @@ export function registerCreateIssueTool(server: McpServer): void {
           title,
           description
         )
-        const lexicalDescription = mcpContentToStoredLexical(
-          descriptionWithSource
-        )
 
         const payload: {
           title: string
@@ -86,7 +80,7 @@ export function registerCreateIssueTool(server: McpServer): void {
           projectId?: string
           teamId?: string
           parentIssueId?: string
-        } = { title, description: lexicalDescription }
+        } = { title, description: descriptionWithSource }
         if (projectId != null && projectId !== '') {
           payload.projectId = projectId
         }
@@ -135,9 +129,7 @@ export function registerCreateIssueTool(server: McpServer): void {
         description: z
           .string()
           .optional()
-          .describe(
-            'Optional description (Markdown or Lexical JSON); images in Markdown become wb-image nodes.'
-          ),
+          .describe('Optional description as plain text or Markdown.'),
         projectId: z
           .string()
           .optional()
@@ -156,9 +148,6 @@ export function registerCreateIssueTool(server: McpServer): void {
           title,
           description
         )
-        const lexicalDescription = mcpContentToStoredLexical(
-          descriptionWithSource
-        )
 
         const payload: {
           title: string
@@ -167,7 +156,7 @@ export function registerCreateIssueTool(server: McpServer): void {
           parentIssueId: string
         } = {
           title,
-          description: lexicalDescription,
+          description: descriptionWithSource,
           parentIssueId,
         }
         if (projectId != null && projectId !== '') {

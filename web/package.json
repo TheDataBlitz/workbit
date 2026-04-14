@@ -1,0 +1,49 @@
+{
+  "name": "workbit-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.99.0",
+    "@thedatablitz/accordion": "^0.8.1",
+    "@thedatablitz/avatar": "^0.7.1",
+    "@thedatablitz/badge": "^0.7.1",
+    "@thedatablitz/box": "^0.1.5",
+    "@thedatablitz/button": "^0.7.1",
+    "@thedatablitz/card": "^0.9.1",
+    "@thedatablitz/chart": "^0.12.0",
+    "@thedatablitz/dropdown": "^0.5.0",
+    "@thedatablitz/inline": "^0.1.5",
+    "@thedatablitz/stack": "^0.1.5",
+    "@thedatablitz/tags": "^0.4.1",
+    "@thedatablitz/text": "^0.7.1",
+    "@thedatablitz/toggle": "^0.11.0",
+    "@thedatablitz/tokens": "^0.12.0",
+    "lucide-react": "^1.8.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.14.0",
+    "styled-components": "^6.4.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/node": "^24.12.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/styled-components": "^5.1.36",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.4.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.58.0",
+    "vite": "^8.0.4"
+  }
+}

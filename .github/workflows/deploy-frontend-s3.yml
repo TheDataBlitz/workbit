@@ -1,7 +1,7 @@
-# Deploy only the root Vite web UI to S3 (+ optional CloudFront invalidation).
+# Deploy the Vite web UI (web/) to S3 (+ optional CloudFront invalidation).
 #
 # This repo also has api/, mcp/, mobile/, etc. This workflow does NOT ship those:
-# it runs `npm run build` at the repo root (tsc + vite build) and uploads **dist/**
+# it runs `npm run build` in web/ and uploads **web/dist/**
 # only — the static HTML/JS/CSS bundle from Vite.
 #
 # Custom domain (e.g. workbit.thedatablitz.com) requires:
@@ -24,7 +24,7 @@
 #
 # Supabase: add https://workbit.thedatablitz.com to Auth → URL Configuration (site URL + redirect URLs).
 
-name: Deploy web UI to S3 (Vite dist)
+name: Deploy web UI to S3 (web/dist)
 
 # Path filters are independent of deploy-api-ec2 except shared files (e.g. root package.json):
 # a push that changes both api/** and src/** still runs both workflows — that is intentional.
@@ -33,16 +33,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "src/**"
-      - "public/**"
-      - "index.html"
-      - "vite.config.ts"
-      - "package.json"
-      - "package-lock.json"
-      - "tsconfig.json"
-      - "tsconfig.node.json"
-      - "tailwind.config.*"
-      - ".npmrc"
+      - "web/**"
       - ".github/workflows/deploy-frontend-s3.yml"
 
 permissions:
@@ -71,6 +62,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
+          cache-dependency-path: web/package-lock.json
 
       - name: Write env file from API_ENV_FILE
         env:
@@ -96,32 +88,34 @@ jobs:
             echo "Add NPM_TOKEN to the TEST environment or set WORK_BIT_GH_TOKEN / NPM_TOKEN in API_ENV_FILE."
             exit 1
           fi
+          cd web
           npm ci
 
-      - name: Build Vite app (outputs dist/)
+      - name: Build Vite app (outputs web/dist/)
         run: |
           set -a
           # shellcheck disable=SC1091
           source .env.deploy
           set +a
+          cd web
           npm run build
 
-      - name: Sync Vite dist/ to S3 only
+      - name: Sync Vite web/dist/ to S3 only
         run: |
           set -a
           # shellcheck disable=SC1091
           source .env.deploy
           set +a
-          if [ ! -f dist/index.html ]; then
-            echo "Missing dist/index.html — root Vite build did not produce the web UI bundle."
+          if [ ! -f web/dist/index.html ]; then
+            echo "Missing web/dist/index.html — Vite build did not produce the web UI bundle."
             exit 1
           fi
           if [ -z "${S3_HOST_BUCKET:-}" ]; then
             echo "Set S3_HOST_BUCKET in API_ENV_FILE."
             exit 1
           fi
-          # Only the contents of dist/ (not api/, mcp/, mobile/, etc.)
-          aws s3 sync dist/ "s3://${S3_HOST_BUCKET}/" --delete
+          # Only the contents of web/dist/ (not api/, mcp/, mobile/, etc.)
+          aws s3 sync web/dist/ "s3://${S3_HOST_BUCKET}/" --delete
 
       - name: Invalidate CloudFront
         run: |
