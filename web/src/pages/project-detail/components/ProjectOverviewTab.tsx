@@ -10,6 +10,8 @@ import styled from 'styled-components'
 import { StatusCard, TeamLeadCard } from '../../../components'
 import { MetadataCard } from '../../../components/MetadataCard'
 import type { ApiProjectSummary, ApiTeamMember } from '../../../api'
+import { useProjectStatusUpdates } from '../hooks'
+import { MemberDetail, openDrawer } from '../../../components'
 
 const MainGrid = styled.div`
   display: grid;
@@ -61,6 +63,39 @@ export function ProjectOverviewTab({
   teamMembers: ApiTeamMember[]
 }) {
   const lead = teamMembers[0]
+  const leadForUi:
+    | ApiTeamMember
+    | { id: string; name: string; username: string } = lead ?? {
+    id: 'mock-team-lead',
+    name: d.teamLead.name,
+    username: '',
+  }
+  const statusUpdatesQuery = useProjectStatusUpdates(project?.id)
+  const latestUpdate = statusUpdatesQuery.data?.nodes
+    ?.slice()
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )[0]
+
+  const latestStatusTitle = latestUpdate?.status ?? project?.status ?? '—'
+  const latestStatusSubtitle = (() => {
+    if (statusUpdatesQuery.isLoading) return 'Loading latest update…'
+    if (statusUpdatesQuery.isError) return 'Failed to load latest update.'
+    if (!latestUpdate) return 'No status updates yet.'
+    try {
+      const d = new Date(latestUpdate.createdAt)
+      const formatted = new Intl.DateTimeFormat(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+      }).format(d)
+      return `Updated ${formatted}`
+    } catch {
+      return 'Updated recently'
+    }
+  })()
+
   return (
     <MainGrid>
       <Stack gap="300" fullWidth>
@@ -155,10 +190,10 @@ export function ProjectOverviewTab({
             titleVariant="heading5"
           />
           <StatusCard
-            ariaLabel={d.health.label}
-            kicker={d.health.label}
-            title={d.health.status}
-            subtitle={d.health.sub}
+            ariaLabel="Latest status"
+            kicker="LATEST STATUS"
+            title={latestStatusTitle}
+            subtitle={latestStatusSubtitle}
             titleLeading={<HealthDot aria-hidden />}
             titleVariant="heading6"
           />
@@ -169,9 +204,31 @@ export function ProjectOverviewTab({
         <TeamLeadCard
           ariaLabel={d.teamLead.label}
           kicker={d.teamLead.label}
-          name={lead?.name ?? '—'}
-          title={lead?.username ? `@${lead.username}` : '—'}
+          name={leadForUi.name ?? '—'}
+          title={
+            lead?.username
+              ? `@${lead.username}`
+              : d.teamLead.title?.trim()
+                ? d.teamLead.title
+                : '—'
+          }
           ctaLabel="VIEW PROFILE"
+          onCtaClick={() => {
+            openDrawer({
+              type: 'member-detail',
+              title: leadForUi.name,
+              children: (
+                <MemberDetail
+                  member={{
+                    id: leadForUi.id,
+                    name: leadForUi.name,
+                    username: lead?.username || undefined,
+                    avatarSrc: lead?.avatarSrc,
+                  }}
+                />
+              ),
+            })
+          }}
         />
         <MetadataCard d={d} />
       </Stack>
