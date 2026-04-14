@@ -7,7 +7,6 @@ import { Button } from '@thedatablitz/button'
 import { Alert } from '@thedatablitz/alert'
 import { Dropdown } from '@thedatablitz/dropdown'
 import { Box } from '@thedatablitz/box'
-import { PageHeader } from '@thedatablitz/page-header'
 import type { ApiWorkspaceMcpToolCatalogItem } from '../../api/client'
 import { useIntegrationBitsTabData } from './hook'
 
@@ -20,7 +19,6 @@ export function IntegrationBitsTab() {
     toolsQuery,
     items,
     setMutation,
-    testMutation,
     projectsQuery,
     projectOptions,
     agentCatalogQuery,
@@ -67,7 +65,6 @@ export function IntegrationBitsTab() {
                       setMutation.mutate({ toolKey: t.toolKey, enabled: false })
                       return
                     }
-                    // enabling requires baseUrl to be present (hardcoded by backend)
                     setMutation.mutate({
                       toolKey: t.toolKey,
                       enabled: true,
@@ -79,28 +76,10 @@ export function IntegrationBitsTab() {
               </Inline>
             </Inline>
 
-            {testMutation.data?.ok ? (
-              <Alert
-                variant="success"
-                title="Connected"
-                description={`Found ${(testMutation.data.tools ?? []).length} tools.`}
-              />
-            ) : null}
-            {testMutation.error ? (
-              <Alert
-                variant="danger"
-                title="Connection failed"
-                description={
-                  testMutation.error instanceof Error
-                    ? testMutation.error.message
-                    : String(testMutation.error)
-                }
-              />
-            ) : null}
-
             {!t.enabled && !canEnable ? (
               <Text variant="caption2" color="color.text.subtle">
-                Add a base URL to enable this tool for the workspace.
+                Set a base URL for this tool (via API) before enabling it for
+                the workspace.
               </Text>
             ) : null}
           </Stack>
@@ -172,11 +151,17 @@ export function IntegrationBitsTab() {
 
   return (
     <Stack gap="200" fullWidth>
-      <PageHeader
-        avatar={{ name: 'IntegrationBits' }}
-        title="IntegrationBits"
-        subtitle="Enable MCP tools for this workspace. Enabled tools become available to the backend AI tool loop."
-      />
+      <Stack gap="050">
+        <Text variant="heading4">External MCP tools</Text>
+        <Text variant="body3" color="color.text.subtle">
+          Enable streamable HTTP MCP servers per workspace. Configure each
+          tool’s base URL with{' '}
+          <Text variant="body3" as="span" color="color.text.DEFAULT">
+            PUT /workspaces/:workspaceId/mcp-tools/:toolKey
+          </Text>
+          ; configured tools appear here.
+        </Text>
+      </Stack>
 
       {toolsQuery.error ? (
         <Alert
@@ -193,6 +178,10 @@ export function IntegrationBitsTab() {
       {toolsQuery.isPending ? (
         <Text variant="body3" color="color.text.subtle">
           Loading tools…
+        </Text>
+      ) : items.length === 0 ? (
+        <Text variant="body3" color="color.text.subtle">
+          No MCP tools configured for this workspace yet.
         </Text>
       ) : (
         <Box className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -262,7 +251,9 @@ export function IntegrationBitsTab() {
           Loading agents…
         </Text>
       ) : (
-        <Inline>{catalogAgents.map(renderAgentCard)}</Inline>
+        <Box className="flex flex-wrap gap-4">
+          {catalogAgents.map(renderAgentCard)}
+        </Box>
       )}
     </Stack>
   )

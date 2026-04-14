@@ -11,14 +11,6 @@ export type McpClientLike = {
     name: string
     arguments?: Record<string, unknown>
   }) => Promise<unknown>
-  /**
-   * Read an MCP resource (used for MCP Apps `ui://...`).
-   * `toolNameHint` lets composites route to the same server that declared the tool.
-   */
-  readResource?: (req: {
-    uri: string
-    toolNameHint?: string
-  }) => Promise<unknown>
 }
 
 export function createCompositeMcpClient(input: {
@@ -73,29 +65,5 @@ export function createCompositeMcpClient(input: {
     })
   }
 
-  async function readResource(req: {
-    uri: string
-    toolNameHint?: string
-  }): Promise<unknown> {
-    const toolName = req.toolNameHint
-    if (toolName) {
-      // Ensure routing table is populated (some callers may read resources
-      // without having called listTools first).
-      if (!cachedTools) {
-        await listTools()
-      }
-      const hit = toolToClient.get(toolName)
-      if (hit?.client.readResource) {
-        return await hit.client.readResource({ uri: req.uri })
-      }
-    }
-    // Best-effort: first client that supports resources.
-    const first = input.clients.find((c) => Boolean(c.client.readResource))
-    if (!first?.client.readResource) {
-      throw new Error('MCP resources are not supported by connected clients.')
-    }
-    return await first.client.readResource({ uri: req.uri })
-  }
-
-  return { listTools, callTool, readResource }
+  return { listTools, callTool }
 }

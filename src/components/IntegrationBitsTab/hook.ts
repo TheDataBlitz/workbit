@@ -9,7 +9,6 @@ import {
   fetchProjects,
   fetchWorkspaceMcpTools,
   setWorkspaceMcpTool,
-  testWorkspaceMcpTool,
 } from '../../api/client'
 import { logError } from '../../utils/errorHandling'
 
@@ -60,14 +59,7 @@ function useWorkspaceMcpToolMutations(wid: string) {
     },
   })
 
-  const testMutation = useMutation({
-    mutationFn: (input: { toolKey: string; baseUrl: string }) =>
-      testWorkspaceMcpTool(wid, input.toolKey, {
-        baseUrl: input.baseUrl,
-      }),
-  })
-
-  return { setMutation, testMutation }
+  return { setMutation }
 }
 
 function useProjectAgentMutations() {
@@ -113,7 +105,7 @@ export function useIntegrationBitsTabData(wid: string) {
     selectedProjectId
   )
 
-  const { setMutation, testMutation } = useWorkspaceMcpToolMutations(wid)
+  const { setMutation } = useWorkspaceMcpToolMutations(wid)
   const { enableAgentMutation, disableAgentMutation } =
     useProjectAgentMutations()
 
@@ -139,7 +131,6 @@ export function useIntegrationBitsTabData(wid: string) {
     toolsQuery,
     items,
     setMutation,
-    testMutation,
 
     projectsQuery,
     projectOptions,

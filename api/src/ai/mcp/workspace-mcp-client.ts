@@ -8,17 +8,12 @@ import {
 } from './composite-client.js'
 import * as workspaceMcpToolsModel from '../../models/workspaceMcpTools.js'
 
-const DEFAULT_EXCALIDRAW_MCP_BASE_URL =
-  process.env.EXCALIDRAW_MCP_BASE_URL?.trim() || 'http://localhost:3005/mcp'
-
 export async function withWorkspaceMcpClient<T>(input: {
   auth: WorkbitUpstreamAuth
   workspaceId: string
   fn: (client: McpClientLike) => Promise<T>
 }): Promise<T> {
-  // 1) connect internal Workbit MCP (stdio)
   return await withMcpClient(input.auth, async (internal) => {
-    // 2) connect enabled external MCP tools (HTTP/streamable)
     const enabled = await workspaceMcpToolsModel.listEnabledWorkspaceMcpTools(
       input.workspaceId
     )
@@ -29,10 +24,7 @@ export async function withWorkspaceMcpClient<T>(input: {
     }> = []
 
     for (const t of enabled) {
-      const baseUrl =
-        t.toolKey === 'excalidraw_mcp'
-          ? t.baseUrl?.trim() || DEFAULT_EXCALIDRAW_MCP_BASE_URL
-          : t.baseUrl?.trim()
+      const baseUrl = t.baseUrl?.trim()
       if (!baseUrl) continue
       const headers: Record<string, string> = {}
       if (t.accessToken?.trim()) {
