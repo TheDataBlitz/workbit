@@ -12,12 +12,19 @@ export async function fetchMeMember(): Promise<ApiMeMember> {
   return authFetch<ApiMeMember>('/me/member')
 }
 
-export type ApiMeAiUsageDaily = { date: string; tokens: number }
+export type ApiMeAiUsageDaily = {
+  date: string
+  tokens: number
+  promptTokens: number
+  completionTokens: number
+}
 
 export type ApiMeAiUsageByShop = {
   shopId: string
   requests: number
   tokens: number
+  promptTokens: number
+  completionTokens: number
 }
 
 export type ApiMonthlyBudgetSnapshot = {
@@ -29,7 +36,13 @@ export type ApiMonthlyBudgetSnapshot = {
 export type ApiMeAiUsageReport = {
   days: number
   daily: ApiMeAiUsageDaily[]
-  totals: { requests: number; tokens: number; intelebits: number }
+  totals: {
+    requests: number
+    tokens: number
+    promptTokens: number
+    completionTokens: number
+    intelebits: number
+  }
   byShop: ApiMeAiUsageByShop[]
   monthlyBudget: ApiMonthlyBudgetSnapshot | null
 }

@@ -88,7 +88,6 @@ const DetailPanel = styled.section`
   width: 100%;
   box-sizing: border-box;
   padding: ${pdT.space400};
-  border-radius: ${pdT.radiusMd};
   background: ${pdT.surfaceRaised};
   border: 1px solid color-mix(in srgb, ${pdT.border} 35%, transparent);
 `
@@ -256,12 +255,7 @@ export function ProjectDetail() {
         avatarSrc: m.avatarSrc,
       }))
     }
-    return d.collaborators.map((c) => ({
-      id: c.name,
-      name: c.name,
-      subtitle: undefined,
-      avatarSrc: undefined,
-    }))
+    return []
   }, [projectProperties.data?.memberIds, teamMembers.data])
 
   const workspaceProjectIds = useMemo(
@@ -346,7 +340,10 @@ export function ProjectDetail() {
                   // API doesn't expose priority yet; keep a clear placeholder.
                   priority: 'PRIORITY: —',
                 }}
-                members={memberListItems.map((m) => ({ id: m.id, name: m.name }))}
+                members={memberListItems.map((m) => ({
+                  id: m.id,
+                  name: m.name,
+                }))}
                 leadId={projectProperties.data?.leadId ?? undefined}
                 onCollaboratorsClick={() => {
                   openDrawer({

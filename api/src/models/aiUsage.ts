@@ -86,12 +86,18 @@ export async function recordAiTokenUsage(input: {
   shopId: string
   userId: string
   tokens: number
+  promptTokens?: number
+  completionTokens?: number
 }): Promise<void> {
   const tokens = Math.max(0, Math.floor(input.tokens))
+  const promptTokens = Math.max(0, Math.floor(input.promptTokens ?? 0))
+  const completionTokens = Math.max(0, Math.floor(input.completionTokens ?? 0))
   await dbAiUsage.insertAiTokenUsage({
     shopId: input.shopId,
     userId: input.userId,
     tokens,
+    promptTokens,
+    completionTokens,
   })
 }
 

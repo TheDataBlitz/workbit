@@ -13,7 +13,10 @@ import * as dbStatusUpdates from '../db/statusUpdates.js'
 import * as dbMembers from '../db/members.js'
 import * as dbInvitations from '../db/invitations.js'
 import * as dbProjectProperties from '../db/projectProperties.js'
+import * as dbProjectAgents from '../db/projectAgents.js'
 import { insertTeam } from '../db/teams.js'
+
+const DEFAULT_PROJECT_AGENT_KEYS = ['workbit_mcp_analyzer'] as const
 
 export async function getProjects(): Promise<Project[]> {
   return dbProjects.getProjects()
@@ -350,6 +353,10 @@ export async function createProject(input: {
 
   await dbProjects.insertProject(project)
   await dbTeams.updateTeam(input.teamId, { projectId: project.id })
+
+  for (const k of DEFAULT_PROJECT_AGENT_KEYS) {
+    await dbProjectAgents.addProjectAgent(project.id, k)
+  }
 
   return { project, team }
 }

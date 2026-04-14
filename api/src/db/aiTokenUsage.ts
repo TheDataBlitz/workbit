@@ -6,6 +6,8 @@ export type AiTokenUsageInsert = {
   shopId: string
   userId: string
   tokens: number
+  promptTokens?: number
+  completionTokens?: number
   consumedAt?: Date
 }
 
@@ -16,6 +18,14 @@ export async function insertAiTokenUsage(
     shop_id: row.shopId,
     user_id: row.userId,
     tokens: row.tokens,
+    ...(typeof row.promptTokens === 'number' &&
+    Number.isFinite(row.promptTokens)
+      ? { prompt_tokens: Math.max(0, Math.floor(row.promptTokens)) }
+      : {}),
+    ...(typeof row.completionTokens === 'number' &&
+    Number.isFinite(row.completionTokens)
+      ? { completion_tokens: Math.max(0, Math.floor(row.completionTokens)) }
+      : {}),
     ...(row.consumedAt != null
       ? { consumed_at: row.consumedAt.toISOString() }
       : {}),
@@ -71,20 +81,34 @@ export async function listDistinctShopIdsForUserSince(
 type UsageRow = {
   shop_id: string
   tokens: number
+  prompt_tokens?: number | null
+  completion_tokens?: number | null
   consumed_at: string
 }
 
-export type AiTokenUsageDailyRow = { date: string; tokens: number }
+export type AiTokenUsageDailyRow = {
+  date: string
+  tokens: number
+  promptTokens: number
+  completionTokens: number
+}
 
 export type AiTokenUsageByShopRow = {
   shopId: string
   requests: number
   tokens: number
+  promptTokens: number
+  completionTokens: number
 }
 
 export type AiTokenUsageReportJson = {
   daily: AiTokenUsageDailyRow[]
-  totals: { requests: number; tokens: number }
+  totals: {
+    requests: number
+    tokens: number
+    promptTokens: number
+    completionTokens: number
+  }
   byShop: AiTokenUsageByShopRow[]
 }
 
@@ -99,37 +123,86 @@ function utcDateKeyFromConsumedAt(consumedAt: string): string {
 }
 
 function aggregateUsageRows(rows: UsageRow[]): AiTokenUsageReportJson {
-  const dailyMap = new Map<string, number>()
-  const shopMap = new Map<string, { requests: number; tokens: number }>()
+  const dailyMap = new Map<
+    string,
+    { tokens: number; promptTokens: number; completionTokens: number }
+  >()
+  const shopMap = new Map<
+    string,
+    {
+      requests: number
+      tokens: number
+      promptTokens: number
+      completionTokens: number
+    }
+  >()
   let totalTokens = 0
+  let totalPromptTokens = 0
+  let totalCompletionTokens = 0
 
   for (const r of rows) {
     const tokens = Math.max(0, Math.floor(Number(r.tokens) || 0))
+    const promptTokens = Math.max(0, Math.floor(Number(r.prompt_tokens) || 0))
+    const completionTokens = Math.max(
+      0,
+      Math.floor(Number(r.completion_tokens) || 0)
+    )
     totalTokens += tokens
+    totalPromptTokens += promptTokens
+    totalCompletionTokens += completionTokens
     const day = utcDateKeyFromConsumedAt(r.consumed_at)
-    dailyMap.set(day, (dailyMap.get(day) ?? 0) + tokens)
-    const prev = shopMap.get(r.shop_id) ?? { requests: 0, tokens: 0 }
+    const prevDay = dailyMap.get(day) ?? {
+      tokens: 0,
+      promptTokens: 0,
+      completionTokens: 0,
+    }
+    dailyMap.set(day, {
+      tokens: prevDay.tokens + tokens,
+      promptTokens: prevDay.promptTokens + promptTokens,
+      completionTokens: prevDay.completionTokens + completionTokens,
+    })
+
+    const prev = shopMap.get(r.shop_id) ?? {
+      requests: 0,
+      tokens: 0,
+      promptTokens: 0,
+      completionTokens: 0,
+    }
     shopMap.set(r.shop_id, {
       requests: prev.requests + 1,
       tokens: prev.tokens + tokens,
+      promptTokens: prev.promptTokens + promptTokens,
+      completionTokens: prev.completionTokens + completionTokens,
     })
   }
 
   const daily = [...dailyMap.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, tokens]) => ({ date, tokens }))
+    .map(([date, v]) => ({
+      date,
+      tokens: v.tokens,
+      promptTokens: v.promptTokens,
+      completionTokens: v.completionTokens,
+    }))
 
   const byShop = [...shopMap.entries()]
     .map(([shopId, v]) => ({
       shopId,
       requests: v.requests,
       tokens: v.tokens,
+      promptTokens: v.promptTokens,
+      completionTokens: v.completionTokens,
     }))
     .sort((a, b) => b.tokens - a.tokens)
 
   return {
     daily,
-    totals: { requests: rows.length, tokens: totalTokens },
+    totals: {
+      requests: rows.length,
+      tokens: totalTokens,
+      promptTokens: totalPromptTokens,
+      completionTokens: totalCompletionTokens,
+    },
     byShop,
   }
 }
@@ -149,7 +222,7 @@ export async function getAiTokenUsageReportForUser(input: {
   for (;;) {
     let q = getClient()
       .from('ai_token_usage')
-      .select('shop_id, tokens, consumed_at')
+      .select('shop_id, tokens, prompt_tokens, completion_tokens, consumed_at')
       .eq('user_id', input.userId)
       .gte('consumed_at', sinceIso)
       .order('consumed_at', { ascending: true })

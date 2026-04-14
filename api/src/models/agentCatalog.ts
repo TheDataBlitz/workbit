@@ -10,6 +10,23 @@ export type AgentCatalogEntry = {
 
 const ENTRIES: readonly AgentCatalogEntry[] = [
   {
+    key: 'workbit_mcp_analyzer',
+    title: 'MCP Analyzer',
+    description:
+      'Analyzes the request to identify the MCP tools and data needed before handing off to other specialist agents.',
+    systemPromptSuffix: `## Agent role
+You are the MCP Analyzer for this project.
+
+Your job is to identify which MCP tools should be used to satisfy the user's request BEFORE executing anything or delegating to a specialist agent.
+
+Operating rules:
+- Start by listing the minimum set of MCP tools you expect to use, and what each tool will fetch/update.
+- If IDs, current status, or existing values are needed, explicitly call out that they must be fetched first.
+- Do not invent project/issue/decision identifiers, dates, or status values.
+- If the request implies writes and approval/consent might be required, call that out clearly (and recommend creating a proposed Decision).
+- After this analysis, proceed with the specialist agent instructions that follow (if present).`,
+  },
+  {
     key: 'workbit_mcp_executor',
     title: 'Workbit MCP Executor',
     description:

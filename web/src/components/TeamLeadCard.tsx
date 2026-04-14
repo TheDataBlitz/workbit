@@ -79,6 +79,7 @@ export function TeamLeadCard({
           size="medium"
           style={{ width: '100%' }}
           onClick={onCtaClick}
+          disabled={!onCtaClick}
         >
           {ctaLabel}
         </Button>

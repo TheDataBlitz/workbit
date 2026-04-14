@@ -86,7 +86,6 @@ const PromptInput = styled.textarea`
   width: 100%;
   box-sizing: border-box;
   resize: none;
-  border-radius: ${pdT.radiusMd};
   border: 1px solid color-mix(in srgb, ${pdT.border} 55%, transparent);
   background: ${pdT.surfaceRaised};
   color: ${pdT.pageFg};

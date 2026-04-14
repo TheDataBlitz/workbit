@@ -21,6 +21,8 @@ const MAX_CHAT_MESSAGES = 48
 const NO_ENABLED_AGENTS_SUFFIX = `## Agent role
 No specialized agents are enabled for this project. Answer as the general Workbit assistant using the tools as usual.`
 
+const MCP_ANALYZER_KEY = 'workbit_mcp_analyzer'
+
 const BAD_BODY_MESSAGE =
   'Send { messages: [{ role: "user"|"assistant", content: string }, ...] } with a non-empty final user message, or legacy { prompt: string }. Optional: projectId, selectedAgentKey.'
 
@@ -125,6 +127,7 @@ async function resolveSystemSuffixForProjectAgents(input: {
 }): Promise<ResolveSuffixResult> {
   const { projectId, projectName, selectedAgentKey, lastUserMessage } = input
   const enabledKeys = await projectAgentsModel.listEnabledAgentKeys(projectId)
+  const analyzerEnabled = enabledKeys.includes(MCP_ANALYZER_KEY)
 
   if (selectedAgentKey) {
     if (!isValidAgentKey(selectedAgentKey)) {
@@ -148,7 +151,18 @@ async function resolveSystemSuffixForProjectAgents(input: {
     return okSuffixFromCatalogKey(enabledKeys[0])
   }
 
-  const entries = projectAgentsModel.catalogEntriesForKeys(enabledKeys)
+  const suffixForKey = (k: string): string =>
+    getAgentCatalogEntry(k)?.systemPromptSuffix ?? ''
+
+  const routingKeys = analyzerEnabled
+    ? enabledKeys.filter((k) => k !== MCP_ANALYZER_KEY)
+    : enabledKeys
+
+  if (routingKeys.length === 0) {
+    return okSuffixFromCatalogKey(MCP_ANALYZER_KEY)
+  }
+
+  const entries = projectAgentsModel.catalogEntriesForKeys(routingKeys)
   const { agentKey, usedFallback } = await routeToAgentKey({
     enabledAgents: entries,
     lastUserMessage,
@@ -163,7 +177,21 @@ async function resolveSystemSuffixForProjectAgents(input: {
     })
   }
 
-  return okSuffixFromCatalogKey(agentKey, { fallback: usedFallback })
+  if (!analyzerEnabled) {
+    return okSuffixFromCatalogKey(agentKey, { fallback: usedFallback })
+  }
+
+  const combined = [suffixForKey(MCP_ANALYZER_KEY), suffixForKey(agentKey)]
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join('\n\n')
+
+  return {
+    ok: true,
+    systemPromptSuffix: combined,
+    agentKey,
+    routerFallback: usedFallback,
+  }
 }
 
 type CompletionOptionsResult =
@@ -273,11 +301,12 @@ export async function postAi(req: Request, res: Response) {
     await aiUsageModel.assertShopMonthlyIntelebitCap(shop.shopId)
     await aiUsageModel.assertShopTokenBudget(shop.shopId)
 
-    const { reply, totalTokens } = await withWorkspaceMcpClient({
-      auth,
-      workspaceId: shop.shopId,
-      fn: (c) => completePromptWithMcpTools(c, parsed.turns, opts.options),
-    })
+    const { reply, totalTokens, promptTokens, completionTokens } =
+      await withWorkspaceMcpClient({
+        auth,
+        workspaceId: shop.shopId,
+        fn: (c) => completePromptWithMcpTools(c, parsed.turns, opts.options),
+      })
 
     const userId = req.user?.id
     if (userId) {
@@ -286,6 +315,8 @@ export async function postAi(req: Request, res: Response) {
           shopId: shop.shopId,
           userId,
           tokens: totalTokens,
+          promptTokens,
+          completionTokens,
         })
       } catch (err) {
         logApiWarn('ai.token_usage_persist_failed', {

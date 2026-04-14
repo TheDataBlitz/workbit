@@ -1,6 +1,7 @@
 import { Inline } from '@thedatablitz/inline'
 import { Stack } from '@thedatablitz/stack'
 import { Text } from '@thedatablitz/text'
+import { Avatar } from '@thedatablitz/avatar'
 import styled from 'styled-components'
 import { pdT } from '../pages/project-detail/pdTokens'
 
@@ -20,16 +21,6 @@ const Row = styled.div`
   padding: ${pdT.space200} ${pdT.space200};
   background: ${pdT.surfaceRaised};
   border: 1px solid color-mix(in srgb, ${pdT.border} 30%, transparent);
-`
-
-const Avatar = styled.div<{ $src?: string }>`
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  background: ${(p) =>
-    p.$src ? `url("${p.$src}") center/cover no-repeat` : pdT.surfaceOverlay};
-  border: 1px solid color-mix(in srgb, ${pdT.border} 35%, transparent);
-  flex: 0 0 auto;
 `
 
 export function MemberList({
@@ -57,7 +48,18 @@ export function MemberList({
           style={onMemberClick ? { cursor: 'pointer' } : undefined}
         >
           <Inline align="center" gap="150" wrap={false}>
-            <Avatar $src={m.avatarSrc} aria-hidden />
+            <Avatar
+              src={m.avatarSrc}
+              name={m.name}
+              alt=""
+              variant="default"
+              size="small"
+              shape="square"
+              style={{
+                flexShrink: 0,
+                filter: m.avatarSrc ? undefined : 'grayscale(1) contrast(1.15)',
+              }}
+            />
             <Stack gap="025">
               <Text as="span" variant="body3" style={{ fontWeight: 750 }}>
                 {m.name}

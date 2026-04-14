@@ -47,7 +47,6 @@ const CloseButton = styled.button`
   border: 1px solid color-mix(in srgb, ${pdT.border} 35%, transparent);
   background: ${pdT.surfaceOverlay};
   color: ${pdT.pageFg};
-  border-radius: 10px;
   height: 34px;
   width: 34px;
   display: inline-flex;

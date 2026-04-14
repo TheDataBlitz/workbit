@@ -51,8 +51,6 @@ const WorkspaceCardBox = styled(Box).attrs({
   justify-content: space-between;
   width: 100%;
   min-height: 240px;
-
-  border-radius: ${wlT.radiusMd};
   cursor: ${(p) => (p.$visual === 'locked' ? 'not-allowed' : 'pointer')};
   border: 1px solid color-mix(in srgb, ${wlT.border} 25%, transparent);
   /* Stitch: glass-card rgba(28,27,27,0.4) over surface-container-low */

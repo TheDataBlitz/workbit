@@ -56,18 +56,31 @@ export async function getNotifications(
   return dbNotifications.getNotifications(userId, first)
 }
 
-export type MeAiUsageDailyApi = { date: string; tokens: number }
+export type MeAiUsageDailyApi = {
+  date: string
+  tokens: number
+  promptTokens: number
+  completionTokens: number
+}
 
 export type MeAiUsageByShopApi = {
   shopId: string
   requests: number
   tokens: number
+  promptTokens: number
+  completionTokens: number
 }
 
 export type MeAiUsageReportApi = {
   days: number
   daily: MeAiUsageDailyApi[]
-  totals: { requests: number; tokens: number; intelebits: number }
+  totals: {
+    requests: number
+    tokens: number
+    promptTokens: number
+    completionTokens: number
+    intelebits: number
+  }
   byShop: MeAiUsageByShopApi[]
   /** Workspace vs monthly Intelebit cap (UTC month); null if cap disabled via env. */
   monthlyBudget: MonthlyBudgetSnapshot | null

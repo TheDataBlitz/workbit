@@ -14,7 +14,6 @@ const AddCard = styled.button`
   min-height: 240px;
   padding: ${wlT.space400};
   border: 2px dashed ${wlT.border};
-  border-radius: ${wlT.radiusMd};
   background: transparent;
   cursor: pointer;
   overflow: hidden;

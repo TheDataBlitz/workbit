@@ -1,5 +1,5 @@
-import { LogOut, Settings } from 'lucide-react'
-import { useMemo, type ReactNode } from 'react'
+import { ChevronLeft, ChevronRight, LogOut, Settings } from 'lucide-react'
+import { useMemo, useState, type ReactNode } from 'react'
 import styled from 'styled-components'
 import { Avatar } from '@thedatablitz/avatar'
 import { Button } from '@thedatablitz/button'
@@ -18,15 +18,15 @@ const c = {
   outlineVariant: '#56433b',
 }
 
-const Aside = styled.aside`
+const Aside = styled.aside<{ $collapsed: boolean }>`
   display: flex;
   flex-direction: column;
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
-  max-width: 20rem;
+  max-width: ${(p) => (p.$collapsed ? '5rem' : '20rem')};
   box-sizing: border-box;
-  padding: 2rem 1.5rem;
+  padding: ${(p) => (p.$collapsed ? '1.25rem 0.75rem' : '2rem 1.5rem')};
   gap: 1rem;
   overflow: hidden;
   background: ${c.bg};
@@ -46,6 +46,38 @@ const ProfileRow = styled.div`
   display: flex;
   align-items: center;
   gap: 1rem;
+`
+
+const CollapseToggleRow = styled.div<{ $collapsed: boolean }>`
+  display: flex;
+  flex-direction: ${(p) => (p.$collapsed ? 'column' : 'row')};
+  align-items: ${(p) => (p.$collapsed ? 'center' : 'center')};
+  justify-content: ${(p) => (p.$collapsed ? 'flex-start' : 'space-between')};
+  gap: ${(p) => (p.$collapsed ? '0.5rem' : '0.75rem')};
+`
+
+const CollapseToggleButton = styled.button<{ $collapsed: boolean }>`
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid rgba(86, 67, 59, 0.18);
+  background: rgba(28, 27, 27, 0.8);
+  color: rgba(255, 255, 255, 0.78);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+
+  &:hover {
+    border-color: rgba(86, 67, 59, 0.28);
+    background: rgba(42, 42, 42, 0.85);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(255, 143, 92, 0.35);
+    outline-offset: 2px;
+  }
 `
 
 const ProfileText = styled.div`
@@ -119,6 +151,22 @@ const StatusDot = styled.span<{
       : p.$variant === 'review'
         ? c.tertiaryDot
         : c.outline};
+`
+
+const ProjectGlyph = styled.div<{ $selected: boolean; $dimmed?: boolean }>`
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 12px;
+  border: 1px solid
+    ${(p) =>
+      p.$selected ? 'rgba(255, 143, 92, 0.55)' : 'rgba(86, 67, 59, 0.18)'};
+  background: ${(p) =>
+    p.$selected ? 'rgba(255, 143, 92, 0.08)' : 'rgba(28, 27, 27, 0.65)'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  opacity: ${(p) => (p.$dimmed ? 0.65 : 1)};
 `
 
 const BottomActions = styled.div`
@@ -197,6 +245,13 @@ export type SidebarProps = {
   onProjectSelect?: (id: string) => void
   onSettingsClick?: () => void
   onSignOutClick?: () => void
+  /** Collapsible desktop sidebar (overlay drawer is always expanded) */
+  collapsible?: boolean
+  /** Controlled collapsed state */
+  collapsed?: boolean
+  /** Initial collapsed state (used when `collapsed` is not provided) */
+  defaultCollapsed?: boolean
+  onCollapsedChange?: (collapsed: boolean) => void
   /** When set with `onBackdropClick`, renders mobile-style overlay + backdrop */
   overlayOpen?: boolean
   onBackdropClick?: () => void
@@ -205,6 +260,8 @@ export type SidebarProps = {
 }
 
 const defaultProjects: SidebarProject[] = []
+
+const sidebarCollapsedStorageKey = 'workbit.sidebar.collapsed'
 
 function statusVariant(
   status: SidebarProjectStatus
@@ -233,6 +290,10 @@ export function Sidebar({
   onProjectSelect,
   onSettingsClick,
   onSignOutClick,
+  collapsible = true,
+  collapsed,
+  defaultCollapsed,
+  onCollapsedChange,
   overlayOpen,
   onBackdropClick,
   children,
@@ -244,6 +305,23 @@ export function Sidebar({
 
   const workspaceValue =
     selectedWorkspaceId ?? resolvedWorkspaces[0]?.id ?? 'default'
+
+  const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(() => {
+    if (typeof collapsed === 'boolean') return collapsed
+    if (typeof defaultCollapsed === 'boolean') return defaultCollapsed
+    try {
+      const raw = localStorage.getItem(sidebarCollapsedStorageKey)
+      if (raw === '1') return true
+      if (raw === '0') return false
+    } catch {
+      // ignore storage failures (e.g. privacy mode)
+    }
+    return false
+  })
+
+  const isOverlay = Boolean(overlayOpen && onBackdropClick)
+  const effectiveCollapsed =
+    isOverlay || !collapsible ? false : (collapsed ?? uncontrolledCollapsed)
 
   const workspaceOptions: DropdownOption[] = useMemo(
     () =>
@@ -270,86 +348,183 @@ export function Sidebar({
     [resolvedWorkspaces]
   )
 
-  const drawer = (
-    <Aside aria-label="Workbit navigation">
-      <ProfileBlock>
-        <ProfileRow>
-          <Avatar
-            src={userAvatarUrl}
-            name={userName}
-            alt=""
-            variant="default"
-            size="medium"
-            shape="square"
-            style={{
-              flexShrink: 0,
-              filter: 'grayscale(1) contrast(1.25)',
-            }}
-          />
-          <ProfileText>
+  const workspaceOptionsCollapsed: DropdownOption[] = useMemo(
+    () =>
+      resolvedWorkspaces.map((w) => ({
+        value: w.id,
+        label: (
+          <Inline align="center" gap="100" wrap={false}>
+            <WorkspaceDot aria-hidden />
             <Text
               as="span"
-              variant="heading6"
-              color="color.text.DEFAULT"
-              style={{ fontWeight: 800, letterSpacing: '-0.02em' }}
-            >
-              {userName}
-            </Text>
-            <Text
-              as="span"
-              variant="caption2"
-              color="color.text.subtle"
+              variant="caption1"
               style={{
-                fontSize: 10,
-                letterSpacing: '0.1em',
+                fontWeight: 800,
+                letterSpacing: '0.12em',
                 textTransform: 'uppercase',
+                color: c.primary,
               }}
             >
-              {userTitle}
+              {w.name?.trim()?.slice(0, 2) || 'WS'}
             </Text>
-          </ProfileText>
-        </ProfileRow>
+          </Inline>
+        ),
+      })),
+    [resolvedWorkspaces]
+  )
+
+  const toggleCollapsed = () => {
+    if (isOverlay || !collapsible) return
+    const next = !(collapsed ?? uncontrolledCollapsed)
+    if (typeof collapsed !== 'boolean') setUncontrolledCollapsed(next)
+    onCollapsedChange?.(next)
+    try {
+      localStorage.setItem(sidebarCollapsedStorageKey, next ? '1' : '0')
+    } catch {
+      // ignore storage failures
+    }
+  }
+
+  const drawer = (
+    <Aside aria-label="Workbit navigation" $collapsed={effectiveCollapsed}>
+      <ProfileBlock>
+        <CollapseToggleRow $collapsed={effectiveCollapsed}>
+          <ProfileRow>
+            <Avatar
+              src={userAvatarUrl}
+              name={userName}
+              alt=""
+              variant="default"
+              size={effectiveCollapsed ? 'small' : 'medium'}
+              shape="square"
+              style={{
+                flexShrink: 0,
+                filter: 'grayscale(1) contrast(1.25)',
+              }}
+            />
+            {!effectiveCollapsed ? (
+              <ProfileText>
+                <Text
+                  as="span"
+                  variant="heading6"
+                  color="color.text.DEFAULT"
+                  style={{ fontWeight: 800, letterSpacing: '-0.02em' }}
+                >
+                  {userName}
+                </Text>
+                <Text
+                  as="span"
+                  variant="caption2"
+                  color="color.text.subtle"
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {userTitle}
+                </Text>
+              </ProfileText>
+            ) : null}
+          </ProfileRow>
+
+          {collapsible && !isOverlay ? (
+            <CollapseToggleButton
+              type="button"
+              onClick={toggleCollapsed}
+              aria-label={
+                effectiveCollapsed ? 'Expand sidebar' : 'Collapse sidebar'
+              }
+              title={effectiveCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              $collapsed={effectiveCollapsed}
+            >
+              {effectiveCollapsed ? (
+                <ChevronRight size={18} strokeWidth={2} aria-hidden />
+              ) : (
+                <ChevronLeft size={18} strokeWidth={2} aria-hidden />
+              )}
+            </CollapseToggleButton>
+          ) : null}
+        </CollapseToggleRow>
       </ProfileBlock>
 
       <WorkspaceSection>
-        <Text
-          as="span"
-          variant="caption2"
-          color="color.text.subtle"
-          style={sectionLabelStyle}
-        >
-          Workspace
-        </Text>
-        <Dropdown
-          options={workspaceOptions}
-          value={workspaceValue}
-          onChange={(id) => onWorkspaceChange?.(id)}
-          size="large"
-          surface="mobile"
-          chevronMode="split"
-        />
-      </WorkspaceSection>
-
-      <ProjectScroll>
-        <Text
-          as="span"
-          variant="caption2"
-          color="color.text.subtle"
-          style={{ ...sectionLabelStyle, paddingLeft: '1rem' }}
-        >
-          Projects
-        </Text>
-        {projects.length === 0 ? (
-          <div style={{ padding: '0.75rem 1rem' }}>
+        {!effectiveCollapsed ? (
+          <>
             <Text
               as="span"
               variant="caption2"
               color="color.text.subtle"
-              style={{ opacity: 0.7, letterSpacing: '0.06em' }}
+              style={sectionLabelStyle}
             >
-              No projects in this workspace.
+              Workspace
             </Text>
+            <Dropdown
+              options={workspaceOptions}
+              value={workspaceValue}
+              onChange={(id) => onWorkspaceChange?.(id)}
+              size="large"
+              surface="mobile"
+              chevronMode="split"
+            />
+          </>
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <div style={{ width: '100%', maxWidth: 96 }}>
+              <Dropdown
+                options={workspaceOptionsCollapsed}
+                value={workspaceValue}
+                onChange={(id) => onWorkspaceChange?.(id)}
+                size="large"
+                surface="mobile"
+                chevronMode="split"
+              />
+            </div>
           </div>
+        )}
+      </WorkspaceSection>
+
+      <ProjectScroll>
+        {!effectiveCollapsed ? (
+          <Text
+            as="span"
+            variant="caption2"
+            color="color.text.subtle"
+            style={{ ...sectionLabelStyle, paddingLeft: '1rem' }}
+          >
+            Projects
+          </Text>
+        ) : null}
+        {projects.length === 0 ? (
+          !effectiveCollapsed ? (
+            <div style={{ padding: '0.75rem 1rem' }}>
+              <Text
+                as="span"
+                variant="caption2"
+                color="color.text.subtle"
+                style={{ opacity: 0.7, letterSpacing: '0.06em' }}
+              >
+                No projects in this workspace.
+              </Text>
+            </div>
+          ) : (
+            <div
+              style={{
+                paddingTop: '0.5rem',
+                display: 'flex',
+                justifyContent: 'center',
+              }}
+            >
+              <Text
+                as="span"
+                variant="caption2"
+                color="color.text.subtle"
+                style={{ opacity: 0.6, letterSpacing: '0.12em' }}
+              >
+                —
+              </Text>
+            </div>
+          )
         ) : null}
         {projects.map((p) => {
           const isSelected = selectedProjectId === p.id
@@ -392,31 +567,55 @@ export function Sidebar({
               variant="ghost"
               size="medium"
               onClick={() => onProjectSelect?.(p.id)}
+              aria-label={p.name}
+              title={effectiveCollapsed ? p.name : undefined}
               style={{
                 width: '100%',
-                justifyContent: 'space-between',
+                justifyContent: effectiveCollapsed ? 'center' : 'space-between',
                 opacity: p.dimmed ? 0.6 : 1,
               }}
             >
-              <Text
-                as="span"
-                variant="body3"
-                color={nameColor}
-                style={{ ...nameStyle, fontWeight: 500 }}
-              >
-                {p.name}
-              </Text>
-              <StatusWrap>
-                <Text
-                  as="span"
-                  variant="caption2"
-                  color={statusColorToken}
-                  style={statusStyle}
-                >
-                  {statusLabelText(p.status)}
-                </Text>
-                <StatusDot $variant={sv} aria-hidden />
-              </StatusWrap>
+              {!effectiveCollapsed ? (
+                <>
+                  <Text
+                    as="span"
+                    variant="body3"
+                    color={nameColor}
+                    style={{ ...nameStyle, fontWeight: 500 }}
+                  >
+                    {p.name}
+                  </Text>
+                  <StatusWrap>
+                    <Text
+                      as="span"
+                      variant="caption2"
+                      color={statusColorToken}
+                      style={statusStyle}
+                    >
+                      {statusLabelText(p.status)}
+                    </Text>
+                    <StatusDot $variant={sv} aria-hidden />
+                  </StatusWrap>
+                </>
+              ) : (
+                <ProjectGlyph $selected={isSelected} $dimmed={p.dimmed}>
+                  <Text
+                    as="span"
+                    variant="caption1"
+                    color={
+                      isSelected ? 'color.text.DEFAULT' : 'color.text.subtle'
+                    }
+                    style={{
+                      fontWeight: 900,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      opacity: p.dimmed ? 0.7 : 0.9,
+                    }}
+                  >
+                    {(p.name?.trim()?.[0] ?? '•').toUpperCase()}
+                  </Text>
+                </ProjectGlyph>
+              )}
             </Button>
           )
         })}
@@ -428,28 +627,30 @@ export function Sidebar({
           size="small"
           icon={<Settings size={18} strokeWidth={2} aria-hidden />}
           onClick={onSettingsClick}
+          aria-label="Settings"
           style={{
-            justifyContent: 'flex-start',
+            justifyContent: effectiveCollapsed ? 'center' : 'flex-start',
             textTransform: 'uppercase',
             letterSpacing: '0.2em',
             fontSize: 12,
           }}
         >
-          Settings
+          {effectiveCollapsed ? null : 'Settings'}
         </Button>
         <Button
           variant="link"
           size="small"
           icon={<LogOut size={18} strokeWidth={2} aria-hidden />}
           onClick={onSignOutClick}
+          aria-label="Sign Out"
           style={{
-            justifyContent: 'flex-start',
+            justifyContent: effectiveCollapsed ? 'center' : 'flex-start',
             textTransform: 'uppercase',
             letterSpacing: '0.2em',
             fontSize: 12,
           }}
         >
-          Sign Out
+          {effectiveCollapsed ? null : 'Sign Out'}
         </Button>
       </BottomActions>
     </Aside>

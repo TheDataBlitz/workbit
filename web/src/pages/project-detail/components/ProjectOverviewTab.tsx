@@ -62,14 +62,7 @@ export function ProjectOverviewTab({
   project: ApiProjectSummary | null
   teamMembers: ApiTeamMember[]
 }) {
-  const lead = teamMembers[0]
-  const leadForUi:
-    | ApiTeamMember
-    | { id: string; name: string; username: string } = lead ?? {
-    id: 'mock-team-lead',
-    name: d.teamLead.name,
-    username: '',
-  }
+  const lead = teamMembers[0] ?? null
   const statusUpdatesQuery = useProjectStatusUpdates(project?.id)
   const latestUpdate = statusUpdatesQuery.data?.nodes
     ?.slice()
@@ -204,31 +197,29 @@ export function ProjectOverviewTab({
         <TeamLeadCard
           ariaLabel={d.teamLead.label}
           kicker={d.teamLead.label}
-          name={leadForUi.name ?? '—'}
-          title={
-            lead?.username
-              ? `@${lead.username}`
-              : d.teamLead.title?.trim()
-                ? d.teamLead.title
-                : '—'
-          }
+          name={lead?.name ?? '—'}
+          title={lead?.username ? `@${lead.username}` : '—'}
           ctaLabel="VIEW PROFILE"
-          onCtaClick={() => {
-            openDrawer({
-              type: 'member-detail',
-              title: leadForUi.name,
-              children: (
-                <MemberDetail
-                  member={{
-                    id: leadForUi.id,
-                    name: leadForUi.name,
-                    username: lead?.username || undefined,
-                    avatarSrc: lead?.avatarSrc,
-                  }}
-                />
-              ),
-            })
-          }}
+          onCtaClick={
+            lead
+              ? () => {
+                  openDrawer({
+                    type: 'member-detail',
+                    title: lead.name,
+                    children: (
+                      <MemberDetail
+                        member={{
+                          id: lead.id,
+                          name: lead.name,
+                          username: lead.username || undefined,
+                          avatarSrc: lead.avatarSrc,
+                        }}
+                      />
+                    ),
+                  })
+                }
+              : undefined
+          }
         />
         <MetadataCard d={d} />
       </Stack>

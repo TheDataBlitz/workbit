@@ -45,6 +45,23 @@ function groupDailyIntoWeekly(
   return tail.map(([, tokens], i) => ({ label: `w${i + 1}`, value: tokens }))
 }
 
+function groupDailySeriesIntoWeekly(
+  daily: { date: string; value: number }[]
+): ConsumptionBarDatum[] {
+  if (daily.length === 0) return []
+  const buckets = new Map<number, number>()
+  for (const row of daily) {
+    const d = new Date(row.date)
+    const ms = d.getTime()
+    if (!Number.isFinite(ms)) continue
+    const bucket = Math.floor(ms / (7 * 24 * 60 * 60 * 1000))
+    buckets.set(bucket, (buckets.get(bucket) ?? 0) + row.value)
+  }
+  const sorted = [...buckets.entries()].sort((a, b) => a[0] - b[0])
+  const tail = sorted.slice(-12)
+  return tail.map(([, value], i) => ({ label: `w${i + 1}`, value }))
+}
+
 const MetricGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr;
@@ -61,10 +78,14 @@ export function IntellebitUsagePage() {
   const usage = useAiUsage({ days: 30 })
 
   const totalsTokens = usage.data?.totals.tokens ?? 0
+  const totalsPromptTokens = usage.data?.totals.promptTokens ?? 0
+  const totalsCompletionTokens = usage.data?.totals.completionTokens ?? 0
   const totalsRequests = usage.data?.totals.requests ?? 0
   const days = usage.data?.days ?? 30
 
   const totalTokens = formatCompactNumber(totalsTokens)
+  const totalInputTokens = formatCompactNumber(totalsPromptTokens)
+  const totalOutputTokens = formatCompactNumber(totalsCompletionTokens)
   const avgDaily = formatCompactNumber(days > 0 ? totalsTokens / days : 0)
   const monthlyBudget = usage.data?.monthlyBudget ?? null
   const projectedMonthlyIntelebits = monthlyBudget
@@ -79,6 +100,29 @@ export function IntellebitUsagePage() {
           .slice(-12)
           .map((d) => ({ label: shortDateLabel(d.date), value: d.tokens }))
       : groupDailyIntoWeekly(daily)
+
+  const dailyInput = daily.map((d) => ({
+    date: d.date,
+    value: d.promptTokens ?? 0,
+  }))
+  const dailyOutput = daily.map((d) => ({
+    date: d.date,
+    value: d.completionTokens ?? 0,
+  }))
+
+  const consumptionInput: ConsumptionBarDatum[] =
+    granularity === 'daily'
+      ? dailyInput
+          .slice(-12)
+          .map((d) => ({ label: shortDateLabel(d.date), value: d.value }))
+      : groupDailySeriesIntoWeekly(dailyInput)
+
+  const consumptionOutput: ConsumptionBarDatum[] =
+    granularity === 'daily'
+      ? dailyOutput
+          .slice(-12)
+          .map((d) => ({ label: shortDateLabel(d.date), value: d.value }))
+      : groupDailySeriesIntoWeekly(dailyOutput)
 
   const byShop = usage.data?.byShop ?? []
   const breakdownRows =
@@ -132,7 +176,7 @@ export function IntellebitUsagePage() {
             label="Total Tokens Used"
             primaryValue={totalTokens.value}
             primarySuffix={totalTokens.suffix}
-            footnote={`${totalsRequests} requests • last ${days} days`}
+            footnote={`${totalsRequests} requests • Input ${totalInputTokens.value}${totalInputTokens.suffix} • Output ${totalOutputTokens.value}${totalOutputTokens.suffix}`}
             footnoteTone="neutral"
           />
           <UsageMetricCard
@@ -166,6 +210,42 @@ export function IntellebitUsagePage() {
             height={320}
             title="Consumption Velocity"
             subtitle={usage.isLoading ? 'Loading…' : 'Token usage over time'}
+            granularity={granularity}
+            onGranularityChange={setGranularity}
+            granularityOptions={[
+              { id: 'daily', label: 'Daily' },
+              { id: 'weekly', label: 'Weekly' },
+            ]}
+            timelineLabels={[]}
+            formatValue={(v) => `${Math.round(v / 1000)}k`}
+          />
+        </div>
+
+        <div style={{ marginBottom: '3rem' }}>
+          <ConsumptionBarChart
+            data={consumptionInput}
+            height={280}
+            title="Input Tokens (Prompt)"
+            subtitle={usage.isLoading ? 'Loading…' : 'Prompt tokens over time'}
+            granularity={granularity}
+            onGranularityChange={setGranularity}
+            granularityOptions={[
+              { id: 'daily', label: 'Daily' },
+              { id: 'weekly', label: 'Weekly' },
+            ]}
+            timelineLabels={[]}
+            formatValue={(v) => `${Math.round(v / 1000)}k`}
+          />
+        </div>
+
+        <div style={{ marginBottom: '3rem' }}>
+          <ConsumptionBarChart
+            data={consumptionOutput}
+            height={280}
+            title="Output Tokens (Completion)"
+            subtitle={
+              usage.isLoading ? 'Loading…' : 'Completion tokens over time'
+            }
             granularity={granularity}
             onGranularityChange={setGranularity}
             granularityOptions={[

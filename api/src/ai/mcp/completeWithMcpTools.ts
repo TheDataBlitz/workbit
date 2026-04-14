@@ -146,6 +146,10 @@ export type CompleteWithMcpToolsResult = {
   reply: string
   /** Sum of provider-reported total_tokens across all NIM rounds in this request. */
   totalTokens: number
+  /** Sum of provider-reported prompt tokens across all rounds. */
+  promptTokens: number
+  /** Sum of provider-reported completion tokens across all rounds. */
+  completionTokens: number
 }
 
 /**
@@ -172,6 +176,8 @@ export async function completePromptWithMcpTools(
   ]
 
   let totalTokens = 0
+  let promptTokens = 0
+  let completionTokens = 0
 
   const tools = await listAllTools(client)
   if (tools.length === 0) {
@@ -179,9 +185,13 @@ export async function completePromptWithMcpTools(
       messages: baseMessages,
     })
     totalTokens += m.usage.totalTokens
+    promptTokens += m.usage.promptTokens
+    completionTokens += m.usage.completionTokens
     return {
       reply: typeof m.content === 'string' ? m.content.trim() : '',
       totalTokens,
+      promptTokens,
+      completionTokens,
     }
   }
 
@@ -199,11 +209,15 @@ export async function completePromptWithMcpTools(
       tool_choice: 'auto',
     })
     totalTokens += usage.totalTokens
+    promptTokens += usage.promptTokens
+    completionTokens += usage.completionTokens
 
     if (!toolCalls?.length) {
       return {
         reply: typeof content === 'string' ? content.trim() : '',
         totalTokens,
+        promptTokens,
+        completionTokens,
       }
     }
 
@@ -240,8 +254,12 @@ export async function completePromptWithMcpTools(
 
   const final = await runNimChatCompletion({ messages })
   totalTokens += final.usage.totalTokens
+  promptTokens += final.usage.promptTokens
+  completionTokens += final.usage.completionTokens
   return {
     reply: typeof final.content === 'string' ? final.content.trim() : '',
     totalTokens,
+    promptTokens,
+    completionTokens,
   }
 }

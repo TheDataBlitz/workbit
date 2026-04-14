@@ -41,7 +41,6 @@ const SearchInput = styled.input`
   color: ${wlT.pageFg};
   background: ${wlT.surfaceSunken};
   border: 1px solid ${wlT.border};
-  border-radius: ${wlT.radiusSm};
   outline: none;
   transition: border-color ${wlT.motionStandard} ${wlT.motionEasing};
 
