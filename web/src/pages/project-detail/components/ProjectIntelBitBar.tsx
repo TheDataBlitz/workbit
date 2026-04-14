@@ -3,7 +3,7 @@ import { Button } from '@thedatablitz/button'
 import { Inline } from '@thedatablitz/inline'
 import { Stack } from '@thedatablitz/stack'
 import { Text } from '@thedatablitz/text'
-import { Sparkles } from 'lucide-react'
+import { ChevronDown, ChevronUp, Sparkles, X } from 'lucide-react'
 import { pdT } from '../pdTokens'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { MarkdownPreview } from '@thedatablitz/markdown-editor'
@@ -44,10 +44,16 @@ const ResponsesHost = styled.div`
   padding: ${pdT.space200} 0;
 `
 
-const ResponseCard = styled.div`
+const ResponseCard = styled.div<{ $role: 'user' | 'assistant' }>`
   pointer-events: auto;
   padding: ${pdT.space300} ${pdT.space400};
-  background: ${pdT.surfaceRaised};
+  background: ${(p) =>
+    p.$role === 'assistant'
+      ? `linear-gradient(135deg,
+          color-mix(in srgb, ${pdT.brandBold} 16%, ${pdT.surfaceRaised}) 0%,
+          ${pdT.surfaceRaised} 48%,
+          color-mix(in srgb, ${pdT.brandBold} 10%, ${pdT.surfaceRaised}) 100%)`
+      : pdT.surfaceOverlay};
   border: 1px solid color-mix(in srgb, ${pdT.border} 35%, transparent);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
 `
@@ -124,6 +130,7 @@ export function ProjectIntelBitBar({
   projectName,
 }: ProjectIntelBitBarProps) {
   const [composerOpen, setComposerOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const [prompt, setPrompt] = useState('')
   const [turns, setTurns] = useState<ChatTurn[]>([])
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set())
@@ -132,18 +139,16 @@ export function ProjectIntelBitBar({
 
   const canAsk = Boolean(projectId && projectId.trim())
   const sendPending = Boolean(composerOpen && askMutation.isPending)
+  const hasSession = turns.length > 0
 
   const responseCards = useMemo(
-    () =>
-      turns
-        .map((t, i) => ({ t, i }))
-        .filter(({ t }) => t.role === 'assistant')
-        .slice(-8),
+    () => turns.map((t, i) => ({ t, i })).slice(-8),
     [turns]
   )
 
   const handleCancel = useCallback(() => {
     setComposerOpen(false)
+    setCollapsed(false)
     setPrompt('')
     setTurns([])
     setExpanded(new Set())
@@ -189,13 +194,19 @@ export function ProjectIntelBitBar({
 
   return (
     <>
-      {responseCards.length > 0 ? (
+      {composerOpen && !collapsed && responseCards.length > 0 ? (
         <ResponsesHost aria-label="Intellebit responses">
           {responseCards.map(({ t, i }) => {
+            const isAssistant = t.role === 'assistant'
             const isExpanded = expanded.has(i)
-            const canExpand = t.content.trim().length > 420
+            const canExpand = isAssistant && t.content.trim().length > 420
             return (
-              <ResponseCard key={i} role="article" aria-label="AI response">
+              <ResponseCard
+                key={i}
+                $role={t.role}
+                role="article"
+                aria-label={isAssistant ? 'AI response' : 'Your message'}
+              >
                 <Inline justify="space-between" align="center" gap="200" wrap>
                   <Text
                     as="div"
@@ -203,7 +214,7 @@ export function ProjectIntelBitBar({
                     color="color.text.subtle"
                     style={{ fontSize: 11, letterSpacing: '0.08em' }}
                   >
-                    INTELLEBIT
+                    {isAssistant ? 'INTELLEBIT' : 'YOU'}
                   </Text>
                   {canExpand ? (
                     <Button
@@ -223,7 +234,22 @@ export function ProjectIntelBitBar({
                   ) : null}
                 </Inline>
                 <ResponseBody $expanded={isExpanded}>
-                  <MarkdownPreview value={t.content} />
+                  {isAssistant ? (
+                    <MarkdownPreview value={t.content} />
+                  ) : (
+                    <Text
+                      as="p"
+                      variant="body4"
+                      color="color.text.DEFAULT"
+                      style={{
+                        margin: 0,
+                        lineHeight: 1.6,
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      {t.content}
+                    </Text>
+                  )}
                 </ResponseBody>
               </ResponseCard>
             )
@@ -271,40 +297,74 @@ export function ProjectIntelBitBar({
             {composerOpen ? (
               <Inline gap="150" align="center" wrap={false}>
                 <Button
+                  variant="outline"
+                  size="medium"
+                  icon={
+                    collapsed ? (
+                      <ChevronUp size={18} />
+                    ) : (
+                      <ChevronDown size={18} />
+                    )
+                  }
+                  onClick={() => setCollapsed((v) => !v)}
+                  disabled={sendPending}
+                  style={{ flexShrink: 0 }}
+                  aria-label={collapsed ? 'Expand chat' : 'Collapse chat'}
+                >
+                  {collapsed ? 'Expand' : 'Minimise'}
+                </Button>
+                <Button
                   variant="secondary"
                   size="medium"
+                  icon={<X size={18} />}
                   onClick={handleCancel}
                   style={{ flexShrink: 0 }}
                 >
                   Cancel
                 </Button>
+                {!collapsed ? (
+                  <Button
+                    variant="primary"
+                    size="medium"
+                    onClick={handleSend}
+                    disabled={!canAsk || sendPending || !prompt.trim()}
+                    style={{ flexShrink: 0 }}
+                  >
+                    Send
+                  </Button>
+                ) : null}
+              </Inline>
+            ) : (
+              <Inline gap="150" align="center" wrap={false}>
+                {hasSession ? (
+                  <Button
+                    variant="secondary"
+                    size="medium"
+                    onClick={handleCancel}
+                    style={{ flexShrink: 0 }}
+                    aria-label="Cancel chat"
+                  >
+                    <X size={18} />
+                  </Button>
+                ) : null}
                 <Button
                   variant="primary"
                   size="medium"
-                  onClick={handleSend}
-                  disabled={!canAsk || sendPending || !prompt.trim()}
+                  onClick={() => {
+                    onCta?.()
+                    setComposerOpen(true)
+                    setCollapsed(false)
+                  }}
+                  disabled={!canAsk}
                   style={{ flexShrink: 0 }}
                 >
-                  Send
+                  {hasSession ? 'Expand' : ctaLabel}
                 </Button>
               </Inline>
-            ) : (
-              <Button
-                variant="primary"
-                size="medium"
-                onClick={() => {
-                  onCta?.()
-                  setComposerOpen(true)
-                }}
-                disabled={!canAsk}
-                style={{ flexShrink: 0 }}
-              >
-                {ctaLabel}
-              </Button>
             )}
           </Inline>
 
-          {composerOpen ? (
+          {composerOpen && !collapsed ? (
             <InputRow>
               <Stack gap="200" fullWidth>
                 <PromptInput

@@ -13,6 +13,21 @@ const API_BASE = getApiBase()
 
 export type ApiErrorPayload = { error?: string }
 
+export class ApiHttpError extends Error {
+  status: number
+  payload?: ApiErrorPayload
+  constructor(input: {
+    status: number
+    message: string
+    payload?: ApiErrorPayload
+  }) {
+    super(input.message)
+    this.name = 'ApiHttpError'
+    this.status = input.status
+    this.payload = input.payload
+  }
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {}
@@ -24,7 +39,11 @@ export async function apiFetch<T>(
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
   if (!res.ok) {
     const payload = (await res.json().catch(() => ({}))) as ApiErrorPayload
-    throw new Error(payload.error || res.statusText)
+    throw new ApiHttpError({
+      status: res.status,
+      message: payload.error || res.statusText,
+      payload,
+    })
   }
   if (res.status === 204) return null as T
   return res.json() as Promise<T>
@@ -43,7 +62,11 @@ export async function authFetch<T>(
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
   if (!res.ok) {
     const payload = (await res.json().catch(() => ({}))) as ApiErrorPayload
-    throw new Error(payload.error || res.statusText)
+    throw new ApiHttpError({
+      status: res.status,
+      message: payload.error || res.statusText,
+      payload,
+    })
   }
   if (res.status === 204) return null as T
   return res.json() as Promise<T>

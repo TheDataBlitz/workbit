@@ -17,7 +17,7 @@ const Row = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: ${pdT.space200};
-  padding: ${pdT.space250} ${pdT.space250};
+  padding: ${pdT.space200} ${pdT.space200};
   background: ${pdT.surfaceRaised};
   border: 1px solid color-mix(in srgb, ${pdT.border} 30%, transparent);
 `
@@ -27,7 +27,7 @@ const Avatar = styled.div<{ $src?: string }>`
   height: 36px;
   border-radius: 12px;
   background: ${(p) =>
-    p.$src ? `url("${p.$src}") center/cover no-repeat` : pdT.surface};
+    p.$src ? `url("${p.$src}") center/cover no-repeat` : pdT.surfaceOverlay};
   border: 1px solid color-mix(in srgb, ${pdT.border} 35%, transparent);
   flex: 0 0 auto;
 `

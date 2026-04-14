@@ -8,7 +8,7 @@ import {
 const MAX_TOOL_ROUNDS = 8
 
 export const WORKBIT_AI_SYSTEM_PROMPT =
-  'You are a Workbit assistant. Use the provided tools to read or update projects, issues, decisions, and status when the user asks about their workspace. Prefer calling tools over guessing. Format answers in clear Markdown: use `##` / `###` headings for sections, bullet or numbered lists for items, and Markdown tables when comparing rows of data (e.g. orders, line items). Keep paragraphs short.'
+  'You are a Workbit assistant. Use the provided tools to read or update projects, issues, decisions, and status when the user asks about their workspace. Prefer calling tools over guessing. Security: never output internal IDs (UUIDs), database row ids, workspace/team/project/member ids, access tokens, API keys, or secrets. If a user asks for an ID/token, explain you cannot share it and instead provide safe identifiers (names, titles) or take an action via tools. Format answers in clear Markdown: use `##` / `###` headings for sections, bullet or numbered lists for items, and Markdown tables when comparing rows of data (e.g. orders, line items). Keep paragraphs short.'
 
 const SYSTEM_PROMPT = WORKBIT_AI_SYSTEM_PROMPT
 
@@ -51,6 +51,54 @@ async function listAllTools(client: McpClientLike): Promise<McpTool[]> {
   return out
 }
 
+function redactTextSecrets(raw: string): string {
+  let s = raw
+
+  // UUID v4-ish
+  s = s.replaceAll(
+    /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi,
+    '[REDACTED_ID]'
+  )
+
+  // Bearer tokens
+  s = s.replaceAll(/\bBearer\s+[A-Za-z0-9\-._~+/]+=*\b/g, 'Bearer [REDACTED]')
+
+  // Common secret fields in text blobs (best-effort)
+  s = s.replaceAll(
+    /\b(access[_-]?token|api[_-]?key|secret|service[_-]?role[_-]?key|password)\b\s*[:=]\s*([^\s"'`]+)/gi,
+    (_m, k) => `${String(k)}: [REDACTED]`
+  )
+
+  return s
+}
+
+function redactStructuredSecrets(value: unknown): unknown {
+  if (value === null || value === undefined) return value
+  if (typeof value === 'string') return redactTextSecrets(value)
+  if (typeof value === 'number' || typeof value === 'boolean') return value
+  if (Array.isArray(value)) return value.map((v) => redactStructuredSecrets(v))
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(obj)) {
+      const key = k.toLowerCase()
+      const isSensitiveKey =
+        key === 'id' ||
+        key.endsWith('_id') ||
+        key.endsWith('id') ||
+        key.includes('token') ||
+        key.includes('secret') ||
+        key.includes('apikey') ||
+        key.includes('api_key') ||
+        key.includes('password') ||
+        key.includes('service_role')
+      out[k] = isSensitiveKey ? '[REDACTED]' : redactStructuredSecrets(v)
+    }
+    return out
+  }
+  return value
+}
+
 function formatMcpToolResult(result: unknown): string {
   if (!result || typeof result !== 'object') {
     return '(invalid tool result)'
@@ -65,9 +113,9 @@ function formatMcpToolResult(result: unknown): string {
     .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
     .map((b) => b.text)
     .join('\n')
-  if (text) return text
+  if (text) return redactTextSecrets(text)
   if (r.structuredContent && Object.keys(r.structuredContent).length) {
-    return JSON.stringify(r.structuredContent, null, 2)
+    return JSON.stringify(redactStructuredSecrets(r.structuredContent), null, 2)
   }
   return r.isError ? '(tool error, no details)' : '(empty tool result)'
 }

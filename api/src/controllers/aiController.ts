@@ -24,6 +24,20 @@ No specialized agents are enabled for this project. Answer as the general Workbi
 const BAD_BODY_MESSAGE =
   'Send { messages: [{ role: "user"|"assistant", content: string }, ...] } with a non-empty final user message, or legacy { prompt: string }. Optional: projectId, selectedAgentKey.'
 
+function redactAiReply(raw: string): string {
+  let s = raw
+  s = s.replaceAll(
+    /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi,
+    '[REDACTED_ID]'
+  )
+  s = s.replaceAll(/\bBearer\s+[A-Za-z0-9\-._~+/]+=*\b/g, 'Bearer [REDACTED]')
+  s = s.replaceAll(
+    /\b(access[_-]?token|api[_-]?key|secret|service[_-]?role[_-]?key|password)\b\s*[:=]\s*([^\s"'`]+)/gi,
+    (_m, k) => `${String(k)}: [REDACTED]`
+  )
+  return s
+}
+
 type ParsedAiRequest = {
   turns: AiChatTurn[]
   projectId?: string
@@ -285,7 +299,7 @@ export async function postAi(req: Request, res: Response) {
     const monthlyBudget = await aiUsageModel.getShopMonthlyBudget(shop.shopId)
 
     res.json({
-      reply,
+      reply: redactAiReply(reply),
       usage: {
         tokens: totalTokens,
         intelebits: aiUsageModel.tokensToIntelebits(totalTokens),
