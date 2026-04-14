@@ -404,7 +404,7 @@ export function LoginPage() {
                   opacity: 0.55,
                 }}
               >
-                © 2024 WORKBIT ARCHITECTURAL SYSTEMS. ALL RIGHTS RESERVED.
+                © 2026 THE DATABLITZ ENTERPRISE. ALL RIGHTS RESERVED.
               </Text>
             </div>
           </div>
