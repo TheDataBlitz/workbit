@@ -7,7 +7,7 @@ import {
   WorkspaceProjectsScreen,
   WorkspaceMemberScreen,
   WorkspaceTeamsScreen,
-  WorkspaceSelection,
+  WorkspaceSelectionScreen,
   WorkspacesScreen,
   CreateTeamScreen,
   CreateMemberScreen,
@@ -45,7 +45,7 @@ export function AppRoutes() {
         path="/workspaces"
         element={
           <AuthGate>
-            <WorkspaceSelection />
+            <WorkspaceSelectionScreen />
           </AuthGate>
         }
       />

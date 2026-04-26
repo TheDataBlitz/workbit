@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
 import { routeToAgentKey } from '../ai/agentRouter.js'
-import { AiNotConfiguredError } from '../ai/nvidia-client.js'
+import { AiNotConfiguredError, aiProviderInfo } from '../ai/chat-client.js'
 import {
   completePromptWithMcpTools,
   type AiChatTurn,
@@ -245,8 +245,10 @@ async function completionOptionsForParsedRequest(
   }
 }
 
-function nvidiaModelName(): string {
-  return process.env.NVIDIA_CHAT_MODEL ?? 'nvidia/nemotron-3-super-120b-a12b'
+function telemetryProviderName(
+  provider: ReturnType<typeof aiProviderInfo>['provider']
+): 'nvidia_nim' | 'ollama' {
+  return provider === 'ollama' ? 'ollama' : 'nvidia_nim'
 }
 
 async function resolveShopIdForAi(
@@ -346,12 +348,13 @@ export async function postAi(req: Request, res: Response) {
 
     // Internal telemetry for monitoring (best-effort).
     try {
+      const provider = aiProviderInfo()
       const ctx: aiToolingTelemetryModel.AiToolingTelemetryContext = {
         shopId: shop.shopId,
         userId: userId ?? null,
         projectId: parsed.projectId ?? null,
-        provider: 'nvidia_nim',
-        model: nvidiaModelName(),
+        provider: telemetryProviderName(provider.provider),
+        model: provider.model,
         agentKey: opts.agentKey ?? null,
         routerFallback: Boolean(opts.routerFallback),
       }

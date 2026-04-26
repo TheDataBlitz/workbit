@@ -1,7 +1,7 @@
 import { getAccessToken } from './authStore'
 
 function getApiBase(): string {
-  const apiUrl = import.meta.env.VITE_API_URL
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
   if (typeof apiUrl === 'string' && apiUrl) {
     const base = apiUrl.replace(/\/$/, '')
     return `${base}/api/v1`

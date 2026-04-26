@@ -1,4 +1,4 @@
-import { runNimChatCompletion } from './nvidia-client.js'
+import { runChatCompletion } from './chat-client.js'
 import type { AgentCatalogEntry } from '../models/agentCatalog.js'
 
 const ROUTER_SYSTEM = `You are a routing assistant. Your only job is to pick which specialist agent should answer the user's message.
@@ -66,7 +66,7 @@ export async function routeToAgentKey(input: {
     : `Available agents (pick exactly one agent_key):\n`
   const userBlock = `${header}${lines.join('\n')}\n\nUser message:\n${lastUserMessage}`
 
-  const { content } = await runNimChatCompletion({
+  const { content } = await runChatCompletion({
     messages: [
       { role: 'system', content: ROUTER_SYSTEM },
       { role: 'user', content: userBlock },

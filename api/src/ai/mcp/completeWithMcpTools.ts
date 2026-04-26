@@ -1,9 +1,6 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import type { McpClientLike } from './composite-client.js'
-import {
-  runNimChatCompletion,
-  type NvidiaChatRequestMessage,
-} from '../nvidia-client.js'
+import { runChatCompletion, type ChatRequestMessage } from '../chat-client.js'
 
 const MAX_TOOL_ROUNDS = 8
 const MAX_TOOLSET_EXPANSIONS = 2
@@ -140,7 +137,7 @@ function formatToolListForSelection(metas: ToolMeta[]): string {
 }
 
 async function selectToolNames(input: {
-  baseMessages: NvidiaChatRequestMessage[]
+  baseMessages: ChatRequestMessage[]
   toolMetas: ToolMeta[]
 }): Promise<{ toolNames: string[]; selectionTokens: number }> {
   const SELECTOR_SYSTEM = `You select the minimum set of tool names needed to satisfy the user's request.
@@ -160,7 +157,7 @@ Rules:
     typeof lastUser === 'string' ? lastUser : ''
   }`
 
-  const res = await runNimChatCompletion({
+  const res = await runChatCompletion({
     messages: [
       { role: 'system', content: SELECTOR_SYSTEM },
       { role: 'user', content: userBlock },
@@ -323,10 +320,10 @@ export async function completePromptWithMcpTools(
 
   const systemContent = buildSystemContent(options?.systemPromptSuffix)
 
-  const baseMessages: NvidiaChatRequestMessage[] = [
+  const baseMessages: ChatRequestMessage[] = [
     { role: 'system', content: systemContent },
     ...chatTurns.map(
-      (m): NvidiaChatRequestMessage =>
+      (m): ChatRequestMessage =>
         m.role === 'user'
           ? { role: 'user', content: m.content }
           : { role: 'assistant', content: m.content }
@@ -340,7 +337,7 @@ export async function completePromptWithMcpTools(
 
   const tools = await listAllTools(client)
   if (tools.length === 0) {
-    const m = await runNimChatCompletion({
+    const m = await runChatCompletion({
       messages: baseMessages,
     })
     totalTokens += m.usage.totalTokens
@@ -406,7 +403,7 @@ export async function completePromptWithMcpTools(
 
   let aiTools = mcpTools(selectedTools)
   let toolsPayloadBytes = JSON.stringify(aiTools).length
-  const messages: NvidiaChatRequestMessage[] = [...baseMessages]
+  const messages: ChatRequestMessage[] = [...baseMessages]
 
   let expansions = 0
 
@@ -415,7 +412,7 @@ export async function completePromptWithMcpTools(
       content,
       tool_calls: toolCalls,
       usage,
-    } = await runNimChatCompletion({
+    } = await runChatCompletion({
       messages,
       tools: aiTools,
       tool_choice: 'auto',
@@ -509,7 +506,7 @@ export async function completePromptWithMcpTools(
     }
   }
 
-  const final = await runNimChatCompletion({ messages })
+  const final = await runChatCompletion({ messages })
   totalTokens += final.usage.totalTokens
   promptTokens += final.usage.promptTokens
   completionTokens += final.usage.completionTokens
