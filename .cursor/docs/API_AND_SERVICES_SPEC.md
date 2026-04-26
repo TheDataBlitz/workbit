@@ -1,570 +1,205 @@
-# API & Data Services Specification
+## Workbit API and Services Spec (v1)
 
-This document defines API requirements for all screens and components, with **GraphQL for GET** (queries) and **REST for POST/PUT/DELETE** (mutations). It also specifies the services and hooks to create for data fetching.
+This doc is the **source of truth** for how the **Workbit REST API** behaves and how clients (web/MCP/sdk) should call it.
 
----
+- **Base URL**: `/api/v1`
+- **Health**: `GET /health`
+- **Auth**: every `/api/v1/*` route runs `optionalAuth` then `requireAuth`
+  - Send **one** of:
+    - `Authorization: Bearer <token>`
+    - `X-API-Key: <key>` (or `x-api-key`)
+- **Content model**: all user-editable `content` / `description` fields are **plain Markdown strings** (no Lexical JSON).
+- **Data model**: **no teams**. Hierarchy is **workspace → projects → issues** (and project sub-resources).
 
-## 1. Conventions
+### Conventions
 
-| Operation | Protocol | Use case |
-|-----------|----------|----------|
-| **Read (GET)** | GraphQL Query | List/fetch entities, nested data, flexible fields |
-| **Create** | REST POST | New resources (updates, comments, invites, etc.) |
-| **Update** | REST PUT/PATCH | Edit existing resources |
-| **Delete** | REST DELETE | Remove resources |
-
-- **GraphQL endpoint**: e.g. `POST /graphql` with query/mutation body (queries only for reads; mutations can be used if backend prefers GraphQL mutations for writes—otherwise REST).
-- **REST base**: e.g. `/api/v1/...` for all non-query operations.
-
----
-
-## 2. Screens & API Requirements
-
-### 2.1 Workspace-level screens
-
-#### Workspace Projects (`WorkspaceProjectsScreen`)
-
-| Need | Type | API |
-|------|------|-----|
-| List all workspace projects | GET | **GraphQL** `workspaceProjects` or `projects(scope: WORKSPACE)` |
-| **Query fields**: `id`, `name`, `team { id, name }`, `status` |
-
-**GraphQL (example):**
-
-```graphql
-query WorkspaceProjects {
-  workspace {
-    projects {
-      id
-      name
-      team { id name }
-      status
-    }
-  }
-}
-```
+- **JSON**: request + response bodies are JSON.
+- **IDs**: opaque string IDs (often UUID-like); do not parse.
+- **Dates**: ISO strings.
+- **Errors**: non-2xx responses include a JSON payload with a message; treat as user-displayable plus loggable context.
 
 ---
 
-#### Workspace Teams (`WorkspaceTeamsScreen`)
+## Workspaces
 
-| Need | Type | API |
-|------|------|-----|
-| List workspace teams with member count & linked project | GET | **GraphQL** `workspaceTeams` |
-| **Query fields**: `id`, `teamName`/`name`, `memberCount`, `project { id, name }` (or `projectName`) |
+### List workspaces
 
-**GraphQL (example):**
+- **GET** `/workspaces`
+- **Response**
+  - `{ workspaces: Workspace[] }`
 
-```graphql
-query WorkspaceTeams {
-  workspace {
-    teams {
-      id
-      name
-      memberCount
-      project { id name }
-    }
-  }
-}
-```
+### Create workspace
+
+- **POST** `/workspaces`
+- **Body**: `{ name: string; slug?: string; description?: string }`
+- **Response**: `{ workspace: Workspace }`
+
+### Update workspace
+
+- **PATCH** `/workspaces/:workspaceId`
+- **Body**: partial workspace fields (e.g. `{ name?: string; slug?: string; description?: string }`)
+- **Response**: `{ workspace: Workspace }`
 
 ---
 
-#### Workspace Members (`WorkspaceMemberScreen`)
+## Workspace-scoped convenience routes
 
-| Need | Type | API |
-|------|------|-----|
-| List workspace members | GET | **GraphQL** `workspaceMembers` |
-| Invite member | POST | **REST** `POST /api/v1/workspace/members/invite` |
-| **Query fields**: `id`, `name`, `username`, `avatarSrc`, `status`, `joined`, `teams` (summary string or list) |
+These are “current workspace” endpoints used by the frontend.
 
-**GraphQL (example):**
+### List projects in current workspace
 
-```graphql
-query WorkspaceMembers {
-  workspace {
-    members {
-      id
-      name
-      username
-      avatarSrc
-      status
-      joined
-      teams { id name }
-    }
-  }
-}
-```
+- **GET** `/workspace/projects`
+- **Response**: `ProjectListItem[]`
 
-**REST (example):**
+### Create project in current workspace
 
-- `POST /api/v1/workspace/members/invite`  
-  Body: `{ "email": string }`
+- **POST** `/workspace/projects`
+- **Body**: `{ name: string; description?: string; workspaceId: string; status?: string }`
+- **Response**: `{ project: Project }`
 
----
+### List members (directory)
 
-#### Workspace Views (`WorkspaceViewsScreen`)
+- **GET** `/workspace/members`
+- **Response**: `Member[]`
 
-| Need | Type | API |
-|------|------|-----|
-| List workspace views | GET | **GraphQL** `workspaceViews` |
-| **Query fields**: `id`, `name`, `type`, `owner { id, name }` |
+### Create member
 
-**GraphQL (example):**
+- **POST** `/workspace/members`
+- **Body**: `{ name: string; username?: string; avatarSrc?: string; status?: string }`
+- **Response**: `{ member: Member }`
 
-```graphql
-query WorkspaceViews {
-  workspace {
-    views {
-      id
-      name
-      type
-      owner { id name }
-    }
-  }
-}
-```
+### Invite member
+
+- **POST** `/workspace/members/invite`
+- **Body**: `{ email: string }`
+
+### Provision member
+
+- **POST** `/workspace/members/:memberId/provision`
 
 ---
 
-#### Inbox (`InboxScreen`)
+## Projects
 
-| Need | Type | API |
-|------|------|-----|
-| List notifications/updates for current user | GET | **GraphQL** `inbox` or `notifications` |
-| **Query fields**: `id`, `type`, `title`, `body`, `read`, `createdAt`, `actor { id, name }`, `targetUrl`? |
+### Get project
 
-**GraphQL (example):**
+- **GET** `/projects/:projectId`
+- **Response**: `ProjectSummary`
+  - Includes `workspaceId`
 
-```graphql
-query Inbox {
-  me {
-    notifications(first: 50) {
-      nodes {
-        id
-        type
-        title
-        body
-        read
-        createdAt
-        actor { id name }
-        targetUrl
-      }
-    }
-  }
-}
-```
+### Project properties
 
----
+- **GET** `/projects/:projectId/properties`
+- **Response**: `ProjectProperties`
 
-#### My Issues (`MyIssuesScreen`)
+### Assign project lead
 
-| Need | Type | API |
-|------|------|-----|
-| List issues assigned to current user (all teams) | GET | **GraphQL** `myIssues` or `issues(assignee: ME)` |
-| **Query fields**: same as `Issue` (id, title, assignee, date, status, etc.) |
+- **POST** `/projects/:projectId/lead`
+- **Body**: `{ leadId: string | null }`
 
-**GraphQL (example):**
+### Project issues (list)
 
-```graphql
-query MyIssues {
-  me {
-    assignedIssues {
-      id
-      title
-      assignee { id name }
-      date
-      status
-      team { id name }
-      project { id name }
-    }
-  }
-}
-```
+- **GET** `/projects/:projectId/issues`
 
----
+### Status updates
 
-#### Workspace More (`WorkspaceMoreScreen`)
+- **GET** `/projects/:projectId/status-updates`
+- **POST** `/projects/:projectId/status-updates`
+  - **Body**: `{ status: string; content: string }` (Markdown `content`)
 
-| Need | Type | API |
-|------|------|-----|
-| Optional: workspace settings or meta | GET | **GraphQL** `workspace { settings, ... }` if needed later |
+### Status update comments
 
-No mandatory API until screen has concrete features.
+- **GET** `/projects/:projectId/status-updates/:updateId/comments`
+- **POST** `/projects/:projectId/status-updates/:updateId/comments`
+  - **Body**: `{ content: string }` (Markdown `content`)
+
+### Decisions
+
+- **GET** `/projects/:projectId/decisions`
+- **POST** `/projects/:projectId/decisions`
+- **PATCH** `/projects/:projectId/decisions/:decisionId`
+- **DELETE** `/projects/:projectId/decisions/:decisionId`
+  - All decision long-form fields are Markdown strings.
+
+### Documents
+
+- **GET** `/projects/:projectId/documents`
+- **POST** `/projects/:projectId/documents`
+- **GET** `/projects/:projectId/documents/:documentId`
+- **PATCH** `/projects/:projectId/documents/:documentId`
+  - Document `content` is Markdown string.
+
+### Agents
+
+- **GET** `/projects/:projectId/agents`
+- **POST** `/projects/:projectId/agents`
+- **DELETE** `/projects/:projectId/agents/:agentKey`
 
 ---
 
-### 2.2 Team-level screens
+## Issues
 
-#### Team Projects (`TeamProjectsScreen`)
+### Create issue
 
-| Need | Type | API |
-|------|------|-----|
-| Current team context | — | From route `teamId` + **GraphQL** `team(teamId)` if needed |
-| Latest status update + list of updates | GET | **GraphQL** `teamProjectUpdates(teamId)` or `project(teamId).statusUpdates` |
-| Comments for an update | GET | **GraphQL** `statusUpdate(id) { comments }` |
-| Post status update | POST | **REST** `POST /api/v1/teams/:teamId/project/updates` |
-| Post comment on update | POST | **REST** `POST /api/v1/teams/:teamId/project/updates/:updateId/comments` |
-| Project status panel: properties, activity | GET | **GraphQL** `teamProject(teamId) { properties, activity }` |
+- **POST** `/issues`
+- **Body**: `{ projectId: string; title: string; description?: string; parentIssueId?: string }`
+  - `description` is Markdown string.
 
-**GraphQL (example):**
+### Get issue
 
-```graphql
-query TeamProjectPage($teamId: ID!) {
-  team(id: $teamId) {
-    id
-    name
-    project {
-      id
-      statusUpdates(first: 20) {
-        nodes {
-          id
-          status
-          content
-          author { id name avatarSrc }
-          createdAt
-          commentCount
-        }
-      }
-      properties { status priority lead members dates teams labels }
-      activity { id icon message date }
-    }
-  }
-}
+- **GET** `/issues/:issueId`
 
-query StatusUpdateComments($updateId: ID!) {
-  statusUpdate(id: $updateId) {
-    id
-    comments {
-      id
-      authorName
-      content
-      timestamp
-    }
-  }
-}
-```
+### Update issue
 
-**REST (example):**
+- **PATCH** `/issues/:issueId`
+  - `description` is Markdown string.
 
-- `POST /api/v1/teams/:teamId/project/updates`  
-  Body: `{ "content": string, "status": "on-track" | "at-risk" | "off-track" }`
-- `POST /api/v1/teams/:teamId/project/updates/:updateId/comments`  
-  Body: `{ "content": string }`
+### Sub-issues
 
-| Update project properties (status, priority, dates, etc.) | PATCH | **REST** `PATCH /api/v1/teams/:teamId/project` |
+- **GET** `/issues/:issueId/sub-issues`
+- **POST** `/issues/:issueId/sub-issues/generate`
+
+### Issue comments
+
+- **GET** `/issues/:issueId/comments`
+- **POST** `/issues/:issueId/comments`
+  - **Body**: `{ content: string }` (Markdown `content`)
 
 ---
 
-#### Team Issues (`TeamIssuesScreen`)
+## Me
 
-| Need | Type | API |
-|------|------|-----|
-| List issues for team (filter by tab: all / active / backlog) | GET | **GraphQL** `teamIssues(teamId, filter)` |
-| Update issue status | PATCH | **REST** `PATCH /api/v1/issues/:issueId` (e.g. `{ "status": string }`) |
-| **Query fields**: `id`, `title`, `assignee`, `date`, `status` |
-
-**GraphQL (example):**
-
-```graphql
-query TeamIssues($teamId: ID!, $filter: IssueFilter) {
-  team(id: $teamId) {
-    id
-    name
-    issues(filter: $filter) {
-      id
-      title
-      assignee { id name }
-      date
-      status
-    }
-  }
-}
-```
-
-**REST (example):**
-
-- `PATCH /api/v1/issues/:issueId`  
-  Body: `{ "status"?: string, "assigneeId"?: string, ... }`
+- **GET** `/me/member`
+- **GET** `/me/ai-usage`
+- **GET** `/me/notifications`
 
 ---
 
-#### Team Views (`TeamViewsScreen`)
+## API keys
 
-| Need | Type | API |
-|------|------|-----|
-| List views for team | GET | **GraphQL** `team(teamId).views` |
-| **Query fields**: `id`, `name`, `type`, `owner { id, name }` |
-
-**GraphQL (example):**
-
-```graphql
-query TeamViews($teamId: ID!) {
-  team(id: $teamId) {
-    id
-    views {
-      id
-      name
-      type
-      owner { id name }
-    }
-  }
-}
-```
+- **POST** `/keys`
+- **GET** `/keys`
+- **DELETE** `/keys/:id`
 
 ---
 
-#### Team Logs (`TeamLogsScreen`)
+## AI
 
-| Need | Type | API |
-|------|------|-----|
-| Activity/log entries for team | GET | **GraphQL** `team(teamId).logs` or `team(teamId).activity` |
-| **Query fields**: `id`, `action`, `actor`, `timestamp`, `details` (or similar) |
-
-**GraphQL (example):**
-
-```graphql
-query TeamLogs($teamId: ID!, $first: Int) {
-  team(id: $teamId) {
-    id
-    logs(first: $first) {
-      nodes {
-        id
-        action
-        actor { id name }
-        timestamp
-        details
-      }
-    }
-  }
-}
-```
+- **POST** `/ai`
+  - Used by the web app to request analysis/answers with tool-use.
 
 ---
 
-### 2.3 Layout / global
+## Agents catalog
 
-#### Main layout (navbar, team switcher)
-
-| Need | Type | API |
-|------|------|-----|
-| List teams for current user | GET | **GraphQL** `me { teams }` or `workspace { teams }` |
-| **Query fields**: `id`, `name` (and optional avatar) |
-
-**GraphQL (example):**
-
-```graphql
-query NavTeams {
-  me {
-    teams {
-      id
-      name
-    }
-  }
-}
-# or
-query NavTeams {
-  workspace {
-    teams { id name }
-  }
-}
-```
+- **GET** `/agents/catalog`
 
 ---
 
-## 3. Components & API Mapping
+## Workspace MCP tools configuration
 
-Components that need data from APIs (or that trigger writes) are listed below. The actual fetch is done in **screens or hooks**; components receive data via props or context.
+These endpoints manage which MCP tools are enabled per workspace.
 
-| Component | Data / action | Source (GraphQL query / REST) |
-|-----------|----------------|-------------------------------|
-| **TeamsTable** | List teams | `WorkspaceTeams` query |
-| **ViewsTable** | List views | `WorkspaceViews` or `TeamViews` query |
-| **StatusUpdateCard** | Single update + comments | From `TeamProjectPage` + `StatusUpdateComments`; send comment via REST |
-| **StatusUpdateComposer** | — | Post via REST `POST .../project/updates` |
-| **ProjectStatusPanel** | Properties, activity | From `TeamProjectPage` (project subtree) |
-| **PropertiesSection** | Property values | From project; updates via `PATCH .../project` |
-| **ActivitySection** | Activity list | From project activity in same query |
-| **TeamDropdown** | Teams list | `NavTeams` query |
-| **Team issues list (TeamIssuesScreen)** | Issues + tab filter | `TeamIssues` query; status update via `PATCH .../issues/:id` |
+- **GET** `/workspaces/:workspaceId/mcp-tools`
+- **PUT** `/workspaces/:workspaceId/mcp-tools/:toolKey`
 
----
-
-## 4. Services to Create
-
-Services are thin wrappers around HTTP/GraphQL clients. Suggested location: `src/services/`.
-
-| Service | Responsibility |
-|---------|-----------------|
-| **graphqlClient** | Configure GraphQL client (e.g. Apollo or `fetch` to `POST /graphql`). Export `query<T>(document, variables)`. |
-| **restClient** | Base REST client (base URL, auth headers). Export `get`, `post`, `put`, `patch`, `delete`. |
-| **workspaceService** | Use GraphQL for: `workspaceProjects`, `workspaceTeams`, `workspaceMembers`, `workspaceViews`, `workspaceRoles`. Use REST for: `inviteMember`. |
-| **projectService** | Use GraphQL for: `teamProject`, `teamProjectUpdates`, `statusUpdate(id) { comments }`. Use REST for: `postStatusUpdate`, `postComment`, `updateProject`. |
-| **issueService** | Use GraphQL for: `teamIssues`, `myIssues`. Use REST for: `updateIssue`. |
-| **teamService** | Use GraphQL for: `team` (by id), `teamViews`, `teamLogs`, `navTeams`. |
-| **inboxService** | Use GraphQL for: `inbox` / `me.notifications`. Optional REST for mark-read if needed. |
-| **viewService** | Use GraphQL for: `workspaceViews`, `teamViews`. |
-
-Optional: a single **api** or **backend** module that re-exports these and the two clients.
-
----
-
-## 5. Hooks to Create
-
-Hooks live in `src/hooks/` and use the services above. They expose loading/error state and refetch where needed.
-
-### 5.1 Workspace
-
-| Hook | Purpose | Query / mutation |
-|------|----------|-------------------|
-| **useWorkspaceProjects** | List workspace projects | GraphQL `WorkspaceProjects` |
-| **useWorkspaceTeams** | List workspace teams | GraphQL `WorkspaceTeams` |
-| **useWorkspaceMembers** | List workspace members | GraphQL `WorkspaceMembers` |
-| **useInviteMember** | Invite member (mutation) | REST `POST .../invite` |
-| **useWorkspaceViews** | List workspace views | GraphQL `WorkspaceViews` |
-| **useWorkspaceRoles** | List workspace roles | GraphQL `WorkspaceRoles` |
-
-### 5.2 Team & project
-
-| Hook | Purpose | Query / mutation |
-|------|----------|-------------------|
-| **useTeam** | Team by id (for name, etc.) | GraphQL `team(teamId)` (minimal fields) |
-| **useTeamProject** | Full project for team (updates, properties, activity) | GraphQL `TeamProjectPage` |
-| **useStatusUpdateComments** | Comments for one status update | GraphQL `StatusUpdateComments` (or embedded in project query) |
-| **usePostStatusUpdate** | Post new status update | REST `POST .../project/updates` |
-| **usePostStatusComment** | Post comment on update | REST `POST .../project/updates/:id/comments` |
-| **useUpdateProject** | Update project/properties | REST `PATCH .../project` |
-| **useTeamViews** | List team views | GraphQL `TeamViews` |
-| **useTeamLogs** | List team logs | GraphQL `TeamLogs` |
-
-### 5.3 Issues
-
-| Hook | Purpose | Query / mutation |
-|------|----------|-------------------|
-| **useTeamIssues** | Issues for team (with tab filter) | GraphQL `TeamIssues` |
-| **useMyIssues** | Issues assigned to current user | GraphQL `MyIssues` |
-| **useUpdateIssue** | Update issue (e.g. status) | REST `PATCH .../issues/:id` |
-
-**Issue `description` (REST create / patch):**
-
-- Persisted as a **Lexical JSON string** (same shape the `TextEditor` uses).
-- The API **coerces** non-Lexical input: Markdown or plain text is converted to Lexical; valid Lexical is kept.
-- Markdown or Lexical text that contains `![alt](https://…)` or `![alt](data:…)` is normalized to inline **`wb-image`** nodes (`type: "wb-image"`, `src`, `alt`, `version`).
-- Prefer **HTTPS URLs** for images after upload; `data:` URIs are supported but enlarge payloads (watch JSON body size limits on the API).
-- Implementation: `api/src/utils/issueDescriptionLexical.ts` (`coerceAndNormalizeIssueDescription`), applied in `api/src/models/issues.ts` on create and update.
-
-### 5.4 Inbox & nav
-
-| Hook | Purpose | Query / mutation |
-|------|----------|-------------------|
-| **useInbox** | Notifications for current user | GraphQL `Inbox` |
-| **useNavTeams** | Teams for navbar/team switcher | GraphQL `NavTeams` |
-
----
-
-## 6. Summary Table
-
-| Screen / area | GraphQL (GET) | REST (POST/PATCH/DELETE) |
-|---------------|----------------|---------------------------|
-| Workspace Projects | WorkspaceProjects | — |
-| Workspace Teams | WorkspaceTeams | — |
-| Workspace Members | WorkspaceMembers | Invite member |
-| Workspace Views | WorkspaceViews | — |
-| Workspace Roles | WorkspaceRoles | — |
-| Inbox | Inbox / notifications | Optional: mark read |
-| My Issues | MyIssues | — |
-| Team Projects | TeamProjectPage, StatusUpdateComments | Post update, Post comment, Update project |
-| Team Issues | TeamIssues | Update issue |
-| Team Views | TeamViews | — |
-| Team Logs | TeamLogs | — |
-| Nav / layout | NavTeams | — |
-
----
-
-## 7. File Structure (suggested)
-
-```
-src/
-  api/                    # optional: graphql + rest client config
-    graphql.ts
-    rest.ts
-  services/
-    workspaceService.ts
-    projectService.ts
-    issueService.ts
-    teamService.ts
-    inboxService.ts
-    viewService.ts
-  hooks/
-    useWorkspaceProjects.ts
-    useWorkspaceTeams.ts
-    useWorkspaceMembers.ts
-    useInviteMember.ts
-    useWorkspaceViews.ts
-    useWorkspaceRoles.ts
-    useTeam.ts
-    useTeamProject.ts
-    useStatusUpdateComments.ts
-    usePostStatusUpdate.ts
-    usePostStatusComment.ts
-    useUpdateProject.ts
-    useTeamViews.ts
-    useTeamLogs.ts
-    useTeamIssues.ts
-    useMyIssues.ts
-    useUpdateIssue.ts
-    useInbox.ts
-    useNavTeams.ts
-  graphql/
-    queries/
-      workspace.projects.gql
-      workspace.teams.gql
-      workspace.members.gql
-      workspace.views.gql
-      workspace.roles.gql
-      team.project.gql
-      team.issues.gql
-      team.views.gql
-      team.logs.gql
-      me.inbox.gql
-      me.myIssues.gql
-      me.navTeams.gql
-    # or single operations file
-```
-
----
-
-## REST reference: Project AI agents
-
-**Catalog (definitions for UI):** `GET /api/v1/agents/catalog` returns `{ "agents": [ { "agentKey", "title", "description" } ] }` (same auth as `/api/v1`).
-
-Base path: `/api/v1/projects/:projectId/agents`. Requires the same auth as other `/api/v1` routes (Bearer JWT or `x-api-key`). `agentKey` values are defined by the server catalog (for example `general`, `order_fulfillment`, `inventory`, `revenue_intelligence`, `customer_retention`, `payment_invoice`, `employee_productivity`, `exception_anomaly`, `workflow_orchestrator`, `rule_based_automation`).
-
-| Method | Path | Body | Success response |
-|--------|------|------|------------------|
-| GET | `/api/v1/projects/:projectId/agents` | — | `{ "agents": [ { "agentKey", "title", "description", "createdAt" } ] }` |
-| POST | `/api/v1/projects/:projectId/agents` | `{ "agentKey": string }` | `201` `{ "ok": true, "agentKey": string }` (idempotent enable) |
-| DELETE | `/api/v1/projects/:projectId/agents/:agentKey` | — | `204` no body |
-
-Errors: `404` if the project does not exist; `400` on enable if `agentKey` is unknown.
-
----
-
-## REST reference: AI chat
-
-`POST /api/v1/ai` — same auth as above. Uses Workbit MCP tools and NVIDIA NIM on the server.
-
-| Field | Type | Required | Description |
-|--------|------|----------|-------------|
-| `messages` | array | yes* | Chat turns: `{ "role": "user" \| "assistant", "content": string }[]`. The last turn must be `user`. |
-| `prompt` | string | yes* | Legacy: single user message (use instead of `messages`). |
-| `projectId` | string | no | When set, resolves the project and applies enabled **project agents** (system prompt specialization). Returns `404` if the project does not exist. |
-| `selectedAgentKey` | string | no | Requires `projectId`. Must be enabled for that project; skips automatic routing when multiple agents are enabled. |
-
-\* Send either `messages` or `prompt`.
-
-Success: `{ "reply": string }`. Server errors include `503` when AI (NIM) is not configured.
-
----
-
-This spec can be implemented incrementally: start with one screen (e.g. Workspace Projects or Team Projects), add its GraphQL query + REST calls, one service, and one or two hooks, then wire the screen to the hooks.
