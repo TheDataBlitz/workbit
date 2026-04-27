@@ -12,16 +12,8 @@ export interface Project {
   id: string
   name: string
   description: string
-  teamId: string
-  status: string
-}
-
-export interface Team {
-  id: string
-  name: string
   workspaceId: string
-  projectId?: string
-  memberIds: string[]
+  status: string
 }
 
 export interface Member {
@@ -31,7 +23,6 @@ export interface Member {
   avatarSrc?: string
   status: string
   joined: string
-  teamIds: string[]
   /**
    * Supabase auth user id this member is linked to, if any.
    * Alias of userAuthId; kept for clearer semantics with Supabase auth.users.
@@ -54,12 +45,11 @@ export interface Invitation {
   createdAt: string
 }
 
-// Project status (team project)
+// Project status
 export type ProjectStatus = 'on-track' | 'at-risk' | 'off-track'
 
 export interface StatusUpdate {
   id: string
-  teamId: string | null
   status: ProjectStatus
   content: string
   authorId: string
@@ -102,7 +92,6 @@ export interface ProjectProperties {
   startDate?: string
   endDate?: string
   memberIds: string[]
-  teamIds: string[]
   labelIds: string[]
 }
 
@@ -129,7 +118,7 @@ export type ActivityIcon = 'project'
 
 export interface ActivityItem {
   id: string
-  teamId: string
+  projectId: string
   icon: ActivityIcon
   message: string
   date: string
@@ -143,7 +132,6 @@ export interface Issue {
   assigneeName?: string
   date: string
   status: string
-  teamId?: string
   projectId?: string
   description?: string
   parentIssueId?: string
@@ -186,11 +174,10 @@ export interface Notification {
 export interface Store {
   workspaces: Workspace[]
   projects: Project[]
-  teams: Team[]
   members: Member[]
   invitations: Invitation[]
   statusUpdates: StatusUpdate[]
-  projectPropertiesByTeam: Record<string, ProjectProperties>
+  projectPropertiesByProject: Record<string, ProjectProperties>
   activity: ActivityItem[]
   issues: Issue[]
   decisions: Decision[]
@@ -200,11 +187,10 @@ export interface Store {
 export const EMPTY_STORE: Store = {
   workspaces: [],
   projects: [],
-  teams: [],
   members: [],
   invitations: [],
   statusUpdates: [],
-  projectPropertiesByTeam: {},
+  projectPropertiesByProject: {},
   activity: [],
   issues: [],
   decisions: [],

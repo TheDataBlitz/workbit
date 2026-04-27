@@ -1,24 +1,23 @@
 import { Router } from 'express'
 import * as ctrl from '../controllers/issuesController.js'
 import * as decisionsCtrl from '../controllers/decisionsController.js'
-import * as projectDocsCtrl from '../controllers/projectDocumentsController.js'
 import * as projectsCtrl from '../controllers/projectsController.js'
-import * as projectAgentsCtrl from '../controllers/projectAgentsController.js'
+import * as commentsCtrl from '../controllers/commentsController.js'
 
 export const projectRoutes = Router()
 
-projectRoutes.get('/:projectId/documents', projectDocsCtrl.listProjectDocuments)
+projectRoutes.get('/:projectId/documents', projectsCtrl.listProjectDocuments)
 projectRoutes.post(
   '/:projectId/documents',
-  projectDocsCtrl.createProjectDocument
+  projectsCtrl.createProjectDocument
 )
 projectRoutes.get(
   '/:projectId/documents/:documentId',
-  projectDocsCtrl.getProjectDocument
+  projectsCtrl.getProjectDocument
 )
 projectRoutes.patch(
   '/:projectId/documents/:documentId',
-  projectDocsCtrl.patchProjectDocument
+  projectsCtrl.patchProjectDocument
 )
 projectRoutes.get('/:projectId/issues', ctrl.getProjectIssues)
 projectRoutes.get('/:projectId/properties', projectsCtrl.getProjectProperties)
@@ -26,9 +25,15 @@ projectRoutes.get(
   '/:projectId/status-updates',
   projectsCtrl.getProjectStatusUpdates
 )
+projectRoutes.post('/:projectId/status-updates', projectsCtrl.postProjectStatusUpdate)
+projectRoutes.get('/:projectId/ai-usage', projectsCtrl.getProjectAiUsage)
+projectRoutes.get(
+  '/:projectId/status-updates/:updateId/comments',
+  commentsCtrl.getStatusUpdateComments
+)
 projectRoutes.post(
-  '/:projectId/members/from-team',
-  projectsCtrl.addTeamMembersToProject
+  '/:projectId/status-updates/:updateId/comments',
+  commentsCtrl.postStatusUpdateComment
 )
 projectRoutes.post('/:projectId/lead', projectsCtrl.assignProjectLead)
 projectRoutes.get('/:projectId/decisions', decisionsCtrl.listProjectDecisions)
@@ -41,10 +46,10 @@ projectRoutes.delete(
   '/:projectId/decisions/:decisionId',
   decisionsCtrl.deleteProjectDecision
 )
-projectRoutes.get('/:projectId/agents', projectAgentsCtrl.listProjectAgents)
-projectRoutes.post('/:projectId/agents', projectAgentsCtrl.enableProjectAgent)
+projectRoutes.get('/:projectId/agents', projectsCtrl.listProjectAgents)
+projectRoutes.post('/:projectId/agents', projectsCtrl.enableProjectAgent)
 projectRoutes.delete(
   '/:projectId/agents/:agentKey',
-  projectAgentsCtrl.disableProjectAgent
+  projectsCtrl.disableProjectAgent
 )
 projectRoutes.get('/:projectId', projectsCtrl.getProject)

@@ -33,7 +33,6 @@ function parseCorsOrigins(): string[] {
 import { optionalAuth, requireAuth } from './middleware/auth.js'
 import { workspaceRoutes } from './routes/workspace.js'
 import { workspacesRoutes } from './routes/workspaces.js'
-import { teamsRoutes } from './routes/teams.js'
 import { issuesRoutes } from './routes/issues.js'
 import { meRoutes } from './routes/me.js'
 import { authRoutes } from './routes/auth.js'
@@ -64,7 +63,7 @@ const corsOptions: cors.CorsOptions = {
 }
 app.use(cors(corsOptions))
 app.options('*', cors(corsOptions))
-// Lexical editor content (and occasional embedded assets) can exceed the default
+// Markdown content (and occasional embedded assets) can exceed the default
 // body-parser limit (~100kb). Keep this modest to avoid abuse but large enough
 // for typical editor payloads.
 app.use(express.json({ limit: '5mb' }))
@@ -79,7 +78,6 @@ app.use(
 )
 app.use(`${API_PREFIX}/workspace`, workspaceRoutes)
 app.use(`${API_PREFIX}/projects`, projectRoutes)
-app.use(`${API_PREFIX}/teams`, teamsRoutes)
 app.use(`${API_PREFIX}/issues`, issuesRoutes)
 app.use(`${API_PREFIX}/me`, meRoutes)
 app.use(`${API_PREFIX}/keys`, apiKeysRoutes)

@@ -3,14 +3,14 @@ import { rowToActivity } from '../utils/supabaseMappers.js'
 import type { ActivityItem } from '../models/types.js'
 import type { DbRow } from '../utils/supabaseMappers.js'
 
-export async function getActivityByTeamId(
-  teamId: string,
+export async function getActivityByProjectId(
+  projectId: string,
   limit = 50
 ): Promise<ActivityItem[]> {
   const { data, error } = await getClient()
     .from('activity')
     .select('*')
-    .eq('team_id', teamId)
+    .eq('project_id', projectId)
     .order('date', { ascending: false })
     .limit(limit)
   if (error) throw error

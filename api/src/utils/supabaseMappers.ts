@@ -6,7 +6,6 @@ import type {
   Store,
   Workspace,
   Project,
-  Team,
   Member,
   Invitation,
   StatusUpdate,
@@ -40,18 +39,8 @@ export function rowToProject(r: DbRow): Project {
     id: r.id as string,
     name: r.name as string,
     description: (r.description as string) ?? '',
-    teamId: r.team_id as string,
+    workspaceId: r.workspace_id as string,
     status: r.status as string,
-  }
-}
-
-export function rowToTeam(r: DbRow): Team {
-  return {
-    id: r.id as string,
-    name: r.name as string,
-    workspaceId: (r.workspace_id as string) ?? '',
-    projectId: r.project_id as string | undefined,
-    memberIds: (r.member_ids as string[]) ?? [],
   }
 }
 
@@ -64,7 +53,6 @@ export function rowToMember(r: DbRow): Member {
     avatarSrc: r.avatar_src as string | undefined,
     status: r.status as string,
     joined: r.joined as string,
-    teamIds: (r.team_ids as string[]) ?? [],
     provisioned: (r.provisioned as boolean) ?? false,
     uid: authId,
     userAuthId: authId,
@@ -82,7 +70,6 @@ export function rowToInvitation(r: DbRow): Invitation {
 export function rowToStatusUpdate(r: DbRow): StatusUpdate {
   return {
     id: r.id as string,
-    teamId: (r.team_id as string | null) ?? null,
     status: r.status as ProjectStatus,
     content: r.content as string,
     authorId: r.author_id as string,
@@ -103,7 +90,6 @@ export function rowToProjectProperties(r: DbRow): ProjectProperties {
     startDate: r.start_date as string | undefined,
     endDate: r.end_date as string | undefined,
     memberIds: (r.member_ids as string[]) ?? [],
-    teamIds: (r.team_ids as string[]) ?? [],
     labelIds: (r.label_ids as string[]) ?? [],
   }
 }
@@ -133,7 +119,7 @@ export function rowToProjectDocumentSummary(r: DbRow): ProjectDocumentSummary {
 export function rowToActivity(r: DbRow): ActivityItem {
   return {
     id: r.id as string,
-    teamId: r.team_id as string,
+    projectId: r.project_id as string,
     icon: r.icon as ActivityIcon,
     message: r.message as string,
     date: r.date as string,
@@ -148,7 +134,6 @@ export function rowToIssue(r: DbRow): Issue {
     assigneeName: r.assignee_name as string | undefined,
     date: r.due_date as string,
     status: r.status as string,
-    teamId: (r.team_id as string) || undefined,
     projectId: r.project_id as string | undefined,
     description: r.description as string | undefined,
     parentIssueId:
@@ -188,7 +173,6 @@ export function issueToRow(i: Issue): Record<string, unknown> {
     assignee_name: i.assigneeName ?? null,
     due_date: i.date,
     status: i.status,
-    team_id: i.teamId ?? null,
     project_id: i.projectId ?? null,
     description: i.description ?? null,
     parent_issue_id: i.parentIssueId ?? null,
@@ -225,16 +209,12 @@ function workspaceToRow(w: Workspace): Record<string, unknown> {
 }
 
 function projectToRow(p: Project): Record<string, unknown> {
-  return { id: p.id, name: p.name, team_id: p.teamId, status: p.status }
-}
-
-function teamToRow(t: Team): Record<string, unknown> {
   return {
-    id: t.id,
-    name: t.name,
-    workspace_id: t.workspaceId ?? null,
-    project_id: t.projectId ?? null,
-    member_ids: t.memberIds ?? [],
+    id: p.id,
+    name: p.name,
+    description: p.description ?? '',
+    workspace_id: p.workspaceId,
+    status: p.status,
   }
 }
 
@@ -246,7 +226,6 @@ function memberToRow(m: Member): Record<string, unknown> {
     avatar_src: m.avatarSrc ?? null,
     status: m.status,
     joined: m.joined,
-    team_ids: m.teamIds ?? [],
     provisioned: m.provisioned ?? false,
     supabase_user_id: m.uid ?? m.userAuthId ?? null,
   }
@@ -263,7 +242,6 @@ function invitationToRow(i: Invitation): Record<string, unknown> {
 function statusUpdateToRow(u: StatusUpdate): Record<string, unknown> {
   return {
     id: u.id,
-    team_id: u.teamId ?? null,
     status: u.status,
     content: u.content,
     author_id: u.authorId,
@@ -277,18 +255,17 @@ function statusUpdateToRow(u: StatusUpdate): Record<string, unknown> {
 }
 
 function projectPropertiesToRow(
-  teamId: string,
+  projectId: string,
   p: ProjectProperties
 ): Record<string, unknown> {
   return {
-    team_id: teamId,
+    project_id: projectId,
     status: p.status,
     priority: p.priority,
     lead_id: p.leadId ?? null,
     start_date: p.startDate ?? null,
     end_date: p.endDate ?? null,
     member_ids: p.memberIds ?? [],
-    team_ids: p.teamIds ?? [],
     label_ids: p.labelIds ?? [],
   }
 }
@@ -296,7 +273,7 @@ function projectPropertiesToRow(
 function activityToRow(a: ActivityItem): Record<string, unknown> {
   return {
     id: a.id,
-    team_id: a.teamId,
+    project_id: a.projectId,
     icon: a.icon,
     message: a.message,
     date: a.date,
@@ -335,12 +312,12 @@ export function storeToRows(store: Store) {
   return {
     workspaces: store.workspaces.map((w) => workspaceToRow(w)),
     projects: store.projects.map((p) => projectToRow(p)),
-    teams: store.teams.map((t) => teamToRow(t)),
     members: store.members.map((m) => memberToRow(m)),
     invitations: store.invitations.map((i) => invitationToRow(i)),
     status_updates: store.statusUpdates.map((u) => statusUpdateToRow(u)),
-    project_properties: Object.entries(store.projectPropertiesByTeam ?? {}).map(
-      ([teamId, p]) => projectPropertiesToRow(teamId, p)
+    project_properties: Object.entries(
+      store.projectPropertiesByProject ?? {}
+    ).map(([projectId, p]) => projectPropertiesToRow(projectId, p)
     ),
     activity: store.activity.map((a) => activityToRow(a)),
     issues: store.issues.map((i) => issueToRow(i)),

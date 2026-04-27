@@ -13,6 +13,7 @@ import {
   type ProtocolFilterId,
   type WorkspaceListRow,
 } from './workspaceListData'
+import { ProjectIntelBitBar } from '../project-detail/components/ProjectIntelBitBar'
 
 export type WorkspaceListProps = {
   rows?: WorkspaceListRow[]
@@ -50,6 +51,8 @@ export function WorkspaceList({
     })
   }, [rows, filter, query])
 
+  const aiWorkspace = filtered[0] ?? null
+
   return (
     <WorkspacePageChrome>
       <div style={{ flex: 1, width: '100%' }}>
@@ -68,6 +71,14 @@ export function WorkspaceList({
           />
         </Stack>
       </div>
+      <ProjectIntelBitBar
+        title="INTELLEBIT"
+        subtitle="Ask questions about your workspace and projects"
+        ctaLabel="Ask Intellebit"
+        workspaceId={aiWorkspace?.id}
+        workspaceName={aiWorkspace?.name}
+        allowOpenWithoutContext
+      />
     </WorkspacePageChrome>
   )
 }

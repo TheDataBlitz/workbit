@@ -243,6 +243,8 @@ export type SidebarProps = {
   projects?: SidebarProject[]
   selectedProjectId?: string | null
   onProjectSelect?: (id: string) => void
+  onWorkspaceMembersClick?: () => void
+  workspaceMembersActive?: boolean
   onSettingsClick?: () => void
   onSignOutClick?: () => void
   /** Collapsible desktop sidebar (overlay drawer is always expanded) */
@@ -288,6 +290,8 @@ export function Sidebar({
   projects = defaultProjects,
   selectedProjectId,
   onProjectSelect,
+  onWorkspaceMembersClick,
+  workspaceMembersActive = false,
   onSettingsClick,
   onSignOutClick,
   collapsible = true,
@@ -483,6 +487,55 @@ export function Sidebar({
           </div>
         )}
       </WorkspaceSection>
+
+      <div style={{ padding: effectiveCollapsed ? '0 0.25rem' : '0 0.5rem' }}>
+        {!effectiveCollapsed ? (
+          <Text
+            as="span"
+            variant="caption2"
+            color="color.text.subtle"
+            style={{ ...sectionLabelStyle, paddingLeft: '0.5rem' }}
+          >
+            Workspace
+          </Text>
+        ) : null}
+        <Button
+          variant={workspaceMembersActive ? 'secondary' : 'ghost'}
+          size="medium"
+          onClick={onWorkspaceMembersClick}
+          aria-label="Members"
+          title={effectiveCollapsed ? 'Members' : undefined}
+          style={{
+            width: '100%',
+            justifyContent: effectiveCollapsed ? 'center' : 'flex-start',
+          }}
+        >
+          {effectiveCollapsed ? (
+            <Text
+              as="span"
+              variant="caption1"
+              color="color.text.subtle"
+              style={{
+                fontWeight: 900,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                opacity: 0.9,
+              }}
+            >
+              M
+            </Text>
+          ) : (
+            <Text
+              as="span"
+              variant="body3"
+              color="color.text.DEFAULT"
+              style={{ fontWeight: 650 }}
+            >
+              Members
+            </Text>
+          )}
+        </Button>
+      </div>
 
       <ProjectScroll>
         {!effectiveCollapsed ? (

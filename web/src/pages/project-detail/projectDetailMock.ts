@@ -2,9 +2,9 @@
 export const projectDetailMock = {
   title: 'MCP Workflow',
   description:
-    'Orchestration layer for model context protocols, approvals, and audit trails across teams.',
+    'Orchestration layer for model context protocols, approvals, and audit trails across workspaces.',
   badges: [
-    { id: 'team', label: 'TEAM BLITZ', variant: 'neutral' as const },
+    { id: 'workspace', label: 'WORKSPACE BLITZ', variant: 'neutral' as const },
     { id: 'status', label: 'STATUS: PLANNED', variant: 'neutral' as const },
     { id: 'priority', label: 'PRIORITY: HIGH', variant: 'secondary' as const },
   ],
@@ -34,7 +34,7 @@ export const projectDetailMock = {
     sub: 'Last updated 2h ago',
   },
   teamLead: {
-    label: 'TEAM LEAD',
+    label: 'PROJECT LEAD',
     name: 'Elena Vance',
     title: 'Senior Curator',
   },

@@ -14,26 +14,6 @@ export async function getIssueById(issueId: string): Promise<Issue | null> {
   return rowToIssue(data as DbRow)
 }
 
-export async function getIssuesByTeamId(
-  teamId: string,
-  filter?: 'all' | 'active' | 'backlog'
-): Promise<Issue[]> {
-  const q = getClient()
-    .from('issues')
-    .select('*')
-    .eq('team_id', teamId)
-    .order('id')
-  const { data, error } = await q
-  if (error) throw error
-  let list = (data ?? []).map((r) => rowToIssue(r as DbRow))
-  if (filter === 'active') {
-    list = list.filter((i) => i.status !== 'backlog' && i.status !== 'done')
-  } else if (filter === 'backlog') {
-    list = list.filter((i) => i.status === 'backlog')
-  }
-  return list
-}
-
 export async function getIssuesByProjectId(
   projectId: string,
   filter?: 'all' | 'active' | 'backlog'

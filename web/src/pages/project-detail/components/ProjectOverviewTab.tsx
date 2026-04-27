@@ -9,9 +9,42 @@ import type { ComponentType, PropsWithChildren, CSSProperties } from 'react'
 import styled from 'styled-components'
 import { StatusCard, TeamLeadCard } from '../../../components'
 import { MetadataCard } from '../../../components/MetadataCard'
-import type { ApiProjectSummary, ApiTeamMember } from '../../../api'
-import { useProjectStatusUpdates } from '../hooks'
+import type { ApiProjectSummary, ApiWorkspaceMember } from '../../../api'
+import { useProjectAiUsage, useProjectStatusUpdates } from '../hooks'
 import { MemberDetail, openDrawer } from '../../../components'
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+
+function shortDateLabel(iso: string): string {
+  const d = new Date(iso)
+  const ms = d.getTime()
+  if (!Number.isFinite(ms)) return iso
+  return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' })
+}
+
+function groupDailyIntoWeekly(
+  daily: { date: string; tokens: number }[]
+): { label: string; tokens: number }[] {
+  if (daily.length === 0) return []
+  const buckets = new Map<number, number>()
+  for (const row of daily) {
+    const d = new Date(row.date)
+    const ms = d.getTime()
+    if (!Number.isFinite(ms)) continue
+    const bucket = Math.floor(ms / (7 * 24 * 60 * 60 * 1000))
+    buckets.set(bucket, (buckets.get(bucket) ?? 0) + row.tokens)
+  }
+  const sorted = [...buckets.entries()].sort((a, b) => a[0] - b[0])
+  const tail = sorted.slice(-12)
+  return tail.map(([, tokens], i) => ({ label: `w${i + 1}`, tokens }))
+}
 
 const MainGrid = styled.div`
   display: grid;
@@ -60,10 +93,11 @@ export function ProjectOverviewTab({
 }: {
   d: typeof projectDetailMock
   project: ApiProjectSummary | null
-  teamMembers: ApiTeamMember[]
+  teamMembers: ApiWorkspaceMember[]
 }) {
   const lead = teamMembers[0] ?? null
   const statusUpdatesQuery = useProjectStatusUpdates(project?.id)
+  const usageQuery = useProjectAiUsage(project?.id)
   const latestUpdate = statusUpdatesQuery.data?.nodes
     ?.slice()
     .sort(
@@ -88,6 +122,15 @@ export function ProjectOverviewTab({
       return 'Updated recently'
     }
   })()
+
+  const daily = usageQuery.data?.daily ?? []
+  const usageWeekly = groupDailyIntoWeekly(daily)
+  const usageDaily = daily.slice(-12).map((d) => ({
+    label: shortDateLabel(d.date),
+    tokens: d.tokens,
+  }))
+  const usageChartData =
+    daily.length > 12 ? usageWeekly : usageDaily
 
   return (
     <MainGrid>
@@ -137,7 +180,7 @@ export function ProjectOverviewTab({
                   textTransform: 'uppercase',
                 }}
               >
-                Team
+                Workspace
               </Text>
               <Text
                 as="span"
@@ -145,7 +188,7 @@ export function ProjectOverviewTab({
                 color="color.text.DEFAULT"
                 style={{ fontWeight: 700 }}
               >
-                {project?.team?.name ?? '—'}
+                {project?.workspaceId ?? '—'}
               </Text>
               <Text
                 as="span"
@@ -222,6 +265,60 @@ export function ProjectOverviewTab({
           }
         />
         <MetadataCard d={d} />
+        <ProjectSectionCard
+          variant="base"
+          borderTone="none"
+          aria-label="AI usage"
+          style={{ width: '100%' }}
+        >
+          <div style={{ width: '100%' }}>
+            <Text
+              as="div"
+              variant="heading6"
+              color="color.text.DEFAULT"
+              style={{ margin: 0, fontWeight: 700 }}
+            >
+              AI Token Usage
+            </Text>
+            <Text
+              as="div"
+              variant="body4"
+              color="color.text.subtle"
+              style={{ marginTop: 6 }}
+            >
+              {usageQuery.isLoading
+                ? 'Loading…'
+                : usageQuery.isError
+                  ? 'Failed to load.'
+                  : 'Last 30 days'}
+            </Text>
+            <div style={{ width: '100%', height: 220, marginTop: 12 }}>
+              <ResponsiveContainer>
+                <LineChart
+                  data={usageChartData}
+                  margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
+                  <XAxis dataKey="label" tickMargin={8} interval="preserveStartEnd" />
+                  <YAxis
+                    width={56}
+                    tickMargin={8}
+                    tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`}
+                  />
+                  <Tooltip />
+                  <Line
+                    type="monotone"
+                    dataKey="tokens"
+                    stroke="rgba(120, 140, 255, 0.9)"
+                    strokeWidth={2}
+                    dot={false}
+                    isAnimationActive={!usageQuery.isLoading}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </ProjectSectionCard>
       </Stack>
     </MainGrid>
   )

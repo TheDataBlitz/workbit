@@ -4,7 +4,7 @@ export type ApiProjectSummary = {
   id: string
   name: string
   description: string
-  team: { id: string; name: string }
+  workspaceId: string
   status: string
 }
 
@@ -15,7 +15,6 @@ export type ApiProjectProperties = {
   startDate?: string
   endDate?: string
   memberIds: string[]
-  teamIds: string[]
   labelIds: string[]
 }
 
@@ -79,6 +78,25 @@ export type ApiProjectIssueListItem = {
   status: string
   parentIssueId: string | null
   subIssueCount: number
+}
+
+export type ApiProjectAiUsageDaily = {
+  date: string
+  tokens: number
+  promptTokens: number
+  completionTokens: number
+}
+
+export type ApiProjectAiUsageReport = {
+  days: number
+  daily: ApiProjectAiUsageDaily[]
+  totals: {
+    requests: number
+    tokens: number
+    promptTokens: number
+    completionTokens: number
+    intelebits: number
+  }
 }
 
 export async function fetchProject(
@@ -155,5 +173,17 @@ export async function fetchProjectIssues(
 ): Promise<ApiProjectIssueListItem[]> {
   return authFetch<ApiProjectIssueListItem[]>(
     `/projects/${encodeURIComponent(projectId)}/issues?filter=${encodeURIComponent(filter)}`
+  )
+}
+
+export async function fetchProjectAiUsage(input: {
+  projectId: string
+  days?: number
+}): Promise<ApiProjectAiUsageReport> {
+  const days = typeof input.days === 'number' ? input.days : 30
+  return authFetch<ApiProjectAiUsageReport>(
+    `/projects/${encodeURIComponent(input.projectId)}/ai-usage?days=${encodeURIComponent(
+      String(days)
+    )}`
   )
 }

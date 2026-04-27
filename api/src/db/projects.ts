@@ -8,7 +8,7 @@ function projectToRow(p: Project): Record<string, unknown> {
     id: p.id,
     name: p.name,
     description: p.description,
-    team_id: p.teamId,
+    workspace_id: p.workspaceId,
     status: p.status,
   }
 }

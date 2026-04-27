@@ -5,7 +5,10 @@ import {
   type NvidiaToolCall,
   type NvidiaUsageTotals,
 } from './nvidia-client.js'
-import { runOllamaChatCompletion } from './ollama-client.js'
+import {
+  runOllamaChatCompletion,
+  streamOllamaChatCompletionText,
+} from './ollama-client.js'
 
 export type ChatRequestMessage = NvidiaChatRequestMessage
 export type ChatToolCall = NvidiaToolCall
@@ -21,7 +24,8 @@ export class AiNotConfiguredError extends Error {
 }
 
 function aiProviderFromEnv(): AiProvider {
-  const raw = (process.env.AI_PROVIDER ?? 'nvidia').trim().toLowerCase()
+  // const raw = (process.env.AI_PROVIDER ?? 'nvidia').trim().toLowerCase();
+  const raw = 'ollama'
   if (raw === 'ollama' || raw === 'nvidia') return raw
   logApiWarn('ai.unknown_provider_fallback', { provider: raw })
   return 'nvidia'
@@ -54,7 +58,7 @@ export async function runChatCompletion(input: {
   tool_calls?: ChatToolCall[]
   usage: ChatUsageTotals
 }> {
-  const provider = aiProviderFromEnv()
+  const provider = aiProviderFromEnv();
   console.log('provider', provider)
   try {
     if (provider === 'ollama') {
@@ -87,5 +91,36 @@ export async function runChatCompletion(input: {
       throw new AiNotConfiguredError(msg)
     }
     throw e
+  }
+}
+
+export type ChatCompletionTextStreamEvent =
+  | { type: 'delta'; contentDelta: string }
+  | { type: 'done'; usage: ChatUsageTotals }
+
+/**
+ * Stream-only helper for "plain text" completions.
+ * Current limitations:
+ * - Only supported for Ollama provider
+ * - Does not support tool calls / tool streaming
+ */
+export async function* streamChatCompletionText(input: {
+  messages: ChatRequestMessage[]
+}): AsyncGenerator<ChatCompletionTextStreamEvent, void, void> {
+  const provider = aiProviderFromEnv()
+  if (provider !== 'ollama') {
+    throw new Error('Streaming is only supported for Ollama provider right now.')
+  }
+
+  for await (const ev of streamOllamaChatCompletionText({
+    messages: input.messages as unknown as Parameters<
+      typeof streamOllamaChatCompletionText
+    >[0]['messages'],
+  })) {
+    if (ev.type === 'delta') {
+      yield { type: 'delta', contentDelta: ev.contentDelta }
+    } else {
+      yield { type: 'done', usage: ev.usage }
+    }
   }
 }

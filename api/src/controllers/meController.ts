@@ -24,16 +24,6 @@ export async function getMember(req: Request, res: Response) {
   }
 }
 
-export async function getTeams(_req: Request, res: Response) {
-  try {
-    const teams = await meModel.getNavTeams()
-    res.json(teams.map((t) => ({ id: t.id, name: t.name })))
-  } catch (e) {
-    logApiError(e, 'me.getTeams')
-    res.status(500).json({ error: (e as Error).message })
-  }
-}
-
 const AI_USAGE_MAX_DAYS = 90
 
 export async function getAiUsage(req: Request, res: Response) {

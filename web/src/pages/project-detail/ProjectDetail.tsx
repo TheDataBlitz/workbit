@@ -14,7 +14,7 @@ import {
   useProjectProperties,
   useProjectSummary,
   useSidebarWorkspaces,
-  useTeamMembers,
+  useWorkspaceMembers,
   useWorkspaceProjects,
 } from './hooks'
 import { ProjectDecisionsTab } from './components/ProjectDecisionsTab'
@@ -25,6 +25,7 @@ import { ProjectUpdatesTab } from './components/ProjectUpdatesTab'
 import { pdT } from './pdTokens'
 import { projectDetailMock, type ProjectDetailTabId } from './projectDetailMock'
 import { ProjectOverviewTab } from './components/ProjectOverviewTab'
+import { ApiHttpError } from '../../api/client'
 
 /**
  * `@thedatablitz/card` ships `variant="base"` + `borderTone` at runtime; the
@@ -104,22 +105,15 @@ const ProjectHeader = ({
   d: typeof projectDetailMock
   titleOverride?: string
   descriptionOverride?: string
-  badgeLabelsOverride?: { team?: string; status?: string; priority?: string }
+  badgeLabelsOverride?: { status?: string; priority?: string }
   members: Array<{ id: string; name: string }>
   leadId?: string
   onCollaboratorsClick?: () => void
 }) => {
   const badges =
     badgeLabelsOverride &&
-    (badgeLabelsOverride.team ||
-      badgeLabelsOverride.status ||
-      badgeLabelsOverride.priority)
+    (badgeLabelsOverride.status || badgeLabelsOverride.priority)
       ? [
-          {
-            id: 'team',
-            label: badgeLabelsOverride.team ?? 'TEAM —',
-            variant: 'neutral' as const,
-          },
           {
             id: 'status',
             label: badgeLabelsOverride.status ?? 'STATUS —',
@@ -240,10 +234,15 @@ export function ProjectDetail() {
   const { sidebarProjects } = useWorkspaceProjects(selectedWorkspaceId)
   const project = useProjectSummary(projectId)
   const projectProperties = useProjectProperties(projectId)
-  const teamMembers = useTeamMembers(project.data?.team?.id)
+  const workspaceMembers = useWorkspaceMembers(selectedWorkspaceId)
+
+  const projectNotFound =
+    project.isError &&
+    project.error instanceof ApiHttpError &&
+    project.error.status === 404
 
   const memberListItems = useMemo(() => {
-    const all = teamMembers.data ?? []
+    const all = workspaceMembers.data ?? []
     const memberIds = projectProperties.data?.memberIds ?? []
     const scoped =
       memberIds.length > 0 ? all.filter((m) => memberIds.includes(m.id)) : all
@@ -256,7 +255,7 @@ export function ProjectDetail() {
       }))
     }
     return []
-  }, [projectProperties.data?.memberIds, teamMembers.data])
+  }, [projectProperties.data?.memberIds, workspaceMembers.data])
 
   const workspaceProjectIds = useMemo(
     () => new Set(sidebarProjects.map((p) => p.id)),
@@ -269,6 +268,7 @@ export function ProjectDetail() {
     if (!selectedWorkspaceId) return
     if (sidebarProjects.length === 0) return
     if (!projectId) return
+    if (projectNotFound) return
     if (workspaceProjectIds.has(projectId)) return
     if (!firstWorkspaceProjectId) return
     navigate(`/projects/${firstWorkspaceProjectId}`, { replace: true })
@@ -279,6 +279,7 @@ export function ProjectDetail() {
     projectId,
     firstWorkspaceProjectId,
     navigate,
+    projectNotFound,
   ])
 
   if (projectId == null || projectId === '') {
@@ -311,6 +312,8 @@ export function ProjectDetail() {
             }
             selectedProjectId={projectId}
             onProjectSelect={(id) => navigate(`/projects/${id}`)}
+            onWorkspaceMembersClick={() => navigate('/workspace/members')}
+            workspaceMembersActive={false}
             onSettingsClick={() =>
               navigate(
                 `/settings?fromProjectId=${encodeURIComponent(projectId)}`,
@@ -326,14 +329,35 @@ export function ProjectDetail() {
         <Page>
           <Shell>
             <Stack gap="400" fullWidth>
+              {projectNotFound ? (
+                <DetailPanel aria-label="Project not found">
+                  <Stack gap="200" fullWidth>
+                    <Text
+                      as="h1"
+                      variant="heading3"
+                      color="color.text.DEFAULT"
+                      style={{ margin: 0, fontWeight: 800 }}
+                    >
+                      Project not found
+                    </Text>
+                    <Text
+                      as="p"
+                      variant="body2"
+                      color="color.text.subtle"
+                      style={{ margin: 0, maxWidth: '44rem', lineHeight: 1.6 }}
+                    >
+                      This URL doesn’t match any project in the selected
+                      workspace. Pick a project from the sidebar, or ask
+                      Intellebit to create one.
+                    </Text>
+                  </Stack>
+                </DetailPanel>
+              ) : (
               <ProjectHeader
                 d={d}
                 titleOverride={project.data?.name}
                 descriptionOverride={project.data?.description}
                 badgeLabelsOverride={{
-                  team: project.data?.team?.name
-                    ? `TEAM: ${project.data.team.name}`.toUpperCase()
-                    : undefined,
                   status: project.data?.status
                     ? `STATUS: ${project.data.status}`.toUpperCase()
                     : undefined,
@@ -373,6 +397,7 @@ export function ProjectDetail() {
                   })
                 }}
               />
+              )}
               <Box fullWidth>
                 <ProjectDetailTabs
                   tabs={[...d.tabs]}
@@ -381,7 +406,18 @@ export function ProjectDetail() {
                 />
               </Box>
 
-              {tab === 'updates' ? (
+              {projectNotFound ? (
+                <DetailPanel>
+                  <Text
+                    as="p"
+                    variant="body2"
+                    color="color.text.subtle"
+                    style={{ margin: 0 }}
+                  >
+                    No project data to display.
+                  </Text>
+                </DetailPanel>
+              ) : tab === 'updates' ? (
                 <ProjectUpdatesTab />
               ) : tab === 'issues' ? (
                 <ProjectIssuesTab />
@@ -391,7 +427,7 @@ export function ProjectDetail() {
                 <ProjectOverviewTab
                   d={d}
                   project={project.data ?? null}
-                  teamMembers={teamMembers.data ?? []}
+                  teamMembers={workspaceMembers.data ?? []}
                 />
               ) : (
                 <DetailPanel>
@@ -412,8 +448,13 @@ export function ProjectDetail() {
             title={d.intelBar.title}
             subtitle={d.intelBar.subtitle}
             ctaLabel={`${d.intelBar.cta} →`}
-            projectId={projectId}
+            // Only pass a projectId once we have a real project loaded.
+            // When landing in a workspace with no projects (or when the route param is a workspace slug),
+            // provide workspace context so Intellebit can suggest + create the first project.
+            projectId={project.data?.id}
             projectName={project.data?.name}
+            workspaceId={selectedWorkspaceId ?? undefined}
+            allowOpenWithoutContext
           />
         </Page>
       </ContentHost>

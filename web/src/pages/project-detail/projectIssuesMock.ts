@@ -13,6 +13,8 @@ export type ProjectIssueItem = {
   title: string
   dueDateLabel: string
   status: IssueStatusKind
+  /** Display label (e.g. from API). If omitted, derived from `status`. */
+  statusLabel?: string
   /** Drives accordion left-rail tone in `@thedatablitz/accordion` metadata variant. */
   metadataTone: 'critical' | 'active' | 'neutral'
   owner: { name: string; title: string }

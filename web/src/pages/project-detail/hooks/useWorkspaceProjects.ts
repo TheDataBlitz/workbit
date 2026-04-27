@@ -1,20 +1,26 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchWorkspaceTeams } from '../../../api'
+import { fetchWorkspaceProjects } from '../../../api'
 import type { SidebarProject } from '../../../components/Sidebar'
 
 export function useWorkspaceProjects(workspaceId: string | null) {
   const query = useQuery({
-    queryKey: ['workspace', 'teams', { workspaceId }],
+    queryKey: ['workspace', 'projects', { workspaceId }],
     enabled: Boolean(workspaceId),
-    queryFn: () => fetchWorkspaceTeams({ workspaceId: workspaceId! }),
+    queryFn: fetchWorkspaceProjects,
   })
 
   const sidebarProjects: SidebarProject[] = (query.data ?? [])
-    .filter((t) => t.project)
-    .map((t) => ({
-      id: t.project!.id,
-      name: t.project!.name,
-      status: 'active',
+    .filter((p) => p.workspaceId === workspaceId)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      status:
+        p.status.toLowerCase() === 'archived'
+          ? 'archived'
+          : p.status.toLowerCase() === 'in_review'
+            ? 'in_review'
+            : 'active',
+      dimmed: p.status.toLowerCase() === 'archived',
     }))
 
   return {

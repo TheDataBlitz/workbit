@@ -2,27 +2,32 @@ import { z } from 'zod';
 export const ProjectId = z
     .string()
     .min(1)
-    .describe('Project id. If unknown: call `getProject` and match by name.');
-export const TeamId = z
+    .describe('Project id.');
+export const WorkspaceId = z
     .string()
     .min(1)
-    .describe('Team id. If unknown: call `teamMembers` or `getProject`.');
+    .describe('Workspace id.');
 export const IssueId = z
     .string()
     .min(1)
-    .describe('Issue id. If unknown: call `getIssue` (or list issues first).');
+    .describe('Issue id.');
 export const MemberId = z
     .string()
     .min(1)
-    .describe('Member id. If unknown: call `teamMembers`.');
+    .describe('Member id.');
 export const DecisionId = z
     .string()
     .min(1)
-    .describe('Decision id. If unknown: call `getDecision` (or list decisions).');
+    .describe('Decision id.');
 export const DocumentId = z
     .string()
     .min(1)
-    .describe('Document id. If unknown: call `getProjectDocuments`.');
+    .describe('Document id.');
 export const DecisionType = z.enum(['major', 'minor']);
-export const DecisionStatus = z.enum(['proposed', 'approved', 'rejected', 'superseded']);
+export const DecisionStatus = z.enum([
+    'proposed',
+    'approved',
+    'rejected',
+    'superseded',
+]);
 export const ProjectHealthStatus = z.enum(['on-track', 'at-risk', 'off-track']);

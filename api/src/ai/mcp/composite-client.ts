@@ -35,14 +35,18 @@ export function createCompositeMcpClient(input: {
     for (const { key, client } of input.clients) {
       const page = await client.listTools()
       for (const t of page.tools ?? []) {
-        const prefixed = `${key}.${t.name}`
-        toolToClient.set(prefixed, { client, name: t.name })
+        const name = key === 'workbit' ? t.name : `${key}.${t.name}`
+        toolToClient.set(name, { client, name: t.name })
         merged.push({
           ...t,
-          name: prefixed,
-          description: t.description
-            ? `[${key}] ${t.description}`
-            : `[${key}] ${t.name}`,
+          name,
+          ...(key === 'workbit'
+            ? {}
+            : {
+                description: t.description
+                  ? `[${key}] ${t.description}`
+                  : `[${key}] ${t.name}`,
+              }),
         })
       }
     }

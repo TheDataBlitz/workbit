@@ -1,4 +1,4 @@
--- Create separate tables for projects, teams, members, roles, etc.
+-- Create separate tables for workspaces, projects, members, roles, etc.
 -- Run this in Supabase Dashboard → SQL Editor (replaces single store blob).
 -- Then run: cd api && npm run seed
 
@@ -6,14 +6,8 @@
 create table if not exists public.projects (
   id text primary key,
   name text not null,
-  team_id text not null,
+  workspace_id text not null,
   status text not null default 'Active'
-);
-create table if not exists public.teams (
-  id text primary key,
-  name text not null,
-  project_id text,
-  member_ids jsonb not null default '[]'::jsonb
 );
 create table if not exists public.members (
   id text primary key,
@@ -21,15 +15,14 @@ create table if not exists public.members (
   username text not null,
   avatar_src text,
   status text not null,
-  joined text not null,
-  team_ids jsonb not null default '[]'::jsonb
+  joined text not null
 );
 create table if not exists public.views (
   id text primary key,
   name text not null,
   type text not null,
   owner_id text not null,
-  team_id text
+  workspace_id text
 );
 create table if not exists public.invitations (
   id text primary key,
@@ -38,14 +31,15 @@ create table if not exists public.invitations (
 );
 create table if not exists public.status_updates (
   id text primary key,
-  team_id text not null,
   status text not null,
   content text not null,
   author_id text not null,
   author_name text not null,
   author_avatar_src text,
   created_at timestamptz not null,
-  comment_count int not null default 0
+  comment_count int not null default 0,
+  project_id text,
+  issue_id text
 );
 create table if not exists public.comments (
   id text primary key,
@@ -67,28 +61,18 @@ create table if not exists public.comments (
   )
 );
 create table if not exists public.project_properties (
-  team_id text primary key,
+  project_id text primary key,
   status text not null default 'planned',
   priority text not null default 'high',
   lead_id text,
   start_date text,
   end_date text,
   member_ids jsonb not null default '[]'::jsonb,
-  team_ids jsonb not null default '[]'::jsonb,
   label_ids jsonb not null default '[]'::jsonb
-);
-create table if not exists public.milestones (
-  id text primary key,
-  team_id text not null,
-  name text not null,
-  progress int not null default 0,
-  total int not null default 0,
-  target_date text not null default '',
-  description text
 );
 create table if not exists public.activity (
   id text primary key,
-  team_id text not null,
+  project_id text not null,
   icon text not null,
   message text not null,
   date text not null
@@ -100,8 +84,7 @@ create table if not exists public.issues (
   assignee_name text,
   date text not null,
   status text not null,
-  team_id text,
-  project_id text
+  project_id text not null
 );
 create table if not exists public.decisions (
   id text primary key,
@@ -134,7 +117,6 @@ create table if not exists public.notifications (
 
 -- RLS
 alter table public.projects enable row level security;
-alter table public.teams enable row level security;
 alter table public.members enable row level security;
 alter table public.views enable row level security;
 alter table public.roles enable row level security;
@@ -142,7 +124,6 @@ alter table public.invitations enable row level security;
 alter table public.status_updates enable row level security;
 alter table public.comments enable row level security;
 alter table public.project_properties enable row level security;
-alter table public.milestones enable row level security;
 alter table public.activity enable row level security;
 alter table public.issues enable row level security;
 alter table public.decisions enable row level security;
@@ -150,8 +131,6 @@ alter table public.notifications enable row level security;
 
 drop policy if exists "projects_service_role" on public.projects;
 create policy "projects_service_role" on public.projects for all using (true) with check (true);
-drop policy if exists "teams_service_role" on public.teams;
-create policy "teams_service_role" on public.teams for all using (true) with check (true);
 drop policy if exists "members_service_role" on public.members;
 create policy "members_service_role" on public.members for all using (true) with check (true);
 drop policy if exists "views_service_role" on public.views;
@@ -166,8 +145,6 @@ drop policy if exists "comments_service_role" on public.comments;
 create policy "comments_service_role" on public.comments for all using (true) with check (true);
 drop policy if exists "project_properties_service_role" on public.project_properties;
 create policy "project_properties_service_role" on public.project_properties for all using (true) with check (true);
-drop policy if exists "milestones_service_role" on public.milestones;
-create policy "milestones_service_role" on public.milestones for all using (true) with check (true);
 drop policy if exists "activity_service_role" on public.activity;
 create policy "activity_service_role" on public.activity for all using (true) with check (true);
 drop policy if exists "issues_service_role" on public.issues;

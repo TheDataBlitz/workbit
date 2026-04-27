@@ -39,9 +39,9 @@ Without Supabase env vars, the API uses `data.json`. The seed script does not cr
 
 ## Endpoints (as per spec)
 
-- **Workspace:** `GET /api/v1/workspace/projects|teams|members|roles`, `POST /api/v1/workspace/members/invite`
-- **Teams:** `GET /api/v1/teams/:teamId`, `GET/POST/PATCH` project, updates, comments, milestones; `GET /api/v1/teams/:teamId/issues`
-- **Issues:** `PATCH /api/v1/issues/:issueId`
-- **Me:** `GET /api/v1/me/teams|notifications`
+- **Workspace:** `GET /api/v1/workspace/projects|members|roles`, `POST /api/v1/workspace/members/invite`
+- **Projects:** `GET /api/v1/projects/:projectId`, `GET /api/v1/projects/:projectId/issues`, `GET/POST /api/v1/projects/:projectId/status-updates`, `GET/POST /api/v1/projects/:projectId/status-updates/:updateId/comments`
+- **Issues:** `POST /api/v1/issues` (requires `projectId`), `PATCH /api/v1/issues/:issueId`
+- **Me:** `GET /api/v1/me/notifications`
 
 First run creates `data.json` with seed data if the store is empty.

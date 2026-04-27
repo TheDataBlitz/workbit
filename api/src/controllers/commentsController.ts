@@ -1,8 +1,7 @@
 import type { Request, Response } from 'express'
-import * as teamsModel from '../models/teams.js'
 import * as issuesModel from '../models/issues.js'
+import * as statusUpdatesModel from '../models/statusUpdates.js'
 import { logApiError } from '../utils/log.js'
-import { isSerializedCommentEmpty } from '../utils/lexicalCommentContent.js'
 
 const DEFAULT_AUTHOR_NAME = 'You'
 
@@ -90,7 +89,7 @@ export async function postIssueComment(req: Request, res: Response) {
 export async function getStatusUpdateComments(req: Request, res: Response) {
   try {
     const { updateId } = req.params
-    const comments = await teamsModel.getStatusUpdateComments(updateId)
+    const comments = await statusUpdatesModel.getStatusUpdateComments(updateId)
     res.json(
       comments.map((c) => ({
         id: c.id,
@@ -111,7 +110,7 @@ export async function getStatusUpdateComments(req: Request, res: Response) {
 
 export async function postStatusUpdateComment(req: Request, res: Response) {
   try {
-    const { teamId, updateId } = req.params
+    const { updateId } = req.params
     const { content, parentCommentId } = req.body as {
       content?: string
       parentCommentId?: string | null
@@ -120,14 +119,9 @@ export async function postStatusUpdateComment(req: Request, res: Response) {
       res.status(400).json({ error: 'content is required' })
       return
     }
-    if (isSerializedCommentEmpty(content)) {
-      res.status(400).json({ error: 'content is required' })
-      return
-    }
 
     const authorName = req.user?.email ?? DEFAULT_AUTHOR_NAME
-    const comment = await teamsModel.addStatusUpdateComment(
-      teamId,
+    const comment = await statusUpdatesModel.addStatusUpdateComment(
       updateId,
       content,
       authorName,
@@ -142,7 +136,6 @@ export async function postStatusUpdateComment(req: Request, res: Response) {
     res.status(201).json({ comments: [comment] })
   } catch (e) {
     logApiError(e, 'comments.postStatusUpdateComment', {
-      teamId: req.params.teamId,
       updateId: req.params.updateId,
     })
     const err = e as Error

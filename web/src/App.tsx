@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { HomePage, LoginPage, ProjectDetail } from './pages'
+import { HomePage, LoginPage, ProjectDetail, WorkspaceMembers } from './pages'
 import {
   IntellebitIntegrationPage,
   IntellebitUsagePage,
@@ -18,6 +18,7 @@ export default function App() {
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="/home" element={<HomePage />} />
         <Route path="/workspaces" element={<WorkspaceList />} />
+        <Route path="/workspace/members" element={<WorkspaceMembers />} />
         <Route path="/projects/:projectId?" element={<ProjectDetail />} />
         <Route path="/settings" element={<SettingsLayout />}>
           <Route index element={<Navigate to="intellebit-usage" replace />} />

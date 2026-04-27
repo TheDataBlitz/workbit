@@ -1,29 +1,27 @@
 import { generateId } from './store.js'
 import type {
   Project,
-  Team,
   Member,
   Invitation,
   StatusUpdate,
   ProjectProperties,
 } from './types.js'
 import * as dbProjects from '../db/projects.js'
-import * as dbTeams from '../db/teams.js'
 import * as dbStatusUpdates from '../db/statusUpdates.js'
 import * as dbMembers from '../db/members.js'
 import * as dbInvitations from '../db/invitations.js'
 import * as dbProjectProperties from '../db/projectProperties.js'
 import * as dbProjectAgents from '../db/projectAgents.js'
-import { insertTeam } from '../db/teams.js'
 
-const DEFAULT_PROJECT_AGENT_KEYS = ['workbit_mcp_analyzer'] as const
+// Agents enabled by default for every new project.
+// Keep this list small; users can enable/disable per project via /projects/:projectId/agents.
+const DEFAULT_PROJECT_AGENT_KEYS = [
+  'workbit_orchestrator',
+  'workbit_mcp_analyzer',
+] as const
 
 export async function getProjects(): Promise<Project[]> {
   return dbProjects.getProjects()
-}
-
-export async function getTeams(): Promise<Team[]> {
-  return dbTeams.getTeams()
 }
 
 export async function getMembers(): Promise<Member[]> {
@@ -34,7 +32,7 @@ export type ProjectListItemApi = {
   id: string
   name: string
   description: string
-  team: { id: string; name: string }
+  workspaceId: string
   status: string
 }
 
@@ -66,23 +64,14 @@ function statusUpdateToProjectApiNode(
 }
 
 export async function getProjectsForApi(): Promise<ProjectListItemApi[]> {
-  const [projects, teams] = await Promise.all([
-    dbProjects.getProjects(),
-    dbTeams.getTeams(),
-  ])
-  const teamsById = new Map(teams.map((t) => [t.id, t]))
-  return projects.map((p) => {
-    const team = teamsById.get(p.teamId)
-    return {
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      team: team
-        ? { id: team.id, name: team.name }
-        : { id: p.teamId, name: p.teamId },
-      status: p.status,
-    }
-  })
+  const projects = await dbProjects.getProjects()
+  return projects.map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    workspaceId: p.workspaceId,
+    status: p.status,
+  }))
 }
 
 /** Single project for GET /api/v1/projects/:projectId (metadata only). */
@@ -91,14 +80,11 @@ export async function getProjectByIdForApi(
 ): Promise<ProjectListItemApi | null> {
   const project = await dbProjects.getProjectById(projectId)
   if (!project) return null
-  const team = await dbTeams.getTeamById(project.teamId)
   return {
     id: project.id,
     name: project.name,
     description: project.description,
-    team: team
-      ? { id: team.id, name: team.name }
-      : { id: project.teamId, name: project.teamId },
+    workspaceId: project.workspaceId,
     status: project.status,
   }
 }
@@ -109,9 +95,7 @@ export async function getProjectPropertiesForApi(
 ): Promise<ProjectProperties | null> {
   const project = await dbProjects.getProjectById(projectId)
   if (!project) return null
-  const team = await dbTeams.getTeamById(project.teamId)
-  if (!team) return null
-  return await dbProjectProperties.getProjectPropertiesByTeamId(team.id)
+  return await dbProjectProperties.getProjectPropertiesByTeamId(projectId)
 }
 
 /** Workspace id for a project (tenant key for AI usage / shop_id). */
@@ -120,8 +104,7 @@ export async function getWorkspaceIdForProject(
 ): Promise<string | null> {
   const project = await dbProjects.getProjectById(projectId)
   if (!project) return null
-  const team = await dbTeams.getTeamById(project.teamId)
-  const wid = team?.workspaceId?.trim()
+  const wid = project.workspaceId?.trim()
   return wid && wid.length > 0 ? wid : null
 }
 
@@ -140,69 +123,18 @@ export async function getProjectStatusUpdatesForApi(
   }
 }
 
-export async function addTeamMembersToProject(
-  projectId: string
-): Promise<ProjectProperties | null> {
-  const project = await dbProjects.getProjectById(projectId)
-  if (!project) return null
-  const team = await dbTeams.getTeamById(project.teamId)
-  if (!team) return null
-
-  const current = await dbProjectProperties.getProjectPropertiesByTeamId(
-    team.id
-  )
-  const teamMemberIds = team.memberIds ?? []
-  const mergedMemberIds = [
-    ...new Set([...(current.memberIds ?? []), ...teamMemberIds]),
-  ]
-
-  const next: ProjectProperties = { ...current, memberIds: mergedMemberIds }
-  await dbProjectProperties.upsertProjectProperties(team.id, next)
-  return next
-}
-
 export async function assignProjectLead(
   projectId: string,
   leadId: string | null
 ): Promise<ProjectProperties | null> {
   const project = await dbProjects.getProjectById(projectId)
   if (!project) return null
-  const team = await dbTeams.getTeamById(project.teamId)
-  if (!team) return null
-
   const current = await dbProjectProperties.getProjectPropertiesByTeamId(
-    team.id
+    projectId
   )
   const next: ProjectProperties = { ...current, leadId: leadId ?? undefined }
-  await dbProjectProperties.upsertProjectProperties(team.id, next)
+  await dbProjectProperties.upsertProjectProperties(projectId, next)
   return next
-}
-
-export type TeamListItemApi = {
-  id: string
-  name: string
-  memberCount: number
-  project: { id: string; name: string } | null
-}
-
-export async function getTeamsForApi(
-  workspaceId: string,
-  memberId?: string
-): Promise<TeamListItemApi[]> {
-  const [teams, projects] = await Promise.all([
-    dbTeams.getTeamsByWorkspace(workspaceId, memberId),
-    dbProjects.getProjects(),
-  ])
-  const projectsById = new Map(projects.map((p) => [p.id, p]))
-  return teams.map((t) => {
-    const project = t.projectId ? projectsById.get(t.projectId) : undefined
-    return {
-      id: t.id,
-      name: t.name,
-      memberCount: t.memberIds?.length ?? 0,
-      project: project ? { id: project.id, name: project.name } : null,
-    }
-  })
 }
 
 export type MemberListItemApi = {
@@ -214,19 +146,11 @@ export type MemberListItemApi = {
   joined: string
   provisioned: boolean
   uid: string | null
-  teams: string
 }
 
 export async function getMembersForApi(): Promise<MemberListItemApi[]> {
-  const [members, teams] = await Promise.all([
-    dbMembers.getMembers(),
-    dbTeams.getTeams(),
-  ])
-  const teamsById = new Map(teams.map((t) => [t.id, t.name]))
+  const members = await dbMembers.getMembers()
   return members.map((m) => {
-    const teamNames = m.teamIds
-      .map((tid) => teamsById.get(tid))
-      .filter(Boolean) as string[]
     return {
       id: m.id,
       name: m.name,
@@ -236,7 +160,6 @@ export async function getMembersForApi(): Promise<MemberListItemApi[]> {
       joined: m.joined,
       provisioned: m.provisioned ?? false,
       uid: m.uid ?? m.userAuthId ?? null,
-      teams: teamNames.length ? teamNames.join(', ') : '—',
     }
   })
 }
@@ -256,7 +179,6 @@ export interface CreateMemberInput {
   username: string
   status: string
   email?: string
-  teamIds?: string[]
   uid?: string | null
   userAuthId?: string | null
   provisioned?: boolean
@@ -273,26 +195,12 @@ export async function createMember(input: CreateMemberInput): Promise<Member> {
     avatarSrc: undefined,
     status: input.status,
     joined: new Date().toISOString(),
-    teamIds: input.teamIds ?? [],
     uid: authId,
     provisioned: isProvisioned,
     userAuthId: authId,
   }
 
   await dbMembers.insertMember(member)
-
-  if (member.teamIds.length > 0) {
-    const teams = await dbTeams.getTeams()
-    const teamsById = new Map(teams.map((t) => [t.id, t]))
-    for (const teamId of member.teamIds) {
-      const team = teamsById.get(teamId)
-      if (team && !team.memberIds.includes(member.id)) {
-        await dbTeams.updateTeam(teamId, {
-          memberIds: [...team.memberIds, member.id],
-        })
-      }
-    }
-  }
 
   return member
 }
@@ -318,45 +226,65 @@ export async function provisionMember(
   return { ...member, provisioned: true, uid: userAuthId, userAuthId }
 }
 
-export async function createTeam(input: {
-  workspaceId: string
-  name: string
-}): Promise<Team> {
-  const team: Team = {
-    id: generateId(),
-    name: input.name,
-    workspaceId: input.workspaceId,
-    memberIds: [],
+export async function updateMemberForApi(
+  memberId: string,
+  patch: Partial<
+    Pick<Member, 'name' | 'username' | 'avatarSrc' | 'status' | 'provisioned'>
+  >
+): Promise<MemberListItemApi> {
+  const existing = await dbMembers.getMemberById(memberId)
+  if (!existing) {
+    throw new Error('Member not found')
   }
-  await insertTeam(team)
-  return team
+
+  const next: Partial<
+    Pick<Member, 'name' | 'username' | 'avatarSrc' | 'status' | 'provisioned'>
+  > = {}
+
+  if (patch.name !== undefined) next.name = patch.name
+  if (patch.username !== undefined) next.username = patch.username
+  if (patch.avatarSrc !== undefined) next.avatarSrc = patch.avatarSrc
+  if (patch.status !== undefined) next.status = patch.status
+  if (patch.provisioned !== undefined) next.provisioned = patch.provisioned
+
+  await dbMembers.updateMember(memberId, next)
+
+  const updated = await dbMembers.getMemberById(memberId)
+  if (!updated) {
+    throw new Error('Member not found after update')
+  }
+
+  return {
+    id: updated.id,
+    name: updated.name,
+    username: updated.username,
+    avatarSrc: updated.avatarSrc,
+    status: updated.status,
+    joined: updated.joined,
+    provisioned: updated.provisioned ?? false,
+    uid: updated.uid ?? updated.userAuthId ?? null,
+  }
 }
 
 export async function createProject(input: {
   name: string
   description?: string
-  teamId: string
+  workspaceId: string
   status?: string
-}): Promise<{ project: Project; team: Team }> {
-  const team = await dbTeams.getTeamById(input.teamId)
-  if (!team) {
-    throw new Error('Team not found')
-  }
-
+}): Promise<{ project: Project }> {
   const project: Project = {
     id: generateId(),
     name: input.name,
     description: input.description?.trim() ?? '',
-    teamId: input.teamId,
+    workspaceId: input.workspaceId,
     status: input.status ?? 'Active',
   }
 
   await dbProjects.insertProject(project)
-  await dbTeams.updateTeam(input.teamId, { projectId: project.id })
 
   for (const k of DEFAULT_PROJECT_AGENT_KEYS) {
     await dbProjectAgents.addProjectAgent(project.id, k)
   }
 
-  return { project, team }
+  return { project }
 }

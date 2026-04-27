@@ -7,17 +7,16 @@ const DEFAULT: ProjectProperties = {
   status: 'planned',
   priority: 'high',
   memberIds: [],
-  teamIds: [],
   labelIds: [],
 }
 
 export async function getProjectPropertiesByTeamId(
-  teamId: string
+  projectId: string
 ): Promise<ProjectProperties> {
   const { data, error } = await getClient()
     .from('project_properties')
     .select('*')
-    .eq('team_id', teamId)
+    .eq('project_id', projectId)
     .maybeSingle()
   if (error) throw error
   if (!data) return DEFAULT
@@ -25,22 +24,21 @@ export async function getProjectPropertiesByTeamId(
 }
 
 export async function upsertProjectProperties(
-  teamId: string,
+  projectId: string,
   props: ProjectProperties
 ): Promise<void> {
   const row = {
-    team_id: teamId,
+    project_id: projectId,
     status: props.status,
     priority: props.priority,
     lead_id: props.leadId ?? null,
     start_date: props.startDate ?? null,
     end_date: props.endDate ?? null,
     member_ids: props.memberIds ?? [],
-    team_ids: props.teamIds ?? [],
     label_ids: props.labelIds ?? [],
   }
   const { error } = await getClient()
     .from('project_properties')
-    .upsert(row as never, { onConflict: 'team_id' })
+    .upsert(row as never, { onConflict: 'project_id' })
   if (error) throw error
 }

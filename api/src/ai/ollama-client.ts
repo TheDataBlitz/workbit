@@ -22,6 +22,10 @@ type OllamaChatApiResponse = {
       content?: string | null
       tool_calls?: OllamaToolCall[]
     }
+    delta?: {
+      content?: string | null
+      tool_calls?: OllamaToolCall[]
+    }
   }>
   usage?: {
     prompt_tokens?: number
@@ -124,7 +128,8 @@ function ollamaBaseUrl(): string {
 }
 
 function requireOllamaModel(): string {
-  const model = 'gemma4:e2b'
+  // const model = 'gemma4:e2b'
+  const model = 'gemma4:e4b';
   if (!model) throw new AiNotConfiguredError()
   return model
 }
@@ -219,4 +224,111 @@ export async function runOllamaChatCompletion(input: {
     tool_calls: message?.tool_calls,
     usage: usageFromResponse(data),
   }
+}
+
+type OllamaStreamDeltaEvent = {
+  type: 'delta'
+  contentDelta: string
+}
+type OllamaStreamDoneEvent = {
+  type: 'done'
+  usage: OllamaUsageTotals
+}
+
+function splitSseLines(buffer: string): { lines: string[]; rest: string } {
+  const parts = buffer.split(/\r?\n/)
+  // Keep last partial line (no trailing newline yet).
+  const rest = buffer.endsWith('\n') || buffer.endsWith('\r') ? '' : (parts.pop() ?? '')
+  return { lines: parts, rest }
+}
+
+function extractSseDataLines(lines: string[]): string[] {
+  const out: string[] = []
+  for (const raw of lines) {
+    const line = raw.trimEnd()
+    if (!line) continue
+    if (line.startsWith('data:')) {
+      out.push(line.slice('data:'.length).trimStart())
+    }
+  }
+  return out
+}
+
+/**
+ * Stream a chat completion from Ollama's OpenAI-compatible API (SSE `data:` lines).
+ * This yields incremental text deltas; tool call streaming is not currently exposed.
+ */
+export async function* streamOllamaChatCompletionText(input: {
+  messages: OllamaChatRequestMessage[]
+}): AsyncGenerator<OllamaStreamDeltaEvent | OllamaStreamDoneEvent, void, void> {
+  const body: Record<string, unknown> = {
+    model: requireOllamaModel(),
+    messages: input.messages,
+    max_tokens: 2048,
+    temperature: 0.2,
+    stream: true,
+  }
+
+  const url = `${ollamaBaseUrl()}/v1/chat/completions`
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body: JSON.stringify(body),
+    })
+  } catch (e) {
+    logApiError(e, 'ollama.fetch.stream', { url })
+    throw e instanceof Error ? e : new Error(String(e))
+  }
+
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as OllamaChatApiResponse
+    const message = extractOllamaErrorMessage(data, res)
+    throw new Error(`Ollama API ${res.status}: ${message}`)
+  }
+
+  if (!res.body) {
+    throw new Error('Ollama streaming response missing body.')
+  }
+
+  const decoder = new TextDecoder()
+  const reader = res.body.getReader()
+  let buffer = ''
+  let finalUsage: OllamaUsageTotals = { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
+
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+
+    const { lines, rest } = splitSseLines(buffer)
+    buffer = rest
+
+    const datas = extractSseDataLines(lines)
+    for (const d of datas) {
+      if (!d) continue
+      if (d === '[DONE]') {
+        yield { type: 'done', usage: finalUsage }
+        return
+      }
+      let json: OllamaChatApiResponse | null = null
+      try {
+        json = JSON.parse(d) as OllamaChatApiResponse
+      } catch {
+        continue
+      }
+      if (json?.usage) finalUsage = usageFromResponse(json)
+      const delta = json?.choices?.[0]?.delta?.content
+      if (typeof delta === 'string' && delta.length > 0) {
+        yield { type: 'delta', contentDelta: delta }
+      }
+    }
+  }
+
+  // If provider ended without [DONE], still flush done.
+  yield { type: 'done', usage: finalUsage }
 }

@@ -30,7 +30,7 @@ export const projectDecisionsMock = {
       rationale:
         'Vendor APIs for the legacy monolith exceeded SLOs during load tests. Moving editorial workflows to a headless layer decouples release cycles and aligns with the MCP gateway roadmap.',
       impact:
-        'Editorial ships unblock within two sprints; platform team owns the integration contract. Downstream consumers migrate behind a feature flag with a six-week sunset for the old stack.',
+        'Editorial ships unblock within two sprints; platform group owns the integration contract. Downstream consumers migrate behind a feature flag with a six-week sunset for the old stack.',
     },
     {
       id: 'd2',

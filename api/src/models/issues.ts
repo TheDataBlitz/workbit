@@ -3,10 +3,8 @@ import { GoogleGenAI } from '@google/genai'
 import { generateId } from './store.js'
 import * as db from '../db/issues.js'
 import * as dbIssueComments from '../db/issueComments.js'
-import { getTeamById } from '../db/teams.js'
 import { getMemberById } from '../db/members.js'
 import { getProjectById } from '../db/projects.js'
-import { coerceAndNormalizeIssueDescription } from '../utils/issueDescriptionLexical.js'
 
 export type IssueListItemApi = {
   id: string
@@ -37,21 +35,8 @@ export type IssueDetailApi = {
   assignee: { id: string; name: string } | null
   date: string
   status: string
-  teamId: string | null
-  team: { id: string; name: string } | null
   project: { id: string; name: string } | null
   parentIssueId?: string
-}
-
-export async function getTeamIssues(
-  teamId: string,
-  filter?: 'all' | 'active' | 'backlog'
-): Promise<Issue[]> {
-  const team = await getTeamById(teamId)
-  if (team?.projectId) {
-    return db.getIssuesByProjectId(team.projectId, filter)
-  }
-  return db.getIssuesByTeamId(teamId, filter)
 }
 
 export async function getProjectIssues(
@@ -160,18 +145,6 @@ export async function getIssueById(issueId: string): Promise<Issue | null> {
   return db.getIssueById(issueId)
 }
 
-/** Resolve teamId from issue (direct or via project) for use when creating status updates. */
-export async function getEffectiveTeamIdForIssue(
-  issue: Issue
-): Promise<string | null> {
-  if (issue.teamId != null && issue.teamId !== '') return issue.teamId
-  if (issue.projectId != null && issue.projectId !== '') {
-    const project = await getProjectById(issue.projectId)
-    return project?.teamId ?? null
-  }
-  return null
-}
-
 export async function getIssueComments(
   issueId: string
 ): Promise<IssueComment[]> {
@@ -221,10 +194,9 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-/** Get the next issue id for the given project or team: NN-PP (e.g. 01-PJ, 02-TE). Finds last issue with same prefix in that project/team and uses counter + 1. */
+/** Get the next issue id for the given project: NN-PP (e.g. 01-PJ). Finds last issue with same prefix in that project and uses counter + 1. */
 export async function getNextIssueId(
   projectId?: string | null,
-  teamId?: string | null
 ): Promise<string> {
   let prefix: string
   let existingIssues: Issue[]
@@ -233,10 +205,6 @@ export async function getNextIssueId(
     const project = await getProjectById(projectId)
     prefix = prefixFromName(project?.name ?? 'Project')
     existingIssues = await db.getIssuesByProjectId(projectId)
-  } else if (teamId != null && teamId !== '') {
-    const team = await getTeamById(teamId)
-    prefix = prefixFromName(team?.name ?? 'Team')
-    existingIssues = await db.getIssuesByTeamId(teamId)
   } else {
     prefix = 'IS'
     existingIssues = []
@@ -290,27 +258,24 @@ function isPrimaryKeyDuplicateError(err: unknown): boolean {
 
 export async function createIssue(input: {
   title: string
-  teamId?: string
   projectId?: string
   assigneeId?: string
   status?: string
   description?: string
   parentIssueId?: string
 }): Promise<Issue> {
-  if (input.teamId) {
-    const team = await getTeamById(input.teamId)
-    if (!team) {
-      throw new Error('Team not found')
-    }
+  if (!input.projectId || input.projectId.trim() === '') {
+    throw new Error('projectId is required')
   }
+  const project = await getProjectById(input.projectId)
+  if (!project) throw new Error('Project not found: ' + input.projectId)
 
   let lastErr: unknown
-  let id = await getNextIssueId(input.projectId, input.teamId)
+  let id = await getNextIssueId(input.projectId)
   for (let attempt = 0; attempt < ISSUE_ID_ALLOCATION_MAX_ATTEMPTS; attempt++) {
     const issue: Issue = {
       id,
       title: input.title,
-      teamId: input.teamId,
       projectId: input.projectId,
       assigneeId: input.assigneeId,
       status: input.status ?? 'todo',
@@ -325,40 +290,12 @@ export async function createIssue(input: {
       lastErr = e
       if (!isPrimaryKeyDuplicateError(e)) throw e
       const bumped = bumpIssueIdAfterDuplicate(id)
-      id = bumped ?? (await getNextIssueId(input.projectId, input.teamId))
+      id = bumped ?? (await getNextIssueId(input.projectId))
     }
   }
   throw lastErr instanceof Error
     ? lastErr
     : new Error('Could not allocate a unique issue id after concurrent creates')
-}
-
-export async function getTeamIssuesForApi(
-  teamId: string,
-  filter?: 'all' | 'active' | 'backlog'
-): Promise<IssueListItemApi[]> {
-  const issues = await getTeamIssues(teamId, filter)
-  const subCounts = await db.countDirectSubIssuesByParentIds(
-    issues.map((i) => i.id)
-  )
-  return Promise.all(
-    issues.map(async (i) => {
-      const assignee = i.assigneeId ? await getMemberById(i.assigneeId) : null
-      return {
-        id: i.id,
-        title: i.title,
-        assignee: assignee
-          ? { id: assignee.id, name: assignee.name }
-          : i.assigneeName
-            ? { id: '', name: i.assigneeName }
-            : null,
-        date: i.date,
-        status: i.status,
-        parentIssueId: i.parentIssueId ?? null,
-        subIssueCount: subCounts[i.id] ?? 0,
-      }
-    })
-  )
 }
 
 export async function getProjectIssuesForApi(
@@ -395,9 +332,8 @@ export async function getIssueDetailForApi(
 ): Promise<IssueDetailApi | null> {
   const issue = await getIssueById(issueId)
   if (!issue) return null
-  const [assignee, team, project] = await Promise.all([
+  const [assignee, project] = await Promise.all([
     issue.assigneeId ? getMemberById(issue.assigneeId) : null,
-    issue.teamId ? getTeamById(issue.teamId) : null,
     issue.projectId ? getProjectById(issue.projectId) : null,
   ])
   return {
@@ -411,63 +347,37 @@ export async function getIssueDetailForApi(
         : null,
     date: issue.date,
     status: issue.status,
-    teamId: issue.teamId ?? null,
-    team: team ? { id: team.id, name: team.name } : null,
     project: project ? { id: project.id, name: project.name } : null,
     parentIssueId: issue.parentIssueId,
   }
 }
 
 export async function createIssueForApi(input: {
-  teamId?: string
-  projectId?: string
+  projectId: string
   title: string
   description?: string
   status?: string
   parentIssueId?: string
-}): Promise<{ issue: Issue; team: { id: string; name: string } | null }> {
-  let teamRecord: Awaited<ReturnType<typeof getTeamById>> = null
-  if (input.teamId) {
-    teamRecord = await getTeamById(input.teamId)
-    if (!teamRecord) throw new Error('Team not found: ' + input.teamId)
-  }
-  const projectId =
-    input.projectId && input.projectId !== ''
-      ? input.projectId
-      : teamRecord?.projectId
-
-  if (projectId != null && projectId !== '' && input.teamId) {
-    const project = await getProjectById(projectId)
-    if (!project) throw new Error('Project not found: ' + projectId)
-    if (project.teamId !== input.teamId) {
-      throw new Error('Project does not belong to this team')
-    }
-  }
+}): Promise<Issue> {
+  const projectId = input.projectId?.trim()
+  if (!projectId) throw new Error('projectId is required')
 
   if (input.parentIssueId) {
     const parentIssue = await getIssueById(input.parentIssueId)
     if (!parentIssue) {
       throw new Error('Parent issue not found: ' + input.parentIssueId)
     }
-    if (
-      input.teamId &&
-      parentIssue.teamId &&
-      input.teamId !== parentIssue.teamId
-    ) {
-      throw new Error('Parent issue does not belong to this team')
-    }
+    // Parent-child constraints are enforced by projectId on the issue itself.
   }
 
   const issue = await createIssue({
-    teamId: input.teamId,
     projectId,
     title: input.title.trim(),
-    description: coerceAndNormalizeIssueDescription(input.description),
+    description: input.description,
     status: input.status,
     parentIssueId: input.parentIssueId,
   })
-  const team = teamRecord ? { id: teamRecord.id, name: teamRecord.name } : null
-  return { issue, team }
+  return issue
 }
 
 export async function updateIssueForApi(
@@ -488,9 +398,6 @@ export async function updateIssueForApi(
     if (projectId != null && projectId !== '') {
       const project = await getProjectById(projectId)
       if (!project) throw new Error('Project not found: ' + projectId)
-      if (project.teamId !== existing.teamId) {
-        throw new Error("Project does not belong to this issue's team")
-      }
     } else {
       projectId = undefined
     }
@@ -512,9 +419,7 @@ export async function updateIssueForApi(
       assigneeName: patch.assigneeName,
     }),
     ...(projectId !== undefined && { projectId: projectId ?? undefined }),
-    ...(patch.description !== undefined && {
-      description: coerceAndNormalizeIssueDescription(patch.description),
-    }),
+    ...(patch.description !== undefined && { description: patch.description }),
     ...(patch.parentIssueId !== undefined && {
       parentIssueId: patch.parentIssueId ?? undefined,
     }),

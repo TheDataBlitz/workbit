@@ -27,13 +27,12 @@ export async function writeStoreSupabase(store: Store): Promise<void> {
   const ordered = [
     { table: 'workspaces', rows: rows.workspaces, idColumn: 'id' as const },
     { table: 'members', rows: rows.members, idColumn: 'id' as const },
-    { table: 'teams', rows: rows.teams, idColumn: 'id' as const },
     { table: 'projects', rows: rows.projects, idColumn: 'id' as const },
     { table: 'invitations', rows: rows.invitations, idColumn: 'id' as const },
     {
       table: 'project_properties',
       rows: rows.project_properties,
-      idColumn: 'team_id' as const,
+      idColumn: 'project_id' as const,
     },
     {
       table: 'status_updates',

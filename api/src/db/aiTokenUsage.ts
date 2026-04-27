@@ -5,6 +5,7 @@ const USAGE_REPORT_PAGE_SIZE = 1000
 export type AiTokenUsageInsert = {
   shopId: string
   userId: string
+  projectId?: string | null
   tokens: number
   promptTokens?: number
   completionTokens?: number
@@ -17,6 +18,9 @@ export async function insertAiTokenUsage(
   const payload = {
     shop_id: row.shopId,
     user_id: row.userId,
+    ...(row.projectId != null && row.projectId !== ''
+      ? { project_id: row.projectId }
+      : {}),
     tokens: row.tokens,
     ...(typeof row.promptTokens === 'number' &&
     Number.isFinite(row.promptTokens)
@@ -110,6 +114,16 @@ export type AiTokenUsageReportJson = {
     completionTokens: number
   }
   byShop: AiTokenUsageByShopRow[]
+}
+
+export type AiTokenUsageReportForProjectJson = {
+  daily: AiTokenUsageDailyRow[]
+  totals: {
+    requests: number
+    tokens: number
+    promptTokens: number
+    completionTokens: number
+  }
 }
 
 function utcDateKeyFromConsumedAt(consumedAt: string): string {
@@ -242,4 +256,34 @@ export async function getAiTokenUsageReportForUser(input: {
   }
 
   return aggregateUsageRows(rows)
+}
+
+export async function getAiTokenUsageReportForProject(input: {
+  projectId: string
+  since: Date
+}): Promise<AiTokenUsageReportForProjectJson> {
+  const projectId = input.projectId.trim()
+  const sinceIso = input.since.toISOString()
+  const rows: UsageRow[] = []
+  let offset = 0
+
+  for (;;) {
+    const { data, error } = await getClient()
+      .from('ai_token_usage')
+      .select('shop_id, tokens, prompt_tokens, completion_tokens, consumed_at')
+      .eq('project_id', projectId)
+      .gte('consumed_at', sinceIso)
+      .order('consumed_at', { ascending: true })
+      .range(offset, offset + USAGE_REPORT_PAGE_SIZE - 1)
+
+    if (error) throw error
+
+    const batch = (data ?? []) as UsageRow[]
+    rows.push(...batch)
+    if (batch.length < USAGE_REPORT_PAGE_SIZE) break
+    offset += USAGE_REPORT_PAGE_SIZE
+  }
+
+  const agg = aggregateUsageRows(rows)
+  return { daily: agg.daily, totals: agg.totals }
 }

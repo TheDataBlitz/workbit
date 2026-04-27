@@ -1,4 +1,5 @@
 export { HomePage } from './HomePage'
 export { LoginPage } from './login'
 export { ProjectDetail } from './project-detail'
+export { WorkspaceMembers } from './workspace-members'
 export { WorkspaceList, type WorkspaceListProps } from './workspace-list'

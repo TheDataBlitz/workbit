@@ -32,3 +32,29 @@ export async function createWorkspace(input: {
   await dbWorkspaces.insertWorkspace(workspace)
   return workspace
 }
+
+export async function updateWorkspace(input: {
+  workspaceId: string
+  name?: string
+  slug?: string
+  region?: string
+}): Promise<Workspace | null> {
+  const existing = await dbWorkspaces.getWorkspaceById(input.workspaceId)
+  if (!existing) return null
+
+  const nextSlug = input.slug?.trim()
+  if (nextSlug && nextSlug.toLowerCase() !== existing.slug.toLowerCase()) {
+    const reserved = await dbWorkspaces.getWorkspaceBySlug(nextSlug)
+    if (reserved && reserved.id !== existing.id) {
+      const error = new Error('Workspace URL is already reserved')
+      ;(error as Error & { code?: string }).code = 'WORKSPACE_SLUG_TAKEN'
+      throw error
+    }
+  }
+
+  return dbWorkspaces.updateWorkspace(input.workspaceId, {
+    ...(input.name !== undefined && { name: input.name }),
+    ...(input.slug !== undefined && { slug: input.slug }),
+    ...(input.region !== undefined && { region: input.region }),
+  })
+}

@@ -107,6 +107,16 @@ function statusLabel(status: IssueStatusKind): string {
   return 'ACTIVE'
 }
 
+function formatApiStatusLabel(statusRaw: string): string {
+  const s = (statusRaw ?? '').trim()
+  if (!s) return '—'
+  return s
+    .replaceAll(/[_-]+/g, ' ')
+    .replaceAll(/\s+/g, ' ')
+    .trim()
+    .toUpperCase()
+}
+
 function statusBadgeProps(status: IssueStatusKind): {
   variant: 'secondary' | 'primary' | 'neutral'
   outlined: boolean
@@ -260,7 +270,7 @@ function toAccordionItems(
       metadataTone: issue.metadataTone,
       trailing: (
         <Badge
-          label={statusLabel(issue.status)}
+          label={issue.statusLabel ?? statusLabel(issue.status)}
           size="small"
           variant={sb.variant}
           outlined={sb.outlined}
@@ -300,16 +310,17 @@ function formatDueLabel(dateIso: string): string {
 }
 
 function toUiIssue(
-  row: ApiProjectIssueListItem,
-  idx: number
+  row: ApiProjectIssueListItem
 ): ProjectIssueItem & { _parentIssueId: string | null } {
   const status = mapApiStatus(row.status)
   return {
     id: row.id,
-    code: `ISS-${String(idx + 1).padStart(3, '0')}`,
+    // Show the API issue id in the list (not a generated UI code).
+    code: row.id,
     title: row.title,
     dueDateLabel: formatDueLabel(row.date),
     status,
+    statusLabel: formatApiStatusLabel(row.status),
     metadataTone: toneForStatus(status),
     owner: {
       name: row.assignee?.name ?? 'Unassigned',
@@ -326,7 +337,7 @@ export function ProjectIssuesTab() {
   const issuesQuery = useProjectIssues(projectId, 'all')
   const apiUiIssues = useMemo(() => {
     const rows = issuesQuery.data ?? []
-    const all = rows.map((row, idx) => toUiIssue(row, idx))
+    const all = rows.map((row) => toUiIssue(row))
 
     const byId = new Map<
       string,
@@ -338,7 +349,7 @@ export function ProjectIssuesTab() {
       if (!it._parentIssueId) continue
       const parent = byId.get(it._parentIssueId)
       if (!parent) continue
-      parent.subIssues.push({ id: it.code, title: it.title })
+      parent.subIssues.push({ id: it.id, title: it.title })
     }
 
     return all.filter((it) => {

@@ -11,7 +11,6 @@ function memberToRow(m: Member): Record<string, unknown> {
     avatar_src: m.avatarSrc ?? null,
     status: m.status,
     joined: m.joined,
-    team_ids: m.teamIds ?? [],
     provisioned: m.provisioned ?? false,
     supabase_user_id: m.uid ?? m.userAuthId ?? null,
   }
@@ -48,16 +47,6 @@ export async function getMembers(): Promise<Member[]> {
   return (data ?? []).map((r) => rowToMember(r as DbRow))
 }
 
-export async function getMembersByTeamId(teamId: string): Promise<Member[]> {
-  const { data, error } = await getClient()
-    .from('members')
-    .select('*')
-    .filter('team_ids', 'cs', JSON.stringify([teamId]))
-    .order('id')
-  if (error) throw error
-  return (data ?? []).map((r) => rowToMember(r as DbRow))
-}
-
 export async function insertMember(member: Member): Promise<void> {
   const { error } = await getClient()
     .from('members')
@@ -67,9 +56,18 @@ export async function insertMember(member: Member): Promise<void> {
 
 export async function updateMember(
   memberId: string,
-  patch: Partial<Pick<Member, 'provisioned' | 'uid' | 'userAuthId'>>
+  patch: Partial<
+    Pick<
+      Member,
+      'name' | 'username' | 'avatarSrc' | 'status' | 'provisioned' | 'uid' | 'userAuthId'
+    >
+  >
 ): Promise<void> {
   const row: Record<string, unknown> = {}
+  if (patch.name !== undefined) row.name = patch.name
+  if (patch.username !== undefined) row.username = patch.username
+  if (patch.avatarSrc !== undefined) row.avatar_src = patch.avatarSrc ?? null
+  if (patch.status !== undefined) row.status = patch.status
   if (patch.provisioned !== undefined) row.provisioned = patch.provisioned
   if (patch.uid !== undefined) row.supabase_user_id = patch.uid
   if (patch.userAuthId !== undefined) row.supabase_user_id = patch.userAuthId
@@ -81,13 +79,4 @@ export async function updateMember(
   if (error) throw error
 }
 
-export async function updateMemberTeamIds(
-  memberId: string,
-  teamIds: string[]
-): Promise<void> {
-  const { error } = await getClient()
-    .from('members')
-    .update({ team_ids: teamIds } as never)
-    .eq('id', memberId)
-  if (error) throw error
-}
+// Team membership removed: members are associated via workspaces.member_ids.

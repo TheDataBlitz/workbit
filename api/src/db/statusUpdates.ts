@@ -3,20 +3,6 @@ import { rowToStatusUpdate } from '../utils/supabaseMappers.js'
 import type { StatusUpdate } from '../models/types.js'
 import type { DbRow } from '../utils/supabaseMappers.js'
 
-export async function getStatusUpdatesByTeamId(
-  teamId: string,
-  limit = 20
-): Promise<StatusUpdate[]> {
-  const { data, error } = await getClient()
-    .from('status_updates')
-    .select('*')
-    .eq('team_id', teamId)
-    .order('created_at', { ascending: false })
-    .limit(limit)
-  if (error) throw error
-  return (data ?? []).map((r) => rowToStatusUpdate(r as DbRow))
-}
-
 export async function getStatusUpdatesByProjectId(
   projectId: string,
   limit = 20
@@ -61,7 +47,6 @@ export async function getStatusUpdateById(
 export async function insertStatusUpdate(update: StatusUpdate): Promise<void> {
   const row = {
     id: update.id,
-    team_id: update.teamId ?? null,
     status: update.status,
     content: update.content,
     author_id: update.authorId,

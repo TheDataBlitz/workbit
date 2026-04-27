@@ -1,5 +1,0 @@
-export * from './colors'
-export * from './spacing'
-export * from './ui'
-export { ThemeProvider, useTheme } from './theme/ThemeContext'
-export type { ThemeMode } from './theme/ThemeContext'

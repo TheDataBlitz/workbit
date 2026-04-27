@@ -1,7 +1,0 @@
-export { LandingPage } from './LandingPage'
-export { LandingNav } from './components/LandingNav'
-export { HeroSection } from './components/HeroSection'
-export { FeaturesSection } from './components/FeaturesSection'
-export { CTASection } from './components/CTASection'
-export { PricingSection } from './components/PricingSection'
-export { Footer } from './components/Footer'

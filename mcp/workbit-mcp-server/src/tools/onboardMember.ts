@@ -2,10 +2,11 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import {
   makeWorkbitPostRequest,
+  makeWorkbitPatchRequest,
   makeWorkbitRequest,
 } from '../utils/workbitClient.js'
 import { logMcpError } from '../logging.js'
-import { TeamId } from './schema.js'
+import { MemberId } from './schema.js'
 
 type ApiMemberListItem = {
   id: string
@@ -19,18 +20,129 @@ function normalizeEmail(email: string): string {
 
 export function registerOnboardMemberTool(server: McpServer): void {
   server.registerTool(
+    'getMembers',
+    {
+      description: 'Get workspace members (optionally filter by name/username).',
+      inputSchema: {
+        memberId: MemberId.optional(),
+        query: z.string().optional(),
+      },
+    },
+    async ({ memberId, query }) => {
+      try {
+        const members =
+          await makeWorkbitRequest<Record<string, unknown>[]>(
+            '/workspace/members'
+          )
+
+        let result: unknown = members
+        const q = (query ?? '').trim().toLowerCase()
+        if (q) {
+          if (Array.isArray(members)) {
+            result = members.filter((m) => {
+              if (!m || typeof m !== 'object') return false
+              const name = typeof m.name === 'string' ? m.name : ''
+              const username = typeof m.username === 'string' ? m.username : ''
+              return (
+                name.toLowerCase().includes(q) ||
+                username.toLowerCase().includes(q)
+              )
+            })
+          }
+        }
+
+        if (memberId) {
+          if (Array.isArray(members)) {
+            result =
+              members.find(
+                (m) =>
+                  m &&
+                  typeof m === 'object' &&
+                  (m as { id?: string })?.id === memberId
+              ) ?? { error: `Member not found for id: ${memberId}` }
+          }
+        }
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        }
+      } catch (error) {
+        logMcpError(error, 'tools.getMembers', { memberId, query })
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Failed to fetch members from Workbit API: ${
+                (error as Error).message
+              }`,
+            },
+          ],
+        }
+      }
+    }
+  )
+
+  server.registerTool(
+    'updateMember',
+    {
+      description:
+        'Update a workspace member (name/username/status/avatarSrc/provisioned).',
+      inputSchema: {
+        memberId: MemberId,
+        name: z.string().optional(),
+        username: z.string().optional(),
+        status: z.string().optional(),
+        avatarSrc: z.string().nullable().optional(),
+        provisioned: z.boolean().optional(),
+      },
+    },
+    async ({ memberId, name, username, status, avatarSrc, provisioned }) => {
+      try {
+        const patch: Record<string, unknown> = {}
+        if (name !== undefined) patch.name = name
+        if (username !== undefined) patch.username = username
+        if (status !== undefined) patch.status = status
+        if (avatarSrc !== undefined) patch.avatarSrc = avatarSrc
+        if (provisioned !== undefined) patch.provisioned = provisioned
+
+        const updated = await makeWorkbitPatchRequest<unknown>(
+          `/workspace/members/${encodeURIComponent(memberId)}`,
+          patch
+        )
+
+        return {
+          content: [
+            { type: 'text', text: JSON.stringify({ ok: true, updated }, null, 2) },
+          ],
+        }
+      } catch (error) {
+        logMcpError(error, 'tools.updateMember', { memberId })
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Failed to update member in Workbit API: ${
+                (error as Error).message
+              }`,
+            },
+          ],
+        }
+      }
+    }
+  )
+
+  server.registerTool(
     'onboardMember',
     {
       description: 'Onboard member.',
       inputSchema: {
-        email: z.string().min(1),
-        name: z.string().min(1),
-        username: z.string().min(1),
+        email: z.string(),
+        name: z.string(),
+        username: z.string(),
         status: z.string().optional(),
-        teamIds: z.array(TeamId).optional(),
       },
     },
-    async ({ email, name, username, status, teamIds }) => {
+    async ({ email, name, username, status }) => {
       const emailNorm = normalizeEmail(email)
       try {
         // Best-effort: avoid duplicates by checking existing members by username.
@@ -73,7 +185,6 @@ export function registerOnboardMemberTool(server: McpServer): void {
             name,
             username,
             status,
-            teamIds: teamIds ?? [],
           }
         )
 

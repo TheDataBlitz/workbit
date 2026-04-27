@@ -1,7 +1,6 @@
 export { getClient } from './client.js'
 export * from './issues.js'
 export * from './decisions.js'
-export * from './teams.js'
 export * from './projects.js'
 export * from './members.js'
 export * from './workspaces.js'

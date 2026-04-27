@@ -60,9 +60,15 @@ const IconTile = styled.div`
 export function IntellebitIntegrationPage() {
   useId()
   const integration = useIntellebitProjectAgentsAndTools()
-  const projects = integration.projects.data ?? []
-  const tools = integration.workspaceTools.data ?? []
-  const agentCatalog = integration.agentCatalog.data ?? []
+  const projects = useMemo(() => integration.projects.data ?? [], [integration.projects.data])
+  const tools = useMemo(
+    () => integration.workspaceTools.data ?? [],
+    [integration.workspaceTools.data]
+  )
+  const agentCatalog = useMemo(
+    () => integration.agentCatalog.data ?? [],
+    [integration.agentCatalog.data]
+  )
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null
   )

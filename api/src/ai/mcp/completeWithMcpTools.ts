@@ -6,7 +6,7 @@ const MAX_TOOL_ROUNDS = 8
 const MAX_TOOLSET_EXPANSIONS = 2
 
 export const WORKBIT_AI_SYSTEM_PROMPT =
-  'You are a Workbit assistant. Use the provided tools to read or update projects, issues, decisions, and status when the user asks about their workspace. Prefer calling tools over guessing.\n\nSecurity: never output internal IDs (UUIDs), database row ids, workspace/team/project/member ids, access tokens, API keys, or secrets. IMPORTANT: you MAY fetch IDs via tools and use them internally in tool calls; you MUST NOT reveal them in your final response.\n\nWhen the user asks to update issues (e.g., mark complete), do NOT ask for UUIDs. Instead:\n- Use tools to find the right project/team (e.g. getProject) and issues (e.g. getIssuesByProject / getIssue)\n- Match issues by safe identifiers like title, status, or order; if ambiguous, ask the user to choose by title\n- Then call updateIssue using the ID internally, and report results using titles (not IDs)\n\nFormat answers in clear Markdown: use `##` / `###` headings for sections, bullet or numbered lists for items, and Markdown tables when comparing rows of data (e.g. orders, line items). Keep paragraphs short.'
+  'You are a Workbit assistant. Use the provided tools to manage workspaces, projects, issues, decisions, documents, and status updates. Prefer calling tools over guessing.\n\nSecurity: never output internal IDs (UUIDs), database row ids, workspace/project/member ids, access tokens, API keys, or secrets. IMPORTANT: you MAY fetch IDs via tools and use them internally in tool calls; you MUST NOT reveal them in your final response.\n\nWhen the user asks to update issues (e.g., mark complete), do NOT ask for UUIDs. Instead:\n- Use tools to find the right project (e.g. getProject) and issues (e.g. getIssuesByProject / getIssue)\n- Match issues by safe identifiers like title, status, or order; if ambiguous, ask the user to choose by title\n- Then call updateIssue using the ID internally, and report results using titles (not IDs)\n\nFormat answers in clear Markdown: use `##` / `###` headings for sections, bullet or numbered lists for items, and Markdown tables when comparing rows of data (e.g. orders, line items). Keep paragraphs short.'
 
 const SYSTEM_PROMPT = WORKBIT_AI_SYSTEM_PROMPT
 
@@ -41,6 +41,9 @@ function mcpTools(tools: McpTool[]): unknown[] {
 type ToolMeta = { name: string; description?: string | null }
 
 const ALWAYS_INCLUDE_TOOLS = [
+  // Workspace bootstrap.
+  'getWorkspaces',
+  'createWorkspace',
   // Baseline “discovery” + core issue workflow.
   'getProject',
   'getIssue',
@@ -75,11 +78,18 @@ function toolMetasFromTools(tools: McpTool[]): ToolMeta[] {
 }
 
 function toolBuckets(): Record<
-  'projects' | 'issues' | 'decisions' | 'docs' | 'members' | 'updates',
+  | 'workspaces'
+  | 'projects'
+  | 'issues'
+  | 'decisions'
+  | 'docs'
+  | 'members'
+  | 'updates',
   readonly string[]
 > {
   // Keep this list tight; it’s used to expand a selected set to reduce re-selection churn.
   return {
+    workspaces: ['getWorkspaces', 'createWorkspace', 'updateWorkspace'],
     projects: [
       'getProject',
       'createProject',
@@ -94,13 +104,13 @@ function toolBuckets(): Record<
       'createProjectDocument',
       'updateProjectDocument',
     ],
-    members: [
-      'addTeamMember',
-      'onboardMember',
-      'addTeamMembersToProject',
-      'assignProjectLead',
+    members: ['getMembers', 'onboardMember', 'updateMember', 'assignProjectLead'],
+    updates: [
+      'createProjectStatusUpdate',
+      'getProjectStatusUpdates',
+      'createStatusUpdateComment',
+      'getStatusUpdateComments',
     ],
-    updates: ['createProjectStatusUpdate', 'getProjectStatusUpdates'],
   }
 }
 
@@ -190,12 +200,6 @@ async function listAllTools(client: McpClientLike): Promise<McpTool[]> {
 
 function redactTextSecrets(raw: string): string {
   let s = raw
-
-  // UUID v4-ish
-  s = s.replaceAll(
-    /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi,
-    '[REDACTED_ID]'
-  )
 
   // Bearer tokens
   s = s.replaceAll(/\bBearer\s+[A-Za-z0-9\-._~+/]+=*\b/g, 'Bearer [REDACTED]')

@@ -85,6 +85,7 @@ export async function assertShopTokenBudget(shopId: string): Promise<void> {
 export async function recordAiTokenUsage(input: {
   shopId: string
   userId: string
+  projectId?: string | null
   tokens: number
   promptTokens?: number
   completionTokens?: number
@@ -95,6 +96,7 @@ export async function recordAiTokenUsage(input: {
   await dbAiUsage.insertAiTokenUsage({
     shopId: input.shopId,
     userId: input.userId,
+    projectId: input.projectId ?? null,
     tokens,
     promptTokens,
     completionTokens,
